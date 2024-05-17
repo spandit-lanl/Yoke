@@ -38,7 +38,7 @@ parser = argparse.ArgumentParser(prog='Plot field from NPZ',
 parser.add_argument('--indir', '-D',
                     action='store',
                     type=str,
-                    default='./',
+                    default='/data2/nc231213_npzs',
                     help='Directory to find NPZ files.')
 
 # outdir
@@ -52,14 +52,14 @@ parser.add_argument('--outdir', '-O',
 parser.add_argument('--runID', '-R',
                     action='store',
                     type=str,
-                    default='runID',
-                    help='Run identifier.')
+                    default='nc231213_Sn_id0415',
+                    help='Run identifier. Is prefix to _pvi_idx?????.npz')
 
 # PVI index
 parser.add_argument('--pviIDX', '-I',
                     action='store',
                     type=int,
-                    default=107,
+                    default=125,
                     help='PVI index to plot.')
 
 # Hydro-dynamic field from PVI
@@ -67,7 +67,13 @@ parser.add_argument('--field', '-F',
                     action='store',
                     type=str,
                     default='volhr_sum',
-                    help='Hydro-dynamic field to plot: rho, hr_outerWall, hr_bottomWall, hr_mcSide, hr_mcBottom, hr_innerCylSide, hr_innerCylBottom, hr_MOI, volhr_outerWall, volhr_bottomWall, volhr_mcSide, volhr_mcBottom, volhr_innerCylSide, volhr_innerCylBottom, volhr_MOI, volhr_sum, pressure, temperature, melt_state, porosity, eqps, eqps_rate, eff_stress, bulk_mod, sound_speed, rVel, zVel.')
+                    help=('Hydro-dynamic field to plot: rho, hr_outerWall, '
+                          'hr_bottomWall, hr_mcSide, hr_mcBottom, hr_innerCylSide, '
+                          'hr_innerCylBottom, hr_MOI, volhr_outerWall, '
+                          'volhr_bottomWall, volhr_mcSide, volhr_mcBottom, '
+                          'volhr_innerCylSide, volhr_innerCylBottom, volhr_MOI, '
+                          'volhr_sum, pressure, temperature, melt_state, porosity, '
+                          'eqps, eqps_rate, eff_stress, bulk_mod, sound_speed, rVel, zVel.'))
                                 
 parser.add_argument('--save', '-S',
                     action='store_true',

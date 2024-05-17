@@ -38,7 +38,7 @@ parser = argparse.ArgumentParser(prog='Plot field from NPZ',
 parser.add_argument('--indir', '-D',
                     action='store',
                     type=str,
-                    default='./',
+                    default='/data2/lsc240420',
                     help='Directory to find NPZ files.')
 
 # outdir
@@ -52,15 +52,15 @@ parser.add_argument('--outdir', '-O',
 parser.add_argument('--runID', '-R',
                     action='store',
                     type=str,
-                    default='runID',
+                    default='lsc240420_id_00101_pvi',
                     help='Run identifier.')
 
 # PVI index
 parser.add_argument('--pviIDX', '-I',
                     action='store',
                     type=int,
-                    default=115,
-                    help='PVI index to plot.')
+                    default=0,
+                    help='PVI index to plot, [0-100]')
 
 # Hydro-dynamic field from PVI
 parser.add_argument('--field', '-F',
