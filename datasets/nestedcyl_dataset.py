@@ -147,15 +147,15 @@ class PVI_SingleField_DataSet(Dataset):
         ## Get the input image
         filepath = self.filelist[index]
         npz = np.load(filepath)
-        img_input = nc.npz_pvi2field(npz, self.input_field)
+        img_input = npz_pvi2field(npz, self.input_field)
         in_y, in_x = img_input.shape
         img_input = img_input.reshape((1, in_y, in_x))
         img_input = torch.tensor(img_input).to(torch.float32)
 
         ## Get the ground truth.
         # NOTE: This will not work with Dcj being predicted.
-        key = nc.npz2key(filepath)
-        truth = nc.csv2scalar(self.design_file, key, self.predicted)
+        key = npz2key(filepath)
+        truth = csv2scalar(self.design_file, key, self.predicted)
 
         return img_input, truth
 
@@ -165,3 +165,58 @@ class PVI_SingleField_DataSet(Dataset):
     #     instead of a single tensor.
 
     #     """
+
+
+if __name__ == '__main__':
+    """For testing and debugging.
+
+    """
+
+    # Imports for plotting
+    # To view possible matplotlib backends use
+    # >>> import matplotlib
+    # >>> bklist = matplotlib.rcsetup.interactive_bk
+    # >>> print(bklist)
+    import matplotlib
+    #matplotlib.use('MacOSX')
+    matplotlib.use('TkAgg')
+    # Get rid of type 3 fonts in figures
+    matplotlib.rcParams['pdf.fonttype'] = 42
+    matplotlib.rcParams['ps.fonttype'] = 42
+    import matplotlib.pyplot as plt
+    # Ensure LaTeX font
+    font = {'family': 'serif'}
+    plt.rc('font', **font)
+    plt.rcParams['figure.figsize'] = (6, 6)
+    from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+    
+    pvi_test_ds = PVI_SingleField_DataSet('/data2/yoke/filelists/nc231213_test_10pct.txt',
+                                          input_field='rho',
+                                          predicted='ptw_scale',
+                                          design_file='/data2/design_nc231213_Sn_MASTER.csv')
+
+    sampIDX = 123
+    rho_samp, ptw_scale_samp = pvi_test_ds.__getitem__(sampIDX)
+
+    print('Shape of density field tensor: ', rho_samp.shape)
+    rho_samp = np.squeeze(rho_samp.numpy())
+    
+    # Plot normalized radiograph and density field for diagnostics.
+    fig1, ax1 = plt.subplots(1, 1, figsize=(12, 12))
+    img1 = ax1.imshow(rho_samp,
+                      aspect='equal',
+                      origin='lower',
+                      cmap='jet')
+    ax1.set_ylabel("Z-axis", fontsize=16)                 
+    ax1.set_xlabel("R-axis", fontsize=16)
+    ax1.set_title('c-PTW={:.3f}'.format(float(ptw_scale_samp)), fontsize=18)
+
+    divider1 = make_axes_locatable(ax1)
+    cax1 = divider1.append_axes('right', size='10%', pad=0.1)
+    fig1.colorbar(img1,
+                  cax=cax1).set_label('Density',
+                                      fontsize=14)
+
+    plt.show()
+    
