@@ -33,8 +33,7 @@ def LSCnpz2key(npz_file: str):
         npz_file (str): file path from working directory to .npz file
     
     Returns: 
-        key (str): The study information for the simulation that
-                   generated the .npz file; of the form "nc231213_Sn_id####"
+        key (str): The correspond simulation key for the NPZ file.
 
     """
 
@@ -43,7 +42,7 @@ def LSCnpz2key(npz_file: str):
     return key
 
 
-def LSCcsv2bspline_pts(csv_file: str, key: str):
+def LSCcsv2bspline_pts(design_file: str, key: str):
     """Function to extract the B-spline nodes from the design .csv file given the
     study key.
         
@@ -58,7 +57,7 @@ def LSCcsv2bspline_pts(csv_file: str, key: str):
 
     """
     
-    design_df = pd.read_csv(csv_file,
+    design_df = pd.read_csv(design_file,
                             sep=',',
                             header=0,
                             index_col=0,
@@ -70,95 +69,89 @@ def LSCcsv2bspline_pts(csv_file: str, key: str):
 
     bspline_pts = design_df.loc[key, 'sa1':'ct7'].values
 
-    return bspline_pts
+    return bspline_pts.astype(float)
 
 
-def npz_lsc2field(npz: np.lib.npyio.NpzFile, field: str):
-    """Function to extract a field "picture" array from an .npz file
+def LSCread_npz(npz: np.lib.npyio.NpzFile, field: str):
+    """Function to extract a value corresponding to an NPZ key.
 
     Args:
         npz (np.lib.npyio.NpzFile): a loaded .npz file
         field (str): name of field to extract
 
-    Returns:
-        pic (np.ndarray[(1700, 500), float]): field 
-
     """
-    
-    pic = npz[field]
-    pic = pic[800:, :250]
-    pic = np.concatenate((np.fliplr(pic), pic), axis=1)
 
-    return pic
+    return npz[field]
 
 
-# ####################################
-# ## DataSet Class
-# ####################################
-# class PVI_SingleField_DataSet(Dataset):
-#     def __init__(self,
-#                  filelist: str,
-#                  input_field: str='rho',
-#                  predicted: str='ptw_scale',
-#                  design_file: str='/data2/design_nc231213_Sn_MASTER.csv'):
+####################################
+## DataSet Class
+####################################
+class LSC_cntr2rho_DataSet(Dataset):
+    def __init__(self,
+                 filelist: str,
+                 design_file: str):
+        """The definition of a dataset object for the *Layered Shaped Charge* data
+        which produces pairs of B-spline contour-node vectors and simulation times
+        together with an average density field.
 
-#         """The definition of a dataset object for the simple nested cylinder 
-#         problem: Nested Cylinder MOI density -> PTW scale value
+        Args:
+            filelist (str): Text file listing file names to read
+            design_file (str): .csv file with master design study parameters
 
-#         Args:
-#             filelist (str): Text file listing file names to read
-#             input_field (str): The radiographic/hydrodynamic field the model 
-#                                is trained on
-#             predicted (str): The scalar value that a model predicts
-#             design_file (str): .csv file with master design study parameters
+        """
 
-#         """
+        ## Model Arguments 
+        self.filelist = filelist
+        self.design_file = design_file
 
-#         ## Model Arguments 
-#         self.input_field = input_field
-#         self.predicted = predicted
-#         self.filelist = filelist
-#         self.design_file = design_file
-
-#         ## Create filelist
-#         with open(filelist, 'r') as f:
-#             self.filelist = [line.rstrip() for line in f]
+        ## Create filelist
+        with open(filelist, 'r') as f:
+            self.filelist = [line.rstrip() for line in f]
             
-#         self.Nsamples = len(self.filelist)
+        self.Nsamples = len(self.filelist)
 
-#     def __len__(self):
-#         """Return number of samples in dataset.
+    def __len__(self):
+        """Return number of samples in dataset.
 
-#         """
+        """
 
-#         return self.Nsamples
+        return self.Nsamples
 
-#     def __getitem__(self, index):
-#         """Return a tuple of a batch's input and output data for training at a given index.
+    def __getitem__(self, index):
+        """Return a tuple of a batch's input and output data for training at a given index.
 
-#         """
+        """
 
-#         ## Get the input image
-#         filepath = self.filelist[index]
-#         npz = np.load(filepath)
-#         img_input = npz_pvi2field(npz, self.input_field)
-#         in_y, in_x = img_input.shape
-#         img_input = img_input.reshape((1, in_y, in_x))
-#         img_input = torch.tensor(img_input).to(torch.float32)
+        ## Get the input image
+        filepath = self.filelist[index]
+        npz = np.load(filepath)
+        true_image = npz['av_density']
+        true_image = np.concatenate((np.fliplr(true_image), true_image), axis=1)
+        nY, nX = true_image.shape
+        true_image = true_image.reshape((1, nY, nX))
+        print('type true_image:', type(true_image))
+        true_image = torch.tensor(true_image).to(torch.float32)
 
-#         ## Get the ground truth.
-#         # NOTE: This will not work with Dcj being predicted.
-#         key = npz2key(filepath)
-#         truth = csv2scalar(self.design_file, key, self.predicted)
+        ## Get the contours and sim_time
+        sim_key = LSCnpz2key(filepath)
+        Bspline_nodes = LSCcsv2bspline_pts(self.design_file, sim_key)
+        sim_time = npz['sim_time']
+        npz.close()
 
-#         return img_input, truth
+        sim_params = np.append(Bspline_nodes, sim_time)
+        nSP = sim_params.shape[0]
+        sim_params = sim_params.reshape((1, nSP))
+        sim_params = torch.from_numpy(sim_params).to(torch.float32)
+        
+        return sim_params, true_image
 
-#     # def __getitems__(self, indices):
-#     #     """A mysterious method that PyTorch may have support for and documentation
-#     #     implies may produce a speed up that returns a batch as a list of tensors
-#     #     instead of a single tensor.
+    # def __getitems__(self, indices):
+    #     """A mysterious method that PyTorch may have support for and documentation
+    #     implies may produce a speed up that returns a batch as a list of tensors
+    #     instead of a single tensor.
 
-#     #     """
+    #     """
 
 
 if __name__ == '__main__':
@@ -194,34 +187,37 @@ if __name__ == '__main__':
     # Test B-spline retrieval
     csv_filename = '/data2/design_lsc240420_MASTER.csv'
     bspline_pts = LSCcsv2bspline_pts(csv_filename, LSCkey)
+    print('Shape of B-spline points:', bspline_pts.shape)
     print('B-spline points:', bspline_pts)
     
-    # pvi_test_ds = PVI_SingleField_DataSet('/data2/yoke/filelists/nc231213_test_10pct.txt',
-    #                                       input_field='rho',
-    #                                       predicted='ptw_scale',
-    #                                       design_file='/data2/design_nc231213_Sn_MASTER.csv')
-
-    # sampIDX = 123
-    # rho_samp, ptw_scale_samp = pvi_test_ds.__getitem__(sampIDX)
-
-    # print('Shape of density field tensor: ', rho_samp.shape)
-    # rho_samp = np.squeeze(rho_samp.numpy())
+    filelist = '/data2/yoke/filelists/lsc240420_test_10pct.txt'
+    LSC_ds = LSC_cntr2rho_DataSet(filelist,
+                                  csv_filename)
+    sampIDX = 150
+    sim_params, true_image = LSC_ds.__getitem__(sampIDX)
     
-    # # Plot normalized radiograph and density field for diagnostics.
-    # fig1, ax1 = plt.subplots(1, 1, figsize=(12, 12))
-    # img1 = ax1.imshow(rho_samp,
-    #                   aspect='equal',
-    #                   origin='lower',
-    #                   cmap='jet')
-    # ax1.set_ylabel("Z-axis", fontsize=16)                 
-    # ax1.set_xlabel("R-axis", fontsize=16)
-    # ax1.set_title('c-PTW={:.3f}'.format(float(ptw_scale_samp)), fontsize=18)
+    print('Shape of true_image tensor: ', true_image.shape)
+    print('Shape of sim_params tensor: ', sim_params.shape)
+    print('sim_params:', sim_params)
+    
+    sim_params = sim_params.numpy()
+    true_image = np.squeeze(true_image.numpy())
+    
+    # Plot normalized radiograph and density field for diagnostics.
+    fig1, ax1 = plt.subplots(1, 1, figsize=(12, 12))
+    img1 = ax1.imshow(true_image,
+                      aspect='equal',
+                      origin='lower',
+                      cmap='jet')
+    ax1.set_ylabel("Z-axis", fontsize=16)                 
+    ax1.set_xlabel("R-axis", fontsize=16)
+    ax1.set_title('Time={:.3f}us'.format(sim_params[0, -1]), fontsize=18)
 
-    # divider1 = make_axes_locatable(ax1)
-    # cax1 = divider1.append_axes('right', size='10%', pad=0.1)
-    # fig1.colorbar(img1,
-    #               cax=cax1).set_label('Density',
-    #                                   fontsize=14)
+    divider1 = make_axes_locatable(ax1)
+    cax1 = divider1.append_axes('right', size='10%', pad=0.1)
+    fig1.colorbar(img1,
+                  cax=cax1).set_label('Density',
+                                      fontsize=14)
 
-    # plt.show()
+    plt.show()
     
