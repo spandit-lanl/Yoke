@@ -140,8 +140,6 @@ class LSC_cntr2rho_DataSet(Dataset):
         npz.close()
 
         sim_params = np.append(Bspline_nodes, sim_time)
-        nSP = sim_params.shape[0]
-        sim_params = sim_params.reshape((1, nSP))
         sim_params = torch.from_numpy(sim_params).to(torch.float32)
         
         return sim_params, true_image
@@ -211,7 +209,7 @@ if __name__ == '__main__':
                       cmap='jet')
     ax1.set_ylabel("Z-axis", fontsize=16)                 
     ax1.set_xlabel("R-axis", fontsize=16)
-    ax1.set_title('Time={:.3f}us'.format(sim_params[0, -1]), fontsize=18)
+    ax1.set_title('Time={:.3f}us'.format(sim_params[-1]), fontsize=18)
 
     divider1 = make_axes_locatable(ax1)
     cax1 = divider1.append_axes('right', size='10%', pad=0.1)
