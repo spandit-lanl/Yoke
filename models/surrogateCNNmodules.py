@@ -13,11 +13,11 @@ from cnn_utils import count_parameters
 
 class jekelCNNsurrogate(nn.Module):
     def __init__(self, 
-                 input_size: int=28,
+                 input_size: int=29,
                  linear_features: tuple[int, int]=(4, 4),
                  kernel: tuple[int, int]=(3, 3),
                  nfeature_list: List[int]=[512, 512, 512, 512, 256, 128, 64, 32],
-                 output_image_size: tuple[int, int]=(800, 1120),
+                 output_image_size: tuple[int, int]=(1120, 800),
                  act_layer=nn.GELU):
         """Convolutional Neural Network Module that creates a scalar-to-image 
         surrogate using a sequence of ConvTranspose2D, Batch Normalization, and
@@ -152,12 +152,12 @@ if __name__ == '__main__':
 
     # Excercise model setup
     # NOTE: Model takes (BatchSize, ScalarDims) tensor.
-    scalar_input = torch.rand(4, 28)
-    jCNN = jekelCNNsurrogate(input_size=28,
+    scalar_input = torch.rand(4, 29)
+    jCNN = jekelCNNsurrogate(input_size=29,
                              linear_features=(4, 4),
                              kernel=(3, 3),
                              nfeature_list=[512, 512, 512, 512, 256, 128, 64, 32],
-                             output_image_size=(800, 1120),
+                             output_image_size=(1120, 800),
                              act_layer=nn.GELU)
 
     jCNN.eval()
