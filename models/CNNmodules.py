@@ -5,11 +5,14 @@ built from these.
 ####################################
 ## Packages
 ####################################
+import sys
+import os
 import math
 import torch
 import torch.nn as nn
 
-from cnn_utils import conv2d_shape
+sys.path.insert(0, os.path.abspath('/data2/yoke/.'))
+from models.cnn_utils import conv2d_shape
 
 
 ####################################
