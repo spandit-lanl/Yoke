@@ -119,7 +119,8 @@ class LSC_cntr2rho_DataSet(Dataset):
         return self.Nsamples
 
     def __getitem__(self, index):
-        """Return a tuple of a batch's input and output data for training at a given index.
+        """Return a tuple of a batch's input and output data for training at a given
+        index.
 
         """
 
