@@ -316,7 +316,11 @@ def train_datastep(data: tuple,
     ## Extract data
     (inpt, truth) = data
     inpt = inpt.to(device)
-    truth = truth.to(torch.float32).unsqueeze(-1).to(device)
+    # Unsqueeze is necessary for the NC training
+    #truth = truth.to(torch.float32).unsqueeze(-1).to(device)
+    # Unsqueeze is not necessary, and BAD, for LSC
+
+    truth = truth.to(device)
     
     ## Perform a forward pass
     # NOTE: If training on GPU model should have already been moved to GPU
@@ -358,7 +362,10 @@ def eval_datastep(data: tuple,
     ## Extract data
     (inpt, truth) = data
     inpt = inpt.to(device)
-    truth = truth.to(torch.float32).unsqueeze(-1).to(device)
+    # Unsqueeze is necessary for the NC training
+    #truth = truth.to(torch.float32).unsqueeze(-1).to(device)
+    # Unsqueeze is not necessary, and BAD, for LSC
+    truth = truth.to(device)
 
     ## Perform a forward pass
     pred = model(inpt)

@@ -127,7 +127,8 @@ class LSC_cntr2rho_DataSet(Dataset):
         ## Get the input image
         filepath = self.filelist[index]
         npz = np.load(filepath)
-        true_image = npz['av_density']
+        
+        true_image = LSCread_npz(npz, 'av_density')
         true_image = np.concatenate((np.fliplr(true_image), true_image), axis=1)
         nY, nX = true_image.shape
         true_image = true_image.reshape((1, nY, nX))
@@ -192,7 +193,7 @@ if __name__ == '__main__':
     filelist = '/data2/yoke/filelists/lsc240420_test_10pct.txt'
     LSC_ds = LSC_cntr2rho_DataSet(filelist,
                                   csv_filename)
-    sampIDX = 150
+    sampIDX = 1
     sim_params, true_image = LSC_ds.__getitem__(sampIDX)
     
     print('Shape of true_image tensor: ', true_image.shape)
