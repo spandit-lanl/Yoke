@@ -148,28 +148,29 @@ def make_dataloader(dataset: torch.utils.data.Dataset,
                     num_batches: int=100,
                     num_workers: int=4):
     """Function to create a pytorch dataloader from a pytorch dataset
-       **https://pytorch.org/docs/stable/data.html#torch.utils.data.DataLoader**
-       Each dataloader has batch_size*num_batches samples randomly selected from the dataset
+    **https://pytorch.org/docs/stable/data.html#torch.utils.data.DataLoader** 
+    Each dataloader has batch_size*num_batches samples randomly selected 
+    from the dataset
 
-        num_workers: behavior training on dodona
-            =0 if not specified, data is loaded in the main process;
-               trains slower if multiple models being trained on the same node
-            =1 seperates the data from the main process;
-               training speed unaffected by multiple models being trained
-            =2 splits data across 2 processors;
-               cuts training time in half from num_workers=1
-            >2 diminishing returns on training time
+    num_workers: behavior training on dodona
+        =0 if not specified, data is loaded in the main process;
+           trains slower if multiple models being trained on the same node
+        =1 seperates the data from the main process;
+           training speed unaffected by multiple models being trained
+        =2 splits data across 2 processors;
+           cuts training time in half from num_workers=1
+        >2 diminishing returns on training time
 
-        persistant_workers:
-            training time seems minimally affected, slight improvement when =True
+    persistant_workers:
+        training time seems minimally affected, slight improvement when =True
 
-        Args:
-            dataset(torch.utils.data.Dataset): dataset to sample from for data loader
-            batch_size (int): batch size
-            num_batches (int): number of batches to include in data loader
+    Args:
+        dataset(torch.utils.data.Dataset): dataset to sample from for data loader
+        batch_size (int): batch size
+        num_batches (int): number of batches to include in data loader
 
-        Returns:
-            dataloader (torch.utils.data.DataLoader): pytorch dataloader made from calico model dataset
+    Returns:
+        dataloader (torch.utils.data.DataLoader): pytorch dataloader 
 
     """
 
@@ -208,18 +209,18 @@ def save_append_df(path: str, df: pd.DataFrame, START: bool):
 
 
 def append_to_dict(dictt: dict, batch_ID: int, truth, pred, loss):
-    """Function to appending sample information to a dictionary
-       Dictionary must be initialized with correct keys
+    """Function to appending sample information to a dictionary Dictionary must 
+    be initialized with correct keys
 
-        Args:
-            dictt (dict): dictionary to append sample information to
-            batch_ID (int): batch ID number for samples
-            truth (): array of truth values for batch of samples
-            pred (): array of prediction values for batch of samples
-            loss (): array of loss values for batch of samples
+    Args:
+        dictt (dict): dictionary to append sample information to
+        batch_ID (int): batch ID number for samples
+        truth (): array of truth values for batch of samples
+        pred (): array of prediction values for batch of samples
+        loss (): array of loss values for batch of samples
 
-        Returns:
-            dictt (dict): dictionary with appended sample information
+    Returns:
+        dictt (dict): dictionary with appended sample information
 
     """
     
@@ -291,22 +292,23 @@ def continuation_setup(checkpointpath, studyIDX, last_epoch):
 ####################################
 ## Training on a Datastep
 ####################################
-def train_datastep(data: tuple, 
-                   model,
-                   optimizer,
-                   loss_fn,
-                   device: torch.device):
-    """Function to complete a training step on a single sample
+def train_scalar_datastep(data: tuple, 
+                          model,
+                          optimizer,
+                          loss_fn,
+                          device: torch.device):
+    """Function to complete a training step on a single sample in which the
+    network's output is a scalar.
 
-        Args:
-            data (tuple): tuple of model input and corresponding ground truth
-            model (loaded pytorch model): model to train
-            optimizer (torch.optim): optimizer for training set
-            loss_fn (torch.nn Loss Function): loss function for training set
-            device (torch.device): device index to select
+    Args:
+        data (tuple): tuple of model input and corresponding ground truth
+        model (loaded pytorch model): model to train
+        optimizer (torch.optim): optimizer for training set
+        loss_fn (torch.nn Loss Function): loss function for training set
+        device (torch.device): device index to select
 
-        Returns:
-            loss (): evaluated loss for the data sample
+    Returns:
+        loss (): evaluated loss for the data sample
 
     """
     
@@ -316,10 +318,49 @@ def train_datastep(data: tuple,
     ## Extract data
     (inpt, truth) = data
     inpt = inpt.to(device)
-    # Unsqueeze is necessary for the NC training
-    #truth = truth.to(torch.float32).unsqueeze(-1).to(device)
-    # Unsqueeze is not necessary, and BAD, for LSC
+    # Unsqueeze is necessary for scalar ground-truth output
+    truth = truth.to(torch.float32).unsqueeze(-1).to(device)
+    
+    ## Perform a forward pass
+    # NOTE: If training on GPU model should have already been moved to GPU
+    # prior to initalizing optimizer.
+    pred = model(inpt)
+    loss = loss_fn(pred, truth)
 
+    ## Perform backpropagation and update the weights
+    optimizer.zero_grad()
+    loss.mean().backward()
+    optimizer.step()
+
+    return truth, pred, loss
+
+
+def train_array_datastep(data: tuple, 
+                         model,
+                         optimizer,
+                         loss_fn,
+                         device: torch.device):
+    """Function to complete a training step on a single sample in which the
+    network's output is an array.
+
+    Args:
+        data (tuple): tuple of model input and corresponding ground truth
+        model (loaded pytorch model): model to train
+        optimizer (torch.optim): optimizer for training set
+        loss_fn (torch.nn Loss Function): loss function for training set
+        device (torch.device): device index to select
+
+    Returns:
+        loss (): evaluated loss for the data sample
+
+    """
+    
+    ## Set model to train
+    model.train()
+
+    ## Extract data
+    (inpt, truth) = data
+    inpt = inpt.to(device)
     truth = truth.to(device)
     
     ## Perform a forward pass
@@ -339,20 +380,21 @@ def train_datastep(data: tuple,
 ####################################
 ## Evaluating on a Datastep
 ####################################
-def eval_datastep(data: tuple, 
-                  model,
-                  loss_fn,
-                  device: torch.device):
-    """Function to complete a validation step on a single sample
+def eval_scalar_datastep(data: tuple, 
+                         model,
+                         loss_fn,
+                         device: torch.device):
+    """Function to complete a validation step on a single sample for which the
+    network output is a scalar.
 
-        Args:
-            data (tuple): tuple of model input and corresponding ground truth
-            model (loaded pytorch model): model evaluate
-            loss_fn (torch.nn Loss Function): loss function for training set
-            device (torch.device): device index to select
+    Args:
+        data (tuple): tuple of model input and corresponding ground truth
+        model (loaded pytorch model): model evaluate
+        loss_fn (torch.nn Loss Function): loss function for training set
+        device (torch.device): device index to select
 
-        Returns:
-            loss (): evaluated loss for the data sample
+    Returns:
+        loss (): evaluated loss for the data sample
 
     """
     
@@ -362,9 +404,39 @@ def eval_datastep(data: tuple,
     ## Extract data
     (inpt, truth) = data
     inpt = inpt.to(device)
-    # Unsqueeze is necessary for the NC training
-    #truth = truth.to(torch.float32).unsqueeze(-1).to(device)
-    # Unsqueeze is not necessary, and BAD, for LSC
+    truth = truth.to(torch.float32).unsqueeze(-1).to(device)
+
+    ## Perform a forward pass
+    pred = model(inpt)
+    loss = loss_fn(pred, truth)
+
+    return truth, pred, loss
+
+
+def eval_array_datastep(data: tuple, 
+                        model,
+                        loss_fn,
+                        device: torch.device):
+    """Function to complete a validation step on a single sample in which network
+    output is an array.
+
+    Args:
+        data (tuple): tuple of model input and corresponding ground truth
+        model (loaded pytorch model): model evaluate
+        loss_fn (torch.nn Loss Function): loss function for training set
+        device (torch.device): device index to select
+
+    Returns:
+        loss (): evaluated loss for the data sample
+
+    """
+    
+    ## Set model to eval
+    model.eval()
+
+    ## Extract data
+    (inpt, truth) = data
+    inpt = inpt.to(device)
     truth = truth.to(device)
 
     ## Perform a forward pass
@@ -377,32 +449,34 @@ def eval_datastep(data: tuple,
 ######################################
 ## Training & Validation for an Epoch
 ######################################
-def train_epoch(training_data,
-                validation_data, 
-                model,
-                optimizer,
-                loss_fn,
-                summary_dict: dict,
-                train_sample_dict: dict,
-                val_sample_dict: dict,
-                device: torch.device):
-    """Function to complete a training step on a single sample
+def train_scalar_dict_epoch(training_data,
+                            validation_data, 
+                            model,
+                            optimizer,
+                            loss_fn,
+                            summary_dict: dict,
+                            train_sample_dict: dict,
+                            val_sample_dict: dict,
+                            device: torch.device):
+    """Function to complete a training step on a single sample for a network in
+    which the output is a single scalar. Training, Validation, and Summary
+    information are saved to dictionaries.
 
-        Args:
-            training_data (torch.dataloader): dataloader containing the training samples
-            validation_data (torch.dataloader): dataloader containing the validation samples
-            model (loaded pytorch model): model to train
-            optimizer (torch.optim): optimizer for training set
-            loss_fn (torch.nn Loss Function): loss function for training set
-            summary_dict (dict): dictionary to save epoch stats to
-            train_sample_dict (dict): dictionary to save training sample stats to
-            val_sample_dict (dict): dictionary to save validation sample stats to
-            device (torch.device): device index to select
+    Args:
+        training_data (torch.dataloader): dataloader containing the training samples
+        validation_data (torch.dataloader): dataloader containing the validation samples
+        model (loaded pytorch model): model to train
+        optimizer (torch.optim): optimizer for training set
+        loss_fn (torch.nn Loss Function): loss function for training set
+        summary_dict (dict): dictionary to save epoch stats to
+        train_sample_dict (dict): dictionary to save training sample stats to
+        val_sample_dict (dict): dictionary to save validation sample stats to
+        device (torch.device): device index to select
 
-        Returns:
-            summary_dict (dict): dictionary with epoch stats
-            train_sample_dict (dict): dictionary with training sample stats
-            val_sample_dict (dict): dictionary with validation sample stats
+    Returns:
+        summary_dict (dict): dictionary with epoch stats
+        train_sample_dict (dict): dictionary with training sample stats
+        val_sample_dict (dict): dictionary with validation sample stats
 
     """
     
@@ -416,13 +490,17 @@ def train_epoch(training_data,
     ## Train on all training samples
     for traindata in training_data:
         trainbatch_ID += 1
-        truth, pred, train_loss = train_datastep(traindata, 
-                                                 model,
-                                                 optimizer,
-                                                 loss_fn,
-                                                 device)
+        truth, pred, train_loss = train_scalar_datastep(traindata, 
+                                                        model,
+                                                        optimizer,
+                                                        loss_fn,
+                                                        device)
 
-        train_sample_dict = append_to_dict(train_sample_dict, trainbatch_ID, truth, pred, train_loss)
+        train_sample_dict = append_to_dict(train_sample_dict,
+                                           trainbatch_ID,
+                                           truth,
+                                           pred,
+                                           train_loss)
         
     train_batchsize = np.shape(truth.cpu().detach().numpy().flatten())[0]
 
@@ -435,12 +513,16 @@ def train_epoch(training_data,
     with torch.no_grad():
         for valdata in validation_data:
             valbatch_ID += 1
-            truth, pred, val_loss = eval_datastep(valdata, 
-                                                  model,
-                                                  loss_fn,
-                                                  device)
+            truth, pred, val_loss = eval_scalar_datastep(valdata, 
+                                                         model,
+                                                         loss_fn,
+                                                         device)
 
-            val_sample_dict = append_to_dict(val_sample_dict, valbatch_ID, truth, pred, val_loss)
+            val_sample_dict = append_to_dict(val_sample_dict,
+                                             valbatch_ID,
+                                             truth,
+                                             pred,
+                                             val_loss)
 
     val_batchsize = np.shape(truth.cpu().detach().numpy().flatten())[0]
 
@@ -458,29 +540,30 @@ def train_epoch(training_data,
     return summary_dict, train_sample_dict, val_sample_dict
 
 
-def train_csv_epoch(training_data,
-                    validation_data, 
-                    model,
-                    optimizer,
-                    loss_fn,
-                    epochIDX,
-                    train_per_val,
-                    train_rcrd_filename: str,
-                    val_rcrd_filename: str,
-                    device: torch.device):
-    """Function to complete a training epoch
+def train_scalar_csv_epoch(training_data,
+                           validation_data, 
+                           model,
+                           optimizer,
+                           loss_fn,
+                           epochIDX,
+                           train_per_val,
+                           train_rcrd_filename: str,
+                           val_rcrd_filename: str,
+                           device: torch.device):
+    """Function to complete a training epoch on a network which has a single scalar
+    as output. Training and validation information is saved to successive CSV files.
 
-        Args:
-            training_data (torch.dataloader): dataloader containing the training samples
-            validation_data (torch.dataloader): dataloader containing the validation samples
-            model (loaded pytorch model): model to train
-            optimizer (torch.optim): optimizer for training set
-            loss_fn (torch.nn Loss Function): loss function for training set
-            epochIDX (int): Index of current training epoch
-            train_per_val (int): Number of Training epochs between each validation 
-            train_rcrd_filename (str): Name of CSV file to save training sample stats to
-            val_rcrd_filename (str): Name of CSV file to save validation sample stats to
-            device (torch.device): device index to select
+    Args:
+        training_data (torch.dataloader): dataloader containing the training samples
+        validation_data (torch.dataloader): dataloader containing the validation samples
+        model (loaded pytorch model): model to train
+        optimizer (torch.optim): optimizer for training set
+        loss_fn (torch.nn Loss Function): loss function for training set
+        epochIDX (int): Index of current training epoch
+        train_per_val (int): Number of Training epochs between each validation 
+        train_rcrd_filename (str): Name of CSV file to save training sample stats to
+        val_rcrd_filename (str): Name of CSV file to save validation sample stats to
+        device (torch.device): device index to select
 
     """
     
@@ -500,11 +583,11 @@ def train_csv_epoch(training_data,
     with open(train_rcrd_filename, 'a') as train_rcrd_file:
         for traindata in training_data:
             trainbatch_ID += 1
-            truth, pred, train_loss = train_datastep(traindata, 
-                                                     model,
-                                                     optimizer,
-                                                     loss_fn,
-                                                     device)
+            truth, pred, train_loss = train_scalar_datastep(traindata, 
+                                                            model,
+                                                            optimizer,
+                                                            loss_fn,
+                                                            device)
 
             template = "{}, {}, {}"
             for i in range(train_batchsize):
@@ -522,10 +605,90 @@ def train_csv_epoch(training_data,
             with torch.no_grad():
                 for valdata in validation_data:
                     valbatch_ID += 1
-                    truth, pred, val_loss = eval_datastep(valdata, 
-                                                          model,
-                                                          loss_fn,
-                                                          device)
+                    truth, pred, val_loss = eval_scalar_datastep(valdata, 
+                                                                 model,
+                                                                 loss_fn,
+                                                                 device)
+
+                    template = "{}, {}, {}"
+                    for i in range(val_batchsize):
+                        print(template.format(epochIDX,
+                                              valbatch_ID,
+                                              val_loss.cpu().detach().numpy().flatten()[i]),
+                              file=val_rcrd_file)
+
+    return
+
+
+def train_array_csv_epoch(training_data,
+                          validation_data, 
+                          model,
+                          optimizer,
+                          loss_fn,
+                          epochIDX,
+                          train_per_val,
+                          train_rcrd_filename: str,
+                          val_rcrd_filename: str,
+                          device: torch.device):
+    """Function to complete a training epoch on a network which has an array
+    as output. Training and validation information is saved to successive CSV 
+    files.
+
+    Args:
+        training_data (torch.dataloader): dataloader containing the training samples
+        validation_data (torch.dataloader): dataloader containing the validation samples
+        model (loaded pytorch model): model to train
+        optimizer (torch.optim): optimizer for training set
+        loss_fn (torch.nn Loss Function): loss function for training set
+        epochIDX (int): Index of current training epoch
+        train_per_val (int): Number of Training epochs between each validation 
+        train_rcrd_filename (str): Name of CSV file to save training sample stats to
+        val_rcrd_filename (str): Name of CSV file to save validation sample stats to
+        device (torch.device): device index to select
+
+    """
+    
+    ## Initialize things to save
+    trainbatches = len(training_data)
+    valbatches = len(validation_data)
+    trainbatch_ID = 0
+    valbatch_ID = 0
+
+    train_batchsize = training_data.batch_size
+    val_batchsize = validation_data.batch_size
+
+    train_rcrd_filename = train_rcrd_filename.replace(f'<epochIDX>',
+                                                      '{:04d}'.format(epochIDX))
+    ## Train on all training samples
+    with open(train_rcrd_filename, 'a') as train_rcrd_file:
+        for traindata in training_data:
+            trainbatch_ID += 1
+            truth, pred, train_loss = train_array_datastep(traindata, 
+                                                           model,
+                                                           optimizer,
+                                                           loss_fn,
+                                                           device)
+
+            template = "{}, {}, {}"
+            for i in range(train_batchsize):
+                print(template.format(epochIDX,
+                                      trainbatch_ID,
+                                      train_loss.cpu().detach().numpy().flatten()[i]),
+                      file=train_rcrd_file)
+            
+    ## Evaluate on all validation samples
+    if epochIDX % train_per_val == 0:
+        print('Validating...', epochIDX)
+        val_rcrd_filename = val_rcrd_filename.replace(f'<epochIDX>',
+                                                      '{:04d}'.format(epochIDX))
+        with open(val_rcrd_filename, 'a') as val_rcrd_file:
+            with torch.no_grad():
+                for valdata in validation_data:
+                    valbatch_ID += 1
+                    truth, pred, val_loss = eval_array_datastep(valdata, 
+                                                                model,
+                                                                loss_fn,
+                                                                device)
 
                     template = "{}, {}, {}"
                     for i in range(val_batchsize):
@@ -541,8 +704,9 @@ if __name__ == '__main__':
     """For testing and debugging.
 
     """
-    
-    from CNN_modules import PVI_SingleField_CNN
+
+    sys.path.insert(0, os.path.abspath('/data2/yoke/.'))
+    from models.CNN_modules import PVI_SingleField_CNN
 
     # Excercise model setup, save, and load
     # NOTE: Model takes (BatchSize, Channels, Height, Width) tensor.

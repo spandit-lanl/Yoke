@@ -339,16 +339,16 @@ if __name__ == '__main__':
                                             num_workers=num_workers)
 
         ## Train an Epoch
-        tr.train_csv_epoch(training_data=train_dataloader,
-                           validation_data=val_dataloader, 
-                           model=model,
-                           optimizer=optimizer,
-                           loss_fn=loss_fn,
-                           epochIDX=epochIDX,
-                           train_per_val=train_per_val,
-                           train_rcrd_filename=trn_rcrd_filename,
-                           val_rcrd_filename=val_rcrd_filename,
-                           device=device)
+        tr.train_scalar_csv_epoch(training_data=train_dataloader,
+                                  validation_data=val_dataloader, 
+                                  model=model,
+                                  optimizer=optimizer,
+                                  loss_fn=loss_fn,
+                                  epochIDX=epochIDX,
+                                  train_per_val=train_per_val,
+                                  train_rcrd_filename=trn_rcrd_filename,
+                                  val_rcrd_filename=val_rcrd_filename,
+                                  device=device)
 
         ## Print Summary Results
         print('Completed epoch '+str(epochIDX)+'...')
@@ -398,10 +398,10 @@ if __name__ == '__main__':
         with torch.no_grad():
             for testdata in test_dataloader:
                 testbatch_ID += 1
-                truth, pred, loss = tr.eval_datastep(testdata, 
-                                                     model,
-                                                     loss_fn,
-                                                     device)
+                truth, pred, loss = tr.eval_scalar_datastep(testdata, 
+                                                            model,
+                                                            loss_fn,
+                                                            device)
                 testing_dict = tr.append_to_dict(testing_dict,
                                                  testbatch_ID,
                                                  truth,

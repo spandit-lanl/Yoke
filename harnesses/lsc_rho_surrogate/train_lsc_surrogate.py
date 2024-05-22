@@ -298,16 +298,16 @@ if __name__ == '__main__':
                                             num_workers=num_workers)
 
         ## Train an Epoch
-        tr.train_csv_epoch(training_data=train_dataloader,
-                           validation_data=val_dataloader, 
-                           model=model,
-                           optimizer=optimizer,
-                           loss_fn=loss_fn,
-                           epochIDX=epochIDX,
-                           train_per_val=train_per_val,
-                           train_rcrd_filename=trn_rcrd_filename,
-                           val_rcrd_filename=val_rcrd_filename,
-                           device=device)
+        tr.train_array_csv_epoch(training_data=train_dataloader,
+                                 validation_data=val_dataloader, 
+                                 model=model,
+                                 optimizer=optimizer,
+                                 loss_fn=loss_fn,
+                                 epochIDX=epochIDX,
+                                 train_per_val=train_per_val,
+                                 train_rcrd_filename=trn_rcrd_filename,
+                                 val_rcrd_filename=val_rcrd_filename,
+                                 device=device)
 
         ## Print Summary Results
         print('Completed epoch '+str(epochIDX)+'...')
@@ -338,40 +338,8 @@ if __name__ == '__main__':
                                                last_epoch=epochIDX)
         os.system(f'sbatch {new_slurm_file}')
 
-    #############################################
-    ## Run Test Set When Training is Complete
-    #############################################
-    if FINISHED_TRAINING:
-        print("Testing Model . . .")
-        test_dataloader = tr.make_dataloader(test_dataset, batch_size=batch_size)
-        testbatch_ID = 0
-        testing_dict = {"epoch": [],
-                        "batch": [],
-                        "truth": [],
-                        "prediction": [],
-                        "loss": []}
-
-        # Move model back to GPU for final evaluation
-        model.to(device)
-        
-        with torch.no_grad():
-            for testdata in test_dataloader:
-                testbatch_ID += 1
-                truth, pred, loss = tr.eval_datastep(testdata, 
-                                                     model,
-                                                     loss_fn,
-                                                     device)
-                testing_dict = tr.append_to_dict(testing_dict,
-                                                 testbatch_ID,
-                                                 truth,
-                                                 pred,
-                                                 loss)
-
-        ## Save Testing Info
-        del testing_dict["epoch"]
-        testingdf = pd.DataFrame.from_dict(testing_dict, orient='columns')
-        test_csv_filename = 'study{0:03d}_test_results.csv'
-        testingdf.to_csv(os.path.join('./', test_csv_filename.format(studyIDX)))
-        print('Model testing results saved.')
-
-        print('STUDY{0:03d} COMPLETE'.format(studyIDX))
+    ###########################################################################
+    ## For array prediction, especially large array prediction, the network is
+    ## not evaluated on the test set after training. This is performed using
+    ## the *evaluation* module as a separate post-analysis step.
+    ###########################################################################
