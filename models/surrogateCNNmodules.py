@@ -3,11 +3,14 @@ scalar inputs to images.
 
 """
 
+import sys
+import os
 import math
 from typing import List
 import torch
 import torch.nn as nn
 
+sys.path.insert(0, os.path.abspath('/data2/yoke/.'))
 from cnn_utils import count_parameters
 
 
@@ -28,14 +31,14 @@ class jekelCNNsurrogate(nn.Module):
         model accuracy of Richtmyer-Meshkov instabilities.*
 
         Args:
-            img_size (tuple[int, int, int]): size of input (channels, height, width)
-            kernel (int): size of square convolutional kernel
-            features (int): number of features in the convolutional layers
-            depth (int): number of interpretability blocks
-            conv_onlyweights (bool): determines if convolutional layers learn 
-                                     only weights or weights and bias
-            batchnorm_onlybias (bool): determines if the batch normalization 
-                                       layers learn only bias or weights and bias
+            input_size (int): Size of input
+            linear_features (tuple[int, int]): Window size scalar parameters are 
+                                               originally mapped into
+            kernel (tuple[int, int]): Size of transpose-convolutional kernel
+            nfeature_list (List[int]): List of number of features in each 
+                                       T-convolutional layer
+            output_image_size (tuple[int, int]): Image size to output, (H, W). 
+                                                 Channels are automatically inherited.
             act_layer(nn.modules.activation): torch neural network layer class 
                                               to use as activation
 
@@ -95,8 +98,13 @@ class jekelCNNsurrogate(nn.Module):
                                               padding=1,
                                               output_padding=1,
                                               bias=True)
-        self.final_act = nn.Tanh()
 
+        # If normalizing to [-1, 1]
+        #self.final_act = nn.Tanh()
+
+        # Else...
+        self.final_act = nn.Identity()
+        
         # NOTE: Upsample layer is alternative to resizing image using
         # nn.functional.interpolate. However, pytorch claims the interpolate
         # method is better for general resizing.
@@ -129,7 +137,7 @@ class jekelCNNsurrogate(nn.Module):
         # Final ConvT
         x = self.final_tconv(x)
         x = self.final_act(x)
-        #print('After final convT shape:', x.shape)
+        print('After final convT shape:', x.shape)
 
         # Reshape to output image size.
         #print('Pre-Upsample shape:', x.shape)

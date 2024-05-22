@@ -1,0 +1,37 @@
+--studyIDX
+<studyIDX>
+--design_file
+/data2/design_lsc240420_MASTER.csv
+--train_filelist
+/data2/yoke/filelists/nc231213_train_80pct.txt
+--validation_filelist
+/data2/yoke/filelists/nc231213_val_10pct.txt
+--test_filelist
+/data2/yoke/filelists/nc231213_test_10pct.txt
+--kernel
+<kernel_H> <kernel_W>
+--featureList
+<f0> <f1> <f2> <f3> <f4> <f5> <f6> <f7>
+--linearFeatures
+<linear_H> <linear_W>
+--init_learnrate
+<LEARN_RATE>
+--trn_rcrd_filename
+./training_study<studyIDX>_epoch<epochIDX>.csv
+--val_rcrd_filename
+./validation_study<studyIDX>_epoch<epochIDX>.csv
+--batch_size
+2
+--total_epochs
+1
+--cycle_epochs
+1
+--train_batches
+1
+--val_batches
+1
+--TRAIN_PER_VAL
+1
+--continuation
+--checkpoint
+<CHECKPOINT>
