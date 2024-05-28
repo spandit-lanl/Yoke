@@ -44,17 +44,23 @@ parser.add_argument('--basedir',
                     default='./study_directory',
                     help='Directory to look for studies.')
 
-# parser.add_argument('--runtype', '-T',
-#                     action='store',
-#                     type=str,
-#                     default='pRad',
-#                     help='Runtype to observe normalization for.')
-
 parser.add_argument('--IDX', '-I',
                     action='store',
                     type=int,
                     default=0,
                     help='Index of study to plot curves for.')
+
+parser.add_argument('--Nsamps_per_trn_pt', '-Nt',
+                    action='store',
+                    type=int,
+                    default=2000,
+                    help='Number of samples per training loss plot point.')
+
+parser.add_argument('--Nsamps_per_val_pt', '-Nv',
+                    action='store',
+                    type=int,
+                    default=250,
+                    help='Number of samples per validation loss plot point.')
 
 parser.add_argument('--savedir',
                     action='store',
@@ -69,13 +75,13 @@ parser.add_argument('--savefig', '-S',
 args_ns = parser.parse_args()
 
 basedir = args_ns.basedir
-#runtype = args_ns.runtype
 IDX = args_ns.IDX
 savedir = args_ns.savedir
 SAVEFIG = args_ns.savefig
 
 # Number of batches to include in each plot point
-Nbatch_per_pt = 2000
+Nsamps_per_trn_pt = args_ns.Nsamps_per_trn_pt
+Nsamps_per_val_pt = args_ns.Nsamps_per_val_pt
 
 # Read the data using Pandas
 # Of the form: training_study009_epoch0100.csv
@@ -95,14 +101,6 @@ for Vcsv in val_csv_list:
     epoch = Vcsv.split('epoch')[1]
     epoch = int(epoch.split('.')[0])
     val_file_epochs.append(epoch)
-
-# val_DF = pd.read_csv(val_csvfile,
-#                      sep=', ',
-#                      header=None,
-#                      names=['Epoch',
-#                             'Step',
-#                             'Loss'],
-#                      engine='python')
 
 # # Retrieve indexes
 # trn_idxlist = trn_DF.index.values
@@ -126,54 +124,57 @@ for tIDX, Tcsv in enumerate(trn_csv_list):
                          engine='python')
     #print('Train IDX:', trn_file_epochs[tIDX])
 
-    trn_epoch_loss = trn_DF.loc[:, 'Loss'].values.reshape((Nbatch_per_pt, -1))
+    trn_epoch_loss = trn_DF.loc[:, 'Loss'].values.reshape((Nsamps_per_trn_pt, -1))
     #print('Loss array shape:', trn_epoch_loss.shape)
-
     trn_positions = np.arange(trn_epoch_loss.shape[1])
-    plt.boxplot(trn_epoch_loss,
-                positions=startIDX+trn_positions,
-                showfliers=False)
+    trn_qnts = np.quantile(trn_epoch_loss,
+                           [0.025, 0.5, 0.975],
+                           axis=0)
+    #print('Quantiles shape:', trn_qnts.shape)
 
+    if tIDX == 0:
+        plt.plot(startIDX+trn_positions, trn_qnts[0,:], ':b')
+        plt.plot(startIDX+trn_positions, trn_qnts[1,:], '-b', label='Training')
+        plt.plot(startIDX+trn_positions, trn_qnts[2,:], ':b')
+    else:
+        plt.plot(startIDX+trn_positions, trn_qnts[0,:], ':b')
+        plt.plot(startIDX+trn_positions, trn_qnts[1,:], '-b')
+        plt.plot(startIDX+trn_positions, trn_qnts[2,:], ':b')
+    
     startIDX += trn_positions[-1]
     
-    # if trn_file_epochs[tIDX] == val_file_epochs[vIDX]:
-    #     val_DF = pd.read_csv(val_csv_list[vIDX],
-    #                          sep=', ',
-    #                          header=None,
-    #                          names=['Epoch',
-    #                                 'Batch',
-    #                                 'Loss'],
-    #                          engine='python')
-    #     print('Validation IDX:', val_file_epochs[vIDX])
+    if trn_file_epochs[tIDX] == val_file_epochs[vIDX]:
+        val_DF = pd.read_csv(val_csv_list[vIDX],
+                             sep=', ',
+                             header=None,
+                             names=['Epoch',
+                                    'Batch',
+                                    'Loss'],
+                             engine='python')
+        #print('Validation IDX:', val_file_epochs[vIDX])
         
-    #     vIDX += 1
+        val_epoch_loss = val_DF.loc[:, 'Loss'].values.reshape((Nsamps_per_val_pt, -1))
+        #print('Loss array shape:', val_epoch_loss.shape)
+        val_positions = np.arange(val_epoch_loss.shape[1])
+        val_qnts = np.quantile(val_epoch_loss,
+                               [0.025, 0.5, 0.975],
+                               axis=0)
+        #print('Quantiles shape:', val_qnts.shape)
+
+        if vIDX == 0:
+            plt.plot(startIDX+val_positions, val_qnts[0,:], ':r')
+            plt.plot(startIDX+val_positions, val_qnts[1,:], '-r', label='Validation')
+            plt.plot(startIDX+val_positions, val_qnts[2,:], ':r')
+        else:
+            plt.plot(startIDX+val_positions, val_qnts[0,:], ':r')
+            plt.plot(startIDX+val_positions, val_qnts[1,:], '-r')
+            plt.plot(startIDX+val_positions, val_qnts[2,:], ':r')
+
+        vIDX += 1
+        startIDX += val_positions[-1]
         
-    # Training
-#    trn_epoch = trn_DF[trn_DF['Epoch'] == k+1]
-#     trn_epoch_loss = trn_epoch.loc[:, 'Loss']
-#     trn_epoch_steps = trn_epoch.loc[:, 'Step'].values
-
-#     if k == 0:
-#         plt.plot(startIDX+trn_epoch_steps, trn_epoch_loss, '-b', label='Training')
-#     else:
-#         plt.plot(startIDX+trn_epoch_steps, trn_epoch_loss, '-b')
-
-#     startIDX += trn_epoch_steps.max()
-
-#     # Validation
-#     val_epoch = val_DF[val_DF['Epoch'] == k+1]
-#     val_epoch_mse = val_epoch.loc[:, 'MSE']
-#     val_epoch_steps = val_epoch.loc[:, 'Step'].values
-
-#     if k == 0:
-#         plt.plot(startIDX+val_epoch_steps, val_epoch_mse, '-r', label='Validation')
-#     else:
-#         plt.plot(startIDX+val_epoch_steps, val_epoch_mse, '-r')
-
-#     startIDX += val_epoch_steps.max()
-
-# # Make legend
-# plt.legend(fontsize=16)
+# Make legend
+plt.legend(fontsize=16)
 
 # No xlim
 ax.set_ylim(0.0, 0.03)
