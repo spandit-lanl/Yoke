@@ -14,7 +14,7 @@ import pandas as pd
 import torch
 import torch.nn as nn
 
-sys.path.insert(0, os.path.abspath('/data2/yoke/.'))
+sys.path.insert(0, os.getenv('YOKE_DIR'))
 from models.surrogateCNNmodules import jekelCNNsurrogate
 from datasets.lsc_dataset import LSC_cntr2rho_DataSet
 import torch_training_utils as tr
@@ -43,25 +43,25 @@ parser.add_argument('--studyIDX',
 parser.add_argument('--design_file',
                     action='store',
                     type=str,
-                    default='/data2/design_lsc240420_MASTER.csv',
+                    default='design_lsc240420_MASTER.csv',
                     help='.csv file that contains the truth values for data files')
 
 parser.add_argument('--train_filelist',
                     action='store',
                     type=str,
-                    default='/data2/yoke/filelists/nc231213_train_80pct.txt',
+                    default='nc231213_train_80pct.txt',
                     help='Path to list of files to train on.')
 
 parser.add_argument('--validation_filelist',
                     action='store',
                     type=str,
-                    default='/data2/yoke/filelists/nc231213_val_10pct.txt',
+                    default='nc231213_val_10pct.txt',
                     help='Path to list of files to validate on.')
 
 parser.add_argument('--test_filelist',
                     action='store',
                     type=str,
-                    default='/data2/yoke/filelists/nc231213_test_10pct.txt',
+                    default='nc231213_test_10pct.txt',
                     help='Path to list of files to test on.')
 
 #############################################
@@ -173,11 +173,16 @@ if __name__ == '__main__':
     ## Study ID
     studyIDX = args.studyIDX
 
+    # YOKE env variables
+    YOKE_DIR = os.getenv('YOKE_DIR')
+    LSC_NPZ_DIR = os.getenv('LSC_NPZ_DIR')
+    LSC_DESIGN_DIR = os.getenv('LSC_DESIGN_DIR')
+    
     ## Data Paths
-    design_file = os.path.abspath(args.design_file)
-    train_filelist = args.train_filelist
-    validation_filelist = args.validation_filelist
-    test_filelist = args.test_filelist
+    design_file = os.path.abspath(LSC_DESIGN_DIR+args.design_file)
+    train_filelist = YOKE_DIR + 'filelists/' + args.train_filelist
+    validation_filelist = YOKE_DIR + 'filelists/' + args.validation_filelist
+    test_filelist = YOKE_DIR + 'filelists/' + args.test_filelist
     
     ## Model Parameters
     kernel = tuple(args.kernel)
@@ -269,11 +274,14 @@ if __name__ == '__main__':
     #############################################
     ## Initialize Data
     #############################################
-    train_dataset = LSC_cntr2rho_DataSet(train_filelist,
+    train_dataset = LSC_cntr2rho_DataSet(LSC_NPZ_DIR,
+                                         train_filelist,
                                          design_file)
-    val_dataset = LSC_cntr2rho_DataSet(validation_filelist,
+    val_dataset = LSC_cntr2rho_DataSet(LSC_NPZ_DIR,
+                                       validation_filelist,
                                        design_file)
-    test_dataset = LSC_cntr2rho_DataSet(test_filelist,
+    test_dataset = LSC_cntr2rho_DataSet(LSC_NPZ_DIR,
+                                        test_filelist,
                                         design_file)
     
     print('Datasets initialized.')

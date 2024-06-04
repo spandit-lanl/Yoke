@@ -89,6 +89,7 @@ def LSCread_npz(npz: np.lib.npyio.NpzFile, field: str):
 ####################################
 class LSC_cntr2rho_DataSet(Dataset):
     def __init__(self,
+                 LSC_NPZ_DIR: str,
                  filelist: str,
                  design_file: str):
         """The definition of a dataset object for the *Layered Shaped Charge* data
@@ -96,12 +97,14 @@ class LSC_cntr2rho_DataSet(Dataset):
         together with an average density field.
 
         Args:
+            LSC_NPZ_DIR (str): Location of LSC NPZ files. A YOKE env variable.
             filelist (str): Text file listing file names to read
             design_file (str): .csv file with master design study parameters
 
         """
 
-        ## Model Arguments 
+        ## Model Arguments
+        self.LSC_NPZ_DIR = LSC_NPZ_DIR
         self.filelist = filelist
         self.design_file = design_file
 
@@ -126,7 +129,7 @@ class LSC_cntr2rho_DataSet(Dataset):
 
         ## Get the input image
         filepath = self.filelist[index]
-        npz = np.load(filepath)
+        npz = np.load(self.LSC_NPZ_DIR+filepath)
         
         true_image = LSCread_npz(npz, 'av_density')
         true_image = np.concatenate((np.fliplr(true_image), true_image), axis=1)
@@ -136,7 +139,7 @@ class LSC_cntr2rho_DataSet(Dataset):
         true_image = torch.tensor(true_image).to(torch.float32)
 
         ## Get the contours and sim_time
-        sim_key = LSCnpz2key(filepath)
+        sim_key = LSCnpz2key(self.LSC_NPZ_DIR+filepath)
         Bspline_nodes = LSCcsv2bspline_pts(self.design_file, sim_key)
         sim_time = npz['sim_time']
         npz.close()
@@ -177,21 +180,26 @@ if __name__ == '__main__':
     plt.rcParams['figure.figsize'] = (6, 6)
     from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-
+    # Get yoke environment variables
+    YOKE_DIR = os.getenv('YOKE_DIR')
+    LSC_NPZ_DIR = os.getenv('LSC_NPZ_DIR')
+    LSC_DESIGN_DIR = os.getenv('LSC_DESIGN_DIR')
+    
     # Test key
-    npz_filename = '/data2/lsc240420/lsc240420_id00001_pvi_idx00000.npz'
+    npz_filename = LSC_NPZ_DIR + 'lsc240420_id00001_pvi_idx00000.npz'
     print('LSC NPZ filename:', npz_filename)
     LSCkey = LSCnpz2key(npz_filename)
     print('LSC key:', LSCkey)
 
     # Test B-spline retrieval
-    csv_filename = '/data2/design_lsc240420_MASTER.csv'
+    csv_filename = LSC_DESIGN_DIR + 'design_lsc240420_MASTER.csv'
     bspline_pts = LSCcsv2bspline_pts(csv_filename, LSCkey)
     print('Shape of B-spline points:', bspline_pts.shape)
     print('B-spline points:', bspline_pts)
     
-    filelist = '/data2/yoke/filelists/lsc240420_test_10pct.txt'
-    LSC_ds = LSC_cntr2rho_DataSet(filelist,
+    filelist = YOKE_DIR + 'filelists/lsc240420_test_10pct.txt'
+    LSC_ds = LSC_cntr2rho_DataSet(LSC_NPZ_DIR,
+                                  filelist,
                                   csv_filename)
     sampIDX = 1
     sim_params, true_image = LSC_ds.__getitem__(sampIDX)

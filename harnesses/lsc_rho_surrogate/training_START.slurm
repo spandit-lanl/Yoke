@@ -19,7 +19,7 @@ sinfo  -o "%P %.24G %N"
 srun /usr/bin/echo $CUDA_AVAILABLE_DEVICES
 
 # Load correct conda environment
-source /data1/anaconda3/bin/activate torch_gpu_240403
+source $YOKE_CONDA/bin/activate $YOKE_TORCH
 
 # Get start time
 export date00=`date`

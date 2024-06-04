@@ -151,7 +151,7 @@ parser.add_argument('--save_dir',
 parser.add_argument('--input_dir',
                     action='store',
                     type=str,
-                    default='/data2/nc231213_npzs/',
+                    default=os.getenv('NC_NPZ_DIR'),
                     help='Where the data files are located')
 
 parser.add_argument('--data_tag',

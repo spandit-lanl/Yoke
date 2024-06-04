@@ -10,7 +10,7 @@ from typing import List
 import torch
 import torch.nn as nn
 
-sys.path.insert(0, os.path.abspath('/data2/yoke/.'))
+sys.path.insert(0, os.getenv('YOKE_DIR'))
 from models.cnn_utils import count_parameters
 
 

@@ -103,6 +103,7 @@ def npz_pvi2field(npz: np.lib.npyio.NpzFile, field: str):
 ####################################
 class PVI_SingleField_DataSet(Dataset):
     def __init__(self,
+                 NC_NPZ_DIR: str,
                  filelist: str,
                  input_field: str='rho',
                  predicted: str='ptw_scale',
@@ -112,6 +113,7 @@ class PVI_SingleField_DataSet(Dataset):
         problem: Nested Cylinder MOI density -> PTW scale value
 
         Args:
+            NC_NPZ_DIR (str): Location of NC NPZ files. A yoke environment variable.
             filelist (str): Text file listing file names to read
             input_field (str): The radiographic/hydrodynamic field the model 
                                is trained on
@@ -120,7 +122,8 @@ class PVI_SingleField_DataSet(Dataset):
 
         """
 
-        ## Model Arguments 
+        ## Model Arguments
+        self.NC_NPZ_DIR = NC_NPZ_DIR
         self.input_field = input_field
         self.predicted = predicted
         self.filelist = filelist
@@ -146,7 +149,7 @@ class PVI_SingleField_DataSet(Dataset):
 
         ## Get the input image
         filepath = self.filelist[index]
-        npz = np.load(filepath)
+        npz = np.load(self.NC_NPZ_DIR+filepath)
         img_input = npz_pvi2field(npz, self.input_field)
         in_y, in_x = img_input.shape
         img_input = img_input.reshape((1, in_y, in_x))
@@ -190,11 +193,16 @@ if __name__ == '__main__':
     plt.rcParams['figure.figsize'] = (6, 6)
     from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-    
-    pvi_test_ds = PVI_SingleField_DataSet('/data2/yoke/filelists/nc231213_test_10pct.txt',
+    # Get yoke environment variables
+    YOKE_DIR = os.getenv('YOKE_DIR')
+    NC_NPZ_DIR = os.getenv('NC_NPZ_DIR')
+    NC_DESIGN_DIR = os.getenv('NC_DESIGN_DIR')
+
+    pvi_test_ds = PVI_SingleField_DataSet(NC_NPZ_DIR,
+                                          YOKE_DIR+'filelists/nc231213_test_10pct.txt',
                                           input_field='rho',
                                           predicted='ptw_scale',
-                                          design_file='/data2/design_nc231213_Sn_MASTER.csv')
+                                          design_file=NC_DESIGN_DIR+'design_nc231213_Sn_MASTER.csv')
 
     sampIDX = 123
     rho_samp, ptw_scale_samp = pvi_test_ds.__getitem__(sampIDX)

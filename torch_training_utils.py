@@ -705,7 +705,7 @@ if __name__ == '__main__':
 
     """
 
-    sys.path.insert(0, os.path.abspath('/data2/yoke/.'))
+    sys.path.insert(0, os.getenv('YOKE_DIR'))
     from models.CNN_modules import PVI_SingleField_CNN
 
     # Excercise model setup, save, and load
