@@ -14,7 +14,7 @@ import pandas as pd
 import torch
 import torch.nn as nn
 
-sys.path.insert(0, os.path.abspath('/data2/yoke/.'))
+sys.path.insert(0, os.getenv('YOKE_DIR'))
 from models.CNNmodules import PVI_SingleField_CNN
 from datasets.nestedcyl_dataset import PVI_SingleField_DataSet
 import torch_training_utils as tr
@@ -50,6 +50,24 @@ parser.add_argument('--design_file',
                     type=str,
                     default='/data2/design_nc231213_Sn_MASTER.csv',
                     help='.csv file that contains the truth values for data files')
+
+parser.add_argument('--train_filelist',
+                    action='store',
+                    type=str,
+                    default='nc231213_train_80pct.txt',
+                    help='Path to list of files to train on.')
+
+parser.add_argument('--validation_filelist',
+                    action='store',
+                    type=str,
+                    default='nc231213_val_10pct.txt',
+                    help='Path to list of files to validate on.')
+
+parser.add_argument('--test_filelist',
+                    action='store',
+                    type=str,
+                    default='nc231213_test_10pct.txt',
+                    help='Path to list of files to test on.')
 
 #############################################
 ## Model Parameters
@@ -195,9 +213,17 @@ if __name__ == '__main__':
     ## Study ID
     studyIDX = args.studyIDX
 
+    # YOKE env variables
+    YOKE_DIR = os.getenv('YOKE_DIR')
+    NC_NPZ_DIR = os.getenv('NC_NPZ_DIR')
+    NC_DESIGN_DIR = os.getenv('NC_DESIGN_DIR')
+
     ## Data Paths
     input_field = args.input_field
-    design_file = os.path.abspath(args.design_file)
+    design_file = os.path.abspath(NC_DESIGN_DIR+args.design_file)
+    train_filelist = YOKE_DIR + 'filelists/' + args.train_filelist
+    validation_filelist = YOKE_DIR + 'filelists/' + args.validation_filelist
+    test_filelist = YOKE_DIR + 'filelists/' + args.test_filelist
 
     ## Model Parameters
     thresholdW = args.size_threshold_W
@@ -299,21 +325,16 @@ if __name__ == '__main__':
     #############################################
     ## Initialize Data
     #############################################
-    # Explicitly pass these from the input file.
-    train_filelist = os.path.join('/data2/yoke/filelists',
-                                  'nc231213_train_80pct.txt')
-    val_filelist = os.path.join('/data2/yoke/filelists',
-                                'nc231213_val_10pct.txt')
-    test_filelist = os.path.join('/data2/yoke/filelists',
-                                 'nc231213_test_10pct.txt')
-
-    train_dataset = PVI_SingleField_DataSet(filelist=train_filelist,
+    train_dataset = PVI_SingleField_DataSet(NC_NPZ_DIR,
+                                            train_filelist,
                                             input_field=input_field,
                                             design_file=design_file)
-    val_dataset = PVI_SingleField_DataSet(filelist=val_filelist,
+    val_dataset = PVI_SingleField_DataSet(NC_NPZ_DIR,
+                                          validation_filelist,
                                           input_field=input_field,
                                           design_file=design_file)
-    test_dataset = PVI_SingleField_DataSet(filelist=test_filelist,
+    test_dataset = PVI_SingleField_DataSet(NC_NPZ_DIR,
+                                           test_filelist,
                                            input_field=input_field,
                                            design_file=design_file)
 
