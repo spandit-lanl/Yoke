@@ -4,15 +4,13 @@ comparison of the true and predicted image along with the inputs.
 """
 
 import os, sys, argparse
-import glob
 import numpy as np
-import pandas as pd
 import torch
 import torch.nn as nn
 
 sys.path.insert(0, os.getenv('YOKE_DIR'))
 from models.surrogateCNNmodules import jekelCNNsurrogate
-from datasets.lsc_dataset import LSC_cntr2rho_DataSet
+from datasets.lsc_dataset import LSCnpz2key, LSC_cntr2rho_DataSet
 import torch_training_utils as tr
 
 # Imports for plotting
@@ -59,6 +57,18 @@ parser.add_argument('--eval_filelist',
                     default='lsc240420_test_10pct.txt',
                     help='Path to list of files to evaluate network on.')
 
+parser.add_argument('--sampIDX',
+                    action='store',
+                    type=int,
+                    default=689,
+                    help='Index within evaluation file list to generate plot for.')
+
+parser.add_argument('--dscale',
+                    action='store',
+                    type=float,
+                    default=0.3,
+                    help='Scaling factor for the maximum value of discrepancy.')
+
 parser.add_argument('--savedir',
                     action='store',
                     type=str,
@@ -82,6 +92,9 @@ checkpoint = args.checkpoint
 design_file = os.path.abspath(LSC_DESIGN_DIR+args.design_file)
 eval_filelist = YOKE_DIR + 'filelists/' + args.eval_filelist
 
+# Additional inpu variables
+sampIDX = args.sampIDX
+dscale = args.dscale
 savedir = args.savedir
 SAVEFIG = args.savefig
 
@@ -129,8 +142,18 @@ eval_dataset = LSC_cntr2rho_DataSet(LSC_NPZ_DIR,
                                     design_file)
 
 # Load single image and parameters pair
-sampIDX = 1
 sim_params, true_image = eval_dataset.__getitem__(sampIDX)
+
+## Read filelist
+with open(eval_filelist, 'r') as f:
+    eval_filenames = [line.rstrip() for line in f]
+
+## Get the input filename evaluated
+eval_filename = eval_filenames[sampIDX]
+
+## Get the simulation key associated with evaluation
+eval_key = LSCnpz2key(LSC_NPZ_DIR+eval_filename)
+print('Evaluation file key:', eval_key)
 
 # Evaluate model
 model.eval()
@@ -139,37 +162,65 @@ pred_image = model(sim_params)
 # Reshape for plotting
 sim_params = sim_params.numpy()
 true_image = np.squeeze(true_image.numpy())
+# Predictions from network must be detached from gradients in order to be
+# written to numpy arrays.
 pred_image = np.squeeze(pred_image.detach().numpy())
-print('Shape of image prediction:', pred_image.shape)
+#print('Shape of image prediction:', pred_image.shape)
 
 # Plot normalized radiograph and density field for diagnostics.
-fig1, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 12))
+fig1, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(16, 6))
+fig1.suptitle('Time={:.3f}us'.format(sim_params[-1]), fontsize=18)
 img1 = ax1.imshow(true_image,
                   aspect='equal',
                   origin='lower',
-                  cmap='jet')
+                  cmap='jet',
+                  vmin=true_image.min(),
+                  vmax=true_image.max())
 ax1.set_ylabel("Z-axis", fontsize=16)                 
 ax1.set_xlabel("R-axis", fontsize=16)
-ax1.set_title('True, Time={:.3f}us'.format(sim_params[-1]), fontsize=18)
+ax1.set_title('True', fontsize=18)
 
-divider1 = make_axes_locatable(ax1)
-cax1 = divider1.append_axes('right', size='10%', pad=0.1)
-fig1.colorbar(img1,
-              cax=cax1).set_label('Density',
-                                  fontsize=14)
+#divider1 = make_axes_locatable(ax1)
+#cax1 = divider1.append_axes('right', size='10%', pad=0.1)
+# fig1.colorbar(img1,
+#               cax=cax1).set_label('Density',
+#                                   fontsize=14)
 
 img2 = ax2.imshow(pred_image,
                   aspect='equal',
                   origin='lower',
-                  cmap='jet')
-ax2.set_ylabel("Z-axis", fontsize=16)                 
-ax2.set_xlabel("R-axis", fontsize=16)
-ax2.set_title('Predicted, Time={:.3f}us'.format(sim_params[-1]), fontsize=18)
+                  cmap='jet',
+                  vmin=true_image.min(),
+                  vmax=true_image.max())
+ax2.set_title('Predicted', fontsize=18)
+ax2.tick_params(axis='y',
+                which='both',
+                left=False,
+                labelleft=False)
 
 divider2 = make_axes_locatable(ax2)
 cax2 = divider2.append_axes('right', size='10%', pad=0.1)
 fig1.colorbar(img2,
-              cax=cax2).set_label('Density',
+              cax=cax2).set_label('Density (g/cc)',
+                                  fontsize=14)
+
+discrepancy = np.abs(true_image - pred_image)
+img3 = ax3.imshow(discrepancy,
+                  aspect='equal',
+                  origin='lower',
+                  cmap='hot',
+                  vmin=discrepancy.min(),
+                  vmax=dscale*discrepancy.max())
+ax3.set_title('Discrepancy', fontsize=18)
+ax3.tick_params(axis='y',
+                which='both',
+                left=False,
+                labelleft=False)
+
+divider3 = make_axes_locatable(ax3)
+cax3 = divider3.append_axes('right', size='10%', pad=0.1)
+fig1.colorbar(img3,
+              cax=cax3).set_label('Discrepancy',
                                   fontsize=14)
 
 # Save or plot images
@@ -178,7 +229,7 @@ if SAVEFIG:
         os.makedirs(savedir)
 
     plt.figure(fig1.number)
-    filenameA = f'{savedir}/jCNN_image_compare.png'
+    filenameA = f'{savedir}/jCNN_{eval_key}_image_compare.png'
     plt.savefig(filenameA, bbox_inches='tight')
 else:
     plt.show()
