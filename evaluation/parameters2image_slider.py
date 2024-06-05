@@ -13,6 +13,9 @@ sys.path.insert(0, os.getenv('YOKE_DIR'))
 from models.surrogateCNNmodules import jekelCNNsurrogate
 import torch_training_utils as tr
 
+import wx
+import PIL import Image
+
 # Imports for plotting
 # To view possible matplotlib backends use
 # >>> import matplotlib
