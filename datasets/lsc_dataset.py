@@ -135,7 +135,6 @@ class LSC_cntr2rho_DataSet(Dataset):
         true_image = np.concatenate((np.fliplr(true_image), true_image), axis=1)
         nY, nX = true_image.shape
         true_image = true_image.reshape((1, nY, nX))
-        print('type true_image:', type(true_image))
         true_image = torch.tensor(true_image).to(torch.float32)
 
         ## Get the contours and sim_time

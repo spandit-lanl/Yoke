@@ -137,7 +137,7 @@ class jekelCNNsurrogate(nn.Module):
         # Final ConvT
         x = self.final_tconv(x)
         x = self.final_act(x)
-        print('After final convT shape:', x.shape)
+        #print('After final convT shape:', x.shape)
 
         # Reshape to output image size.
         #print('Pre-Upsample shape:', x.shape)
