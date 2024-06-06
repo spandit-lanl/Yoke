@@ -51,7 +51,7 @@ def update_sliders():
     current_height = image_label.winfo_height()
     slider1.configure(length=0.5*current_height)
     slider2.configure(length=0.5*current_height)
-    slider2.configure(length=0.6*current_width)
+    #slider3.configure(length=0.3*current_width)
 
 root = tk.Tk()
 root.title("Neural Network GUI")
