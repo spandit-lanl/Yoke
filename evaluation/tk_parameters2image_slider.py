@@ -99,30 +99,29 @@ def run_jCNN(ct6, ct7, time):
     model.eval()
     pred_image = model(input_params)
 
-    #print('Shape of inputs:', input_params.shape)
-    #print('Prediction shape:', pred_image.shape)
-
-    # Reshape for plotting
-    input_params = np.squeeze(input_params.numpy())
     # Predictions from network must be detached from gradients in order to be
     # written to numpy arrays.
     pred_image = np.squeeze(pred_image.detach().numpy())
-    #print('Shape of image prediction:', pred_image.shape)
 
-    return pred_image.astype(np.uint8)
+    # Since we will use PIL to view this image we need to convert to 0-255 int
+    # array.
+    normalized_image = (pred_image - pred_image.min()) / (pred_image.max() - pred_image.min())
+    normalized_image = 255*normalized_image
+
+    return normalized_image.astype(np.uint8)
 
 
 def update_image(*args):
     # Get the current slider values
-    ct6 = slider_ct6.get()
-    ct7 = slider_ct7.get()
-    time = slider_time.get()
+    ct6 = slider_ct6.get() / 100.0
+    ct7 = slider_ct7.get() / 100.0
+    time = slider_time.get() / 100.0
     
     # Run the neural network and get a 2D numpy array
     array = run_jCNN(ct6, ct7, time)
     
     # Convert numpy array to PIL Image
-    img = Image.fromarray(array, 'L')  # 'L' mode for grayscale
+    img = Image.fromarray(np.flipud(array), 'L')  # 'L' mode for grayscale
     # Anti-aliased resizing...
     current_width = max(image_label.winfo_width(), 400)
     current_height = max(image_label.winfo_height(), 400)
@@ -155,16 +154,16 @@ vertical_sliders_frame.pack(fill='both', expand=True)
 
 # Create vertical sliders
 slider_ct6 = Scale(vertical_sliders_frame,
-                   from_=0.0,
-                   to=1.0,
+                   from_=0,
+                   to=100,
                    orient=VERTICAL,
                    label='ct6',
                    command=lambda event: update_image())
 slider_ct6.pack(side=LEFT, fill='y', expand=True)
 
 slider_ct7 = Scale(vertical_sliders_frame,
-                   from_=0.0,
-                   to=1.0,
+                   from_=0,
+                   to=100,
                    orient=VERTICAL,
                    label='ct7',
                    command=lambda event: update_image())
@@ -175,8 +174,8 @@ horizontal_sliders_frame = Frame(control_frame)
 horizontal_sliders_frame.pack(fill='x', expand=True)
 
 slider_time = Scale(horizontal_sliders_frame,
-                    from_=0.0,
-                    to=25.0,
+                    from_=0,
+                    to=2500,
                     orient=HORIZONTAL,
                     label='Time',
                     command=lambda event: update_image())
