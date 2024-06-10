@@ -53,7 +53,7 @@ parser.add_argument('--IDX', '-I',
 parser.add_argument('--Nsamps_per_trn_pt', '-Nt',
                     action='store',
                     type=int,
-                    default=2000,
+                    default=2012,
                     help='Number of samples per training loss plot point.')
 
 parser.add_argument('--Nsamps_per_val_pt', '-Nv',
@@ -61,6 +61,10 @@ parser.add_argument('--Nsamps_per_val_pt', '-Nv',
                     type=int,
                     default=250,
                     help='Number of samples per validation loss plot point.')
+
+parser.add_argument('--inprogress', '-P',
+                    action='store_true',
+                    help='If run is still training throw out last training CSV.')
 
 parser.add_argument('--savedir',
                     action='store',
@@ -76,6 +80,7 @@ args_ns = parser.parse_args()
 
 basedir = args_ns.basedir
 IDX = args_ns.IDX
+INPROGRESS = args_ns.inprogress
 savedir = args_ns.savedir
 SAVEFIG = args_ns.savefig
 
@@ -87,6 +92,11 @@ Nsamps_per_val_pt = args_ns.Nsamps_per_val_pt
 # Of the form: training_study009_epoch0100.csv
 trn_glob = f'{basedir}/study_{IDX:03d}/training_study{IDX:03d}_epoch*.csv'
 trn_csv_list = sorted(glob.glob(trn_glob))
+
+# Throw out most recent training CSV if still in progress
+if INPROGRESS:
+    trn_csv_list.pop()
+    
 trn_file_epochs = []
 for Tcsv in trn_csv_list:
     epoch = Tcsv.split('epoch')[1]
@@ -142,42 +152,47 @@ for tIDX, Tcsv in enumerate(trn_csv_list):
         plt.plot(startIDX+trn_positions, trn_qnts[2,:], ':b')
     
     startIDX += trn_positions[-1]
-    
-    if trn_file_epochs[tIDX] == val_file_epochs[vIDX]:
-        val_DF = pd.read_csv(val_csv_list[vIDX],
-                             sep=', ',
-                             header=None,
-                             names=['Epoch',
-                                    'Batch',
-                                    'Loss'],
-                             engine='python')
-        #print('Validation IDX:', val_file_epochs[vIDX])
-        
-        val_epoch_loss = val_DF.loc[:, 'Loss'].values.reshape((Nsamps_per_val_pt, -1))
-        #print('Loss array shape:', val_epoch_loss.shape)
-        val_positions = np.arange(val_epoch_loss.shape[1])
-        val_qnts = np.quantile(val_epoch_loss,
-                               [0.025, 0.5, 0.975],
-                               axis=0)
-        #print('Quantiles shape:', val_qnts.shape)
 
-        if vIDX == 0:
-            plt.plot(startIDX+val_positions, val_qnts[0,:], ':r')
-            plt.plot(startIDX+val_positions, val_qnts[1,:], '-r', label='Validation')
-            plt.plot(startIDX+val_positions, val_qnts[2,:], ':r')
-        else:
-            plt.plot(startIDX+val_positions, val_qnts[0,:], ':r')
-            plt.plot(startIDX+val_positions, val_qnts[1,:], '-r')
-            plt.plot(startIDX+val_positions, val_qnts[2,:], ':r')
+    # print('trn_file_epochs length:', len(trn_file_epochs))
+    # print('val_file_epochs length:', len(val_file_epochs))
+    # print('tIDX:', tIDX, 'vIDX:', vIDX)
 
-        vIDX += 1
-        startIDX += val_positions[-1]
+    if vIDX < len(val_file_epochs):
+        if trn_file_epochs[tIDX] == val_file_epochs[vIDX]:
+            val_DF = pd.read_csv(val_csv_list[vIDX],
+                                 sep=', ',
+                                 header=None,
+                                 names=['Epoch',
+                                        'Batch',
+                                        'Loss'],
+                                 engine='python')
+            #print('Validation IDX:', val_file_epochs[vIDX])
+
+            val_epoch_loss = val_DF.loc[:, 'Loss'].values.reshape((Nsamps_per_val_pt, -1))
+            #print('Loss array shape:', val_epoch_loss.shape)
+            val_positions = np.arange(val_epoch_loss.shape[1])
+            val_qnts = np.quantile(val_epoch_loss,
+                                   [0.025, 0.5, 0.975],
+                                   axis=0)
+            #print('Quantiles shape:', val_qnts.shape)
+
+            if vIDX == 0:
+                plt.plot(startIDX+val_positions, val_qnts[0,:], ':r')
+                plt.plot(startIDX+val_positions, val_qnts[1,:], '-r', label='Validation')
+                plt.plot(startIDX+val_positions, val_qnts[2,:], ':r')
+            else:
+                plt.plot(startIDX+val_positions, val_qnts[0,:], ':r')
+                plt.plot(startIDX+val_positions, val_qnts[1,:], '-r')
+                plt.plot(startIDX+val_positions, val_qnts[2,:], ':r')
+
+            vIDX += 1
+            startIDX += val_positions[-1]
         
 # Make legend
 plt.legend(fontsize=16)
 
 # No xlim
-ax.set_ylim(0.0, 0.03)
+ax.set_ylim(0.0, 0.005)
 
 # Set axis labels
 ax.set_ylabel('Loss', fontsize=16)

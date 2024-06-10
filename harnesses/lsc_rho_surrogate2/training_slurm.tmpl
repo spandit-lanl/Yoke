@@ -5,7 +5,7 @@
 #SBATCH --job-name=lsc_tCNN2_study<studyIDX>
 #SBATCH --partition=main
 #SBATCH --gres=gpu:1
-#SBATCH --ntasks-per-gpu=8
+#SBATCH --ntasks-per-gpu=5
 #SBATCH --gpu-bind=closest
 #SBATCH --gres-flags=enforce-binding
 #SBATCH --mem-bind=local
