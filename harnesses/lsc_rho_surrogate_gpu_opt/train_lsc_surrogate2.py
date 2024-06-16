@@ -246,6 +246,7 @@ if __name__ == '__main__':
     #############################################
     ## Initialize Loss
     #############################################
+    # Use `reduction='none'` so loss on each sample in batch can be recorded.
     loss_fn = nn.MSELoss(reduction='none')
 
     print('Model initialized.')
@@ -271,6 +272,19 @@ if __name__ == '__main__':
             if isinstance(v, torch.Tensor):
                 state[k] = v.to(device)
 
+    #############################################
+    ## Script and compile model on device
+    #############################################
+    scripted_model = torch.jit.script(model)
+
+    # Model compilation has some interesting parameters to play with.
+    #
+    # NOTE: Compiled model is not able to be loaded from checkpoint for some
+    # reason.
+    compiled_model = torch.compile(scripted_model,
+                                   fullgraph=False,  # If TRUE, throw error if whole graph is not compileable.
+                                   mode='default')  # Other compile modes that may provide better performance
+                                   
     #############################################
     ## Initialize Data
     #############################################
@@ -306,12 +320,12 @@ if __name__ == '__main__':
                                             num_workers=num_workers)
 
         # Time each epoch and print to stdout
-        start_time = time.time()
+        startTime = time.time()
 
         ## Train an Epoch
         tr.train_array_csv_epoch(training_data=train_dataloader,
                                  validation_data=val_dataloader, 
-                                 model=model,
+                                 model=compiled_model,
                                  optimizer=optimizer,
                                  loss_fn=loss_fn,
                                  epochIDX=epochIDX,
@@ -331,7 +345,7 @@ if __name__ == '__main__':
     print("Saving model checkpoint at end of epoch "+ str(epochIDX) + ". . .")
 
     # Move the model back to CPU prior to saving to increase portability
-    model.to('cpu')  
+    compiled_model.to('cpu')  
     # Move optimizer state back to CPU
     for state in optimizer.state.values():
         for k, v in state.items():
@@ -341,7 +355,11 @@ if __name__ == '__main__':
     # Save model and optimizer state in hdf5
     h5_name_str = 'study{0:03d}_modelState_epoch{1:04d}.hdf5'
     new_h5_path = os.path.join('./', h5_name_str.format(studyIDX, epochIDX))
-    tr.save_model_and_optimizer_hdf5(model, optimizer, epochIDX, new_h5_path)
+    tr.save_model_and_optimizer_hdf5(compiled_model,
+                                     optimizer,
+                                     epochIDX,
+                                     new_h5_path,
+                                     compiled=True)
 
     #############################################
     ## Continue if Necessary

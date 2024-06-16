@@ -23,7 +23,7 @@ from torch.utils.data import DataLoader, RandomSampler
 ######################################################
 ## Helper function for model/optimizer saving/loading
 ######################################################
-def save_model_and_optimizer_hdf5(model, optimizer, epoch, filepath):
+def save_model_and_optimizer_hdf5(model, optimizer, epoch, filepath, compiled=False):
     """Saves the state of a model and optimizer in portable hdf5 format. Model and
     optimizer should be moved to the CPU prior to using this function.
 
@@ -32,8 +32,16 @@ def save_model_and_optimizer_hdf5(model, optimizer, epoch, filepath):
         optimizer (torch optimizer: Pytorch optimizer to save
         epoch (int): Epoch associated with training
         filepath (str): Where to save
+        compiled (bool): Flag to extract original model if model being saved 
+                         was compiled.
 
     """
+
+    # If the model is a `torch.compiled` version the original model must be
+    # extracted first.
+    if compiled:
+        model = model._orig_mod
+    
     with h5py.File(filepath, 'w') as h5f:
         # Save epoch number
         h5f.attrs['epoch'] = epoch
@@ -174,12 +182,15 @@ def make_dataloader(dataset: torch.utils.data.Dataset,
 
     """
 
+    # Use randomsampler instead of just shuffle=True so we can specify the
+    # number of batchs during an epoch.
     randomsampler = RandomSampler(dataset, num_samples=batch_size*num_batches)
     dataloader = DataLoader(dataset,
                             batch_size=batch_size,
                             sampler=randomsampler,
                             num_workers=num_workers,
-                            persistent_workers=True)
+                            persistent_workers=True,
+                            pin_memory=True)
 
     return dataloader
 
@@ -317,9 +328,9 @@ def train_scalar_datastep(data: tuple,
 
     ## Extract data
     (inpt, truth) = data
-    inpt = inpt.to(device)
+    inpt = inpt.to(device, non_blocking=True)
     # Unsqueeze is necessary for scalar ground-truth output
-    truth = truth.to(torch.float32).unsqueeze(-1).to(device)
+    truth = truth.to(torch.float32).unsqueeze(-1).to(device, non_blocking=True)
     
     ## Perform a forward pass
     # NOTE: If training on GPU model should have already been moved to GPU
@@ -360,8 +371,8 @@ def train_array_datastep(data: tuple,
 
     ## Extract data
     (inpt, truth) = data
-    inpt = inpt.to(device)
-    truth = truth.to(device)
+    inpt = inpt.to(device, non_blocking=True)
+    truth = truth.to(device, non_blocking=True)
     
     ## Perform a forward pass
     # NOTE: If training on GPU model should have already been moved to GPU
@@ -403,8 +414,8 @@ def eval_scalar_datastep(data: tuple,
 
     ## Extract data
     (inpt, truth) = data
-    inpt = inpt.to(device)
-    truth = truth.to(torch.float32).unsqueeze(-1).to(device)
+    inpt = inpt.to(device, non_blocking=True)
+    truth = truth.to(torch.float32).unsqueeze(-1).to(device, non_blocking=True)
 
     ## Perform a forward pass
     pred = model(inpt)
@@ -436,8 +447,8 @@ def eval_array_datastep(data: tuple,
 
     ## Extract data
     (inpt, truth) = data
-    inpt = inpt.to(device)
-    truth = truth.to(device)
+    inpt = inpt.to(device, non_blocking=True)
+    truth = truth.to(device, non_blocking=True)
 
     ## Perform a forward pass
     pred = model(inpt)

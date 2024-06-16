@@ -7,6 +7,8 @@ import sys
 import os
 import math
 from typing import List
+from collections import OrderedDict
+
 import torch
 import torch.nn as nn
 
@@ -246,10 +248,10 @@ class tCNNsurrogate(nn.Module):
         self.initTconvActivation = act_layer()
 
         # Module list to hold transpose convolutions
-        self.TConvList = nn.ModuleList()
-        self.BnormList = nn.ModuleList()
-        self.ActList = nn.ModuleList()
-
+        # self.TConvList = nn.ModuleList()
+        # self.BnormList = nn.ModuleList()
+        # self.ActList = nn.ModuleList()
+        self.CompoundConvTList = nn.ModuleList()
         # Create transpose convolutional layer for each entry in feature list.
         for i in range(self.nConvT-1):
             tconv = nn.ConvTranspose2d(in_channels=self.nfeature_list[i],
@@ -260,15 +262,22 @@ class tCNNsurrogate(nn.Module):
                                        output_padding=1,
                                        bias=False)
             
-            self.TConvList.append(tconv)
+            #self.TConvList.append(tconv)
 
             normLayer = nn.BatchNorm2d(self.nfeature_list[i+1])
             nn.init.constant_(normLayer.weight, 1)
             normLayer.weight.requires_grad = False
 
-            self.BnormList.append(normLayer)
-            self.ActList.append(act_layer())
+            #self.BnormList.append(normLayer)
+            #self.ActList.append(act_layer())
 
+            # Make list of small sequential modules. Then we'll use enumerate
+            # in forward method.
+            cmpd_dict = OrderedDict([(f'tconv{i}', tconv),
+                                     (f'bnorm{i}', normLayer),
+                                     (f'act{i}', act_layer())])
+            self.CompoundConvTList.append(nn.Sequential(cmpd_dict))
+                            
         # Final Transpose Conv layer followed by hyperbolic tanh activation
         self.final_tconv = nn.ConvTranspose2d(in_channels=self.nfeature_list[-1],
                                               out_channels=1, 
@@ -305,12 +314,17 @@ class tCNNsurrogate(nn.Module):
         #print('After initTconv shape:', x.shape)
         
         ## ConvT layers
-        for i in range(self.nConvT-1):
-            x = self.TConvList[i](x)
-            x = self.BnormList[i](x)
-            x = self.ActList[i](x)
-            #print(f'After convT{i:d} shape:', x.shape)
+        # NOTE: This block interferes with `torch.jit.script`
+        # for i in range(self.nConvT-1):
+        #     x = self.TConvList[i](x)
+        #     x = self.BnormList[i](x)
+        #     x = self.ActList[i](x)
+        #     #print(f'After convT{i:d} shape:', x.shape)
 
+        # enumeration of nn.moduleList is supported under `torch.jit.script`
+        for i, cmpdTconv in enumerate(self.CompoundConvTList):
+            x = cmpdTconv(x)
+            
         # Final ConvT
         x = self.final_tconv(x)
         x = self.final_act(x)
