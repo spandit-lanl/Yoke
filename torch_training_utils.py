@@ -190,6 +190,7 @@ def make_dataloader(dataset: torch.utils.data.Dataset,
                             sampler=randomsampler,
                             num_workers=num_workers,
                             persistent_workers=True,
+                            prefetch_factor=4,
                             pin_memory=True)
 
     return dataloader
@@ -339,7 +340,7 @@ def train_scalar_datastep(data: tuple,
     loss = loss_fn(pred, truth)
 
     ## Perform backpropagation and update the weights
-    optimizer.zero_grad()
+    optimizer.zero_grad(set_to_none=True)
     loss.mean().backward()
     optimizer.step()
 
@@ -381,7 +382,8 @@ def train_array_datastep(data: tuple,
     loss = loss_fn(pred, truth)
 
     ## Perform backpropagation and update the weights
-    optimizer.zero_grad()
+    #optimizer.zero_grad()
+    optimizer.zero_grad(set_to_none=True)  # Possible speed-up
     loss.mean().backward()
     optimizer.step()
 

@@ -1,6 +1,9 @@
 """Actual training workhorse for Transpose CNN network mapping layered shaped
 charge geometry parameters to density image.
 
+We modify the training procedure to use multiple CUDA streams to load multiple
+simultaneous batches onto the GPU.
+
 """
 #############################################
 ## Packages
@@ -324,21 +327,111 @@ if __name__ == '__main__':
                                         val_batches,
                                         num_workers=num_workers)
 
+    # Create multiple CUDA streams
+    #
+    # Note: There is a weird behavior when using cuda streams. Once the first
+    # cycle of epochs completes the next cycle starts on a second GPU and the
+    # next job uses 2 GPUs.
+    Nstreams = 8
+    streams = [torch.cuda.Stream() for _ in range(Nstreams)]
+
+    # Iterate over epochs
     for epochIDX in range(starting_epoch, ending_epoch):
         # Time each epoch and print to stdout
         startTime = time.time()
 
-        ## Train an Epoch
-        tr.train_array_csv_epoch(training_data=train_dataloader,
-                                 validation_data=val_dataloader, 
-                                 model=compiled_model,
-                                 optimizer=optimizer,
-                                 loss_fn=loss_fn,
-                                 epochIDX=epochIDX,
-                                 train_per_val=train_per_val,
-                                 train_rcrd_filename=trn_rcrd_filename,
-                                 val_rcrd_filename=val_rcrd_filename,
-                                 device=device)
+        # Explicitly run training and validation loop so CUDA stream and graph
+        # can be modified.
+        trainbatches = len(train_dataloader)
+        valbatches = len(val_dataloader)
+        trainbatch_ID = 0
+        valbatch_ID = 0
+
+        train_batchsize = train_dataloader.batch_size
+        val_batchsize = val_dataloader.batch_size
+
+        trn_rcrd_filename = trn_rcrd_filename.replace(f'<epochIDX>',
+                                                      '{:04d}'.format(epochIDX))
+        ## Train on all training samples
+        with open(trn_rcrd_filename, 'a') as train_rcrd_file:
+            ## Set model to train
+            compiled_model.train()
+            stream_idx = 0
+            
+            for traindata in train_dataloader:
+                trainbatch_ID += 1
+                
+                ## Extract data
+                (inpt, truth) = traindata
+                inpt = inpt.to(device, non_blocking=True)
+                truth = truth.to(device, non_blocking=True)
+
+                # Use alternating streams for overlapping data transfer and computation
+                stream = streams[stream_idx]
+                stream_idx = (stream_idx + 1) % len(streams)
+                
+                ## Perform a forward pass
+                # NOTE: If training on GPU model should have already been moved to GPU
+                # prior to initalizing optimizer.
+                with torch.cuda.stream(stream):
+                    pred = compiled_model(inpt)
+                    train_loss = loss_fn(pred, truth)
+
+                    ## Perform backpropagation and update the weights
+                    optimizer.zero_grad(set_to_none=True)  # Possible speed-up
+                    train_loss.mean().backward()
+                    optimizer.step()
+
+                # Synchronize the stream to ensure computation is finished
+                # before the next iteration
+                stream.synchronize()
+
+                # truth, pred, train_loss = train_array_datastep(traindata, 
+                #                                                compiled_model,
+                #                                                optimizer,
+                #                                                loss_fn,
+                #                                                device)
+
+                template = "{}, {}, {}"
+                for i in range(train_batchsize):
+                    print(template.format(epochIDX,
+                                          trainbatch_ID,
+                                          train_loss.cpu().detach().numpy().flatten()[i]),
+                          file=train_rcrd_file)
+            
+        ## Evaluate on all validation samples
+        if epochIDX % train_per_val == 0:
+            print('Validating...', epochIDX)
+            val_rcrd_filename = val_rcrd_filename.replace(f'<epochIDX>',
+                                                          '{:04d}'.format(epochIDX))
+            with open(val_rcrd_filename, 'a') as val_rcrd_file:
+                ## Set model to eval
+                compiled_model.eval()
+
+                with torch.no_grad():
+                    for valdata in val_dataloader:
+                        valbatch_ID += 1
+
+                        ## Extract data
+                        (inpt, truth) = valdata
+                        inpt = inpt.to(device, non_blocking=True)
+                        truth = truth.to(device, non_blocking=True)
+
+                        ## Perform a forward pass
+                        pred = compiled_model(inpt)
+                        val_loss = loss_fn(pred, truth)
+
+                        # truth, pred, val_loss = eval_array_datastep(valdata, 
+                        #                                             compiled_model,
+                        #                                             loss_fn,
+                        #                                             device)
+
+                        template = "{}, {}, {}"
+                        for i in range(val_batchsize):
+                            print(template.format(epochIDX,
+                                                  valbatch_ID,
+                                                  val_loss.cpu().detach().numpy().flatten()[i]),
+                                  file=val_rcrd_file)
 
         endTime = time.time()
         epoch_time = (endTime - startTime) / 60

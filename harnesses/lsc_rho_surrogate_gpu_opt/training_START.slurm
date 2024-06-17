@@ -1,14 +1,19 @@
 #!/bin/bash
 
-# NOTE: Number of CPUs per GPU seems to be one more than ntasks-per-gpu
+# NOTE: Number of CPUs per GPU must be an even number since there are
+# 2 threads per core. If an odd number is requested the next higher
+# even number gets used. Also, there are 120Gb of memory on the
+# node. However, if 30Gb per-job are requested for 4 jobs there are
+# not enough resources. You may request up to 29G per-job.
 
 #SBATCH --job-name=lsc_tCNN2_study<studyIDX>
 #SBATCH --partition=main
 #SBATCH --gres=gpu:1
-#SBATCH --ntasks-per-gpu=5
+#SBATCH --ntasks-per-gpu=8
 #SBATCH --gpu-bind=closest
 #SBATCH --gres-flags=enforce-binding
 #SBATCH --mem-bind=local
+#SBATCH --mem=29G
 #SBATCH --time=10:00:00
 #SBATCH --output=study<studyIDX>_epoch0001.out
 #SBATCH --error=study<studyIDX>_epoch0001.err
