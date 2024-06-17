@@ -25,7 +25,7 @@ lsc240420_test_10pct.txt
 --batch_size
 <BATCH_SIZE>
 --total_epochs
-4
+100
 --cycle_epochs
 2
 --train_batches
@@ -33,4 +33,4 @@ lsc240420_test_10pct.txt
 --val_batches
 <NVAL_BATCH>
 --TRAIN_PER_VAL
-2
+10
