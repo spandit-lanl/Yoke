@@ -30,7 +30,7 @@ source $YOKE_CONDA/bin/activate $YOKE_TORCH
 export date00=`date`
 
 # Start the Code
-python ../train_lsc_surrogate2.py @study<studyIDX>_START.input
+python ../<train_script> @study<studyIDX>_START.input
 
 # Get end time and print to stdout
 export date01=`date`
