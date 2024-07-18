@@ -9,7 +9,7 @@ import torch
 import torch.nn as nn
 
 sys.path.insert(0, os.getenv('YOKE_DIR'))
-from models.surrogateCNNmodules import jekelCNNsurrogate
+from models.surrogateCNNmodules import jekelCNNsurrogate, tCNNsurrogate
 from datasets.lsc_dataset import LSCnpz2key, LSC_cntr2rho_DataSet
 import torch_training_utils as tr
 
@@ -111,12 +111,27 @@ featureList = [512,
 linearFeatures = [4, 4]
 initial_learningrate = 0.0007
 
-model = jekelCNNsurrogate(input_size=29,
-                          linear_features=linearFeatures,
-                          kernel=kernel,
-                          nfeature_list=featureList,
-                          output_image_size=(1120, 800),
-                          act_layer=nn.GELU)
+# model = jekelCNNsurrogate(input_size=29,
+#                           linear_features=linearFeatures,
+#                           kernel=kernel,
+#                           nfeature_list=featureList,
+#                           output_image_size=(1120, 800),
+#                           act_layer=nn.GELU)
+
+model = tCNNsurrogate(input_size=29,
+                      linear_features=(7, 5, 256),
+                      #linear_features=(7, 5, 512),
+                      initial_tconv_kernel=(5, 5),
+                      initial_tconv_stride=(5, 5),
+                      initial_tconv_padding=(0, 0),
+                      initial_tconv_outpadding=(0, 0),
+                      initial_tconv_dilation=(1, 1),
+                      kernel=(3, 3),
+                      nfeature_list=[256, 128, 64, 32, 16],
+                      #nfeature_list=[512, 512, 256, 128, 64],
+                      output_image_size=(1120, 800),
+                      act_layer=nn.GELU)
+
 
 #############################################
 ## Initialize Optimizer
@@ -229,7 +244,7 @@ if SAVEFIG:
         os.makedirs(savedir)
 
     plt.figure(fig1.number)
-    filenameA = f'{savedir}/jCNN_{eval_key}_image_compare.png'
+    filenameA = f'{savedir}/{eval_key}_image_compare.png'
     plt.savefig(filenameA, bbox_inches='tight')
 else:
     plt.show()
