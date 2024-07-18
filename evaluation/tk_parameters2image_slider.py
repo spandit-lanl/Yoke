@@ -10,7 +10,7 @@ import torch
 import torch.nn as nn
 
 sys.path.insert(0, os.getenv('YOKE_DIR'))
-from models.surrogateCNNmodules import jekelCNNsurrogate
+from models.surrogateCNNmodules import jekelCNNsurrogate, tCNNsurrogate
 import torch_training_utils as tr
 
 import tkinter as tk
@@ -25,7 +25,7 @@ parser = argparse.ArgumentParser(prog='Image Prediction Slider.',
                                  description=descr_str,
                                  fromfile_prefix_chars='@')
 
-parser.add_argument('--checkpoint',
+parser.add_argument('--checkpoint', '-C',
                     action='store',
                     type=str,
                     default='./study001_modelState_epoch0070.hdf5',
@@ -39,24 +39,38 @@ YOKE_DIR = os.getenv('YOKE_DIR')
 checkpoint = args.checkpoint
 
 # Hardcode model hyperparameters for now.
-kernel = [3, 3]
-featureList = [512,
-               512,
-               512,
-               512,
-               256,
-               128,
-               64,
-               32]
-linearFeatures = [4, 4]
-initial_learningrate = 0.0007
+# kernel = [3, 3]
+# featureList = [512,
+#                512,
+#                512,
+#                512,
+#                256,
+#                128,
+#                64,
+#                32]
+# linearFeatures = [4, 4]
+initial_learningrate = 0.001  #0.0007
 
-model = jekelCNNsurrogate(input_size=29,
-                          linear_features=linearFeatures,
-                          kernel=kernel,
-                          nfeature_list=featureList,
-                          output_image_size=(1120, 800),
-                          act_layer=nn.GELU)
+# model = jekelCNNsurrogate(input_size=29,
+#                           linear_features=linearFeatures,
+#                           kernel=kernel,
+#                           nfeature_list=featureList,
+#                           output_image_size=(1120, 800),
+#                           act_layer=nn.GELU)
+
+model = tCNNsurrogate(input_size=29,
+                      linear_features=(7, 5, 256),
+                      #linear_features=(7, 5, 512),
+                      initial_tconv_kernel=(5, 5),
+                      initial_tconv_stride=(5, 5),
+                      initial_tconv_padding=(0, 0),
+                      initial_tconv_outpadding=(0, 0),
+                      initial_tconv_dilation=(1, 1),
+                      kernel=(3, 3),
+                      nfeature_list=[256, 128, 64, 32, 16],
+                      #nfeature_list=[512, 512, 256, 128, 64],
+                      output_image_size=(1120, 800),
+                      act_layer=nn.GELU)
 
 #############################################
 ## Initialize Optimizer
