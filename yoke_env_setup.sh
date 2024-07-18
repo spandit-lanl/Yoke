@@ -5,13 +5,19 @@
 # # ON OSX local
 # #
 # # Base directory where YOKE is housed
-# export YOKE_DIR='/Users/hickmank/yoke'
+# export YOKE_DIR='/Users/l255541/yoke'
 
 # # Base anaconda install directory
-# export YOKE_CONDA='/Users/hickmank/anaconda3/'
+# export YOKE_CONDA='/Users/l255541/anaconda3/'
 
 # # Torch anaconda environment to use
-# export YOKE_TORCH='torch_osx_240605'
+# export YOKE_TORCH='torch_osx_240605
+
+# # LSC design-file directory
+# export LSC_DESIGN_DIR='/Users/l255541/LSC_DATA/'
+
+# # LSC NPZ data directory
+# export LSC_NPZ_DIR='/Users/l255541/LSC_DATA/lsc240420/'
 
 
 # ON burr.lanl.gov
