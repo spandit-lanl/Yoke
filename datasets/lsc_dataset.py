@@ -85,7 +85,7 @@ def LSCread_npz(npz: np.lib.npyio.NpzFile, field: str):
 
 
 ####################################
-## DataSet Class
+## DataSet Classes
 ####################################
 class LSC_cntr2rho_DataSet(Dataset):
     def __init__(self,
@@ -148,12 +148,97 @@ class LSC_cntr2rho_DataSet(Dataset):
         
         return sim_params, true_image
 
-    # def __getitems__(self, indices):
-    #     """A mysterious method that PyTorch may have support for and documentation
-    #     implies may produce a speed up that returns a batch as a list of tensors
-    #     instead of a single tensor.
 
-    #     """
+class LSCnorm_cntr2rho_DataSet(Dataset):
+    def __init__(self,
+                 LSC_NPZ_DIR: str,
+                 filelist: str,
+                 design_file: str,
+                 normalization_file: str):
+        """The definition of a dataset object for the *Layered Shaped Charge* data
+        which produces pairs of B-spline contour-node vectors and simulation times
+        together with an average density field. 
+
+        This class uses pre-calculated normalization constants to normalize the
+        geometry parameters and the density field. The time values are also
+        normalized to [0, 1] at regular intervals of 0.25 us.
+
+        Args:
+            LSC_NPZ_DIR (str): Location of LSC NPZ files. A YOKE env variable.
+            filelist (str): Text file listing file names to read
+            design_file (str): .csv file with master design study parameters
+            normalization_file: Full-path to the NPZ file containing the pre-calculated 
+                                normalization quantities.
+
+        """
+
+        ## Model Arguments
+        self.LSC_NPZ_DIR = LSC_NPZ_DIR
+        self.filelist = filelist
+        self.design_file = design_file
+        self.normalization_file = normalization_file
+
+        # Open normalization file
+        # np.savez('./lsc240420_norm.npz',
+        #  image_avg=image_avg,
+        #  image_min=image_min,
+        #  image_max=image_max,
+        #  Bspline_avg=Bspline_avg,
+        #  Bspline_min=Bspline_min,
+        #  Bspline_max=Bspline_max,
+        #  **avg_time_dict)
+
+        norm_npz = np.load(self.normalization_file)
+        time_keys = [k for k in norm_npz.keys()]
+        time_keys.remove('image_avg')
+        time_keys.remove('image_min')
+        time_keys.remove('image_max')
+        time_keys.remove('Bspline_avg')        
+        time_keys.remove('Bspline_min')
+        time_keys.remove('Bspline_max')
+        print(time_keys)
+        self.Bspline_min = norm_npz['Bspline_min']
+        self.Bspline_max = norm_npz['Bspline_max']
+        
+        ## Create filelist
+        with open(filelist, 'r') as f:
+            self.filelist = [line.rstrip() for line in f]
+            
+        self.Nsamples = len(self.filelist)
+
+    def __len__(self):
+        """Return number of samples in dataset.
+
+        """
+
+        return self.Nsamples
+
+    def __getitem__(self, index):
+        """Return a tuple of a batch's input and output data for training at a given
+        index.
+
+        """
+
+        ## Get the input image
+        filepath = self.filelist[index]
+        npz = np.load(self.LSC_NPZ_DIR+filepath)
+        
+        true_image = LSCread_npz(npz, 'av_density')
+        true_image = np.concatenate((np.fliplr(true_image), true_image), axis=1)
+        nY, nX = true_image.shape
+        true_image = true_image.reshape((1, nY, nX))
+        true_image = torch.tensor(true_image).to(torch.float32)
+
+        ## Get the contours and sim_time
+        sim_key = LSCnpz2key(self.LSC_NPZ_DIR+filepath)
+        Bspline_nodes = LSCcsv2bspline_pts(self.design_file, sim_key)
+        sim_time = npz['sim_time']
+        npz.close()
+
+        sim_params = np.append(Bspline_nodes, sim_time)
+        sim_params = torch.from_numpy(sim_params).to(torch.float32)
+        
+        return sim_params, true_image
 
 
 if __name__ == '__main__':
@@ -197,34 +282,45 @@ if __name__ == '__main__':
     print('B-spline points:', bspline_pts)
     
     filelist = YOKE_DIR + 'filelists/lsc240420_test_10pct.txt'
-    LSC_ds = LSC_cntr2rho_DataSet(LSC_NPZ_DIR,
-                                  filelist,
-                                  csv_filename)
+    # LSC_ds = LSC_cntr2rho_DataSet(LSC_NPZ_DIR,
+    #                               filelist,
+    #                               csv_filename)
+    # sampIDX = 1
+    # sim_params, true_image = LSC_ds.__getitem__(sampIDX)
+    
+    # print('Shape of true_image tensor: ', true_image.shape)
+    # print('Shape of sim_params tensor: ', sim_params.shape)
+    # print('sim_params:', sim_params)
+
+    normalization_file = '/data2/yoke/normalization/lsc240420_norm.npz'
+    LSC_ds  = LSCnorm_cntr2rho_DataSet(LSC_NPZ_DIR,
+                                       filelist,
+                                       csv_filename,
+                                       normalization_file)
     sampIDX = 1
     sim_params, true_image = LSC_ds.__getitem__(sampIDX)
-    
+
     print('Shape of true_image tensor: ', true_image.shape)
     print('Shape of sim_params tensor: ', sim_params.shape)
-    print('sim_params:', sim_params)
-    
-    sim_params = sim_params.numpy()
-    true_image = np.squeeze(true_image.numpy())
-    
-    # Plot normalized radiograph and density field for diagnostics.
-    fig1, ax1 = plt.subplots(1, 1, figsize=(12, 12))
-    img1 = ax1.imshow(true_image,
-                      aspect='equal',
-                      origin='lower',
-                      cmap='jet')
-    ax1.set_ylabel("Z-axis", fontsize=16)                 
-    ax1.set_xlabel("R-axis", fontsize=16)
-    ax1.set_title('Time={:.3f}us'.format(sim_params[-1]), fontsize=18)
 
-    divider1 = make_axes_locatable(ax1)
-    cax1 = divider1.append_axes('right', size='10%', pad=0.1)
-    fig1.colorbar(img1,
-                  cax=cax1).set_label('Density',
-                                      fontsize=14)
+    # sim_params = sim_params.numpy()
+    # true_image = np.squeeze(true_image.numpy())
+    
+    # # Plot normalized radiograph and density field for diagnostics.
+    # fig1, ax1 = plt.subplots(1, 1, figsize=(12, 12))
+    # img1 = ax1.imshow(true_image,
+    #                   aspect='equal',
+    #                   origin='lower',
+    #                   cmap='jet')
+    # ax1.set_ylabel("Z-axis", fontsize=16)                 
+    # ax1.set_xlabel("R-axis", fontsize=16)
+    # ax1.set_title('Time={:.3f}us'.format(sim_params[-1]), fontsize=18)
 
-    plt.show()
+    # divider1 = make_axes_locatable(ax1)
+    # cax1 = divider1.append_axes('right', size='10%', pad=0.1)
+    # fig1.colorbar(img1,
+    #               cax=cax1).set_label('Density',
+    #                                   fontsize=14)
+
+    # plt.show()
     

@@ -84,9 +84,9 @@ for k, filepath in enumerate(eval_filelist):
     #print('Shape of Bspline node array:', Bspline_nodes.shape)
     
     sim_time = npz['sim_time']
-    print('Sim. Time:', sim_time)
-    round_sim_time = round(4.0*sim_time)/4.0
-    print('Nearest 0.25us Sim. Time:', round_sim_time)
+    #print('Sim. Time:', sim_time)
+    round_sim_time = str(round(4.0*sim_time)/4.0)
+    #print('Nearest 0.25us Sim. Time:', round_sim_time)
     
     npz.close()
 
@@ -117,7 +117,7 @@ for k, filepath in enumerate(eval_filelist):
         #print('Image_min:', image_min)
         #print('Image_max:', image_max)
         
-    print('============')
+    #print('============')
     
 # Calculate averages
 image_avg = image_avg/Nsamp
