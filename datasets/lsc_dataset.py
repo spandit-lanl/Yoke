@@ -196,7 +196,12 @@ class LSCnorm_cntr2rho_DataSet(Dataset):
         time_keys.remove('Bspline_avg')        
         time_keys.remove('Bspline_min')
         time_keys.remove('Bspline_max')
-        print(time_keys)
+        self.time_keys = sorted([float(k) for k in time_keys])
+
+        self.avg_rho_by_time = dict()
+        for tk in self.time_keys:
+            self.avg_rho_by_time[str(tk)] = norm_npz[str(tk)]
+
         self.Bspline_min = norm_npz['Bspline_min']
         self.Bspline_max = norm_npz['Bspline_max']
         
@@ -223,22 +228,36 @@ class LSCnorm_cntr2rho_DataSet(Dataset):
         filepath = self.filelist[index]
         npz = np.load(self.LSC_NPZ_DIR+filepath)
         
+        # Get time associated with image
+        sim_time = npz['sim_time']
+        round_sim_time = round(4.0*sim_time)/4.0
+
+        # Load image
         true_image = LSCread_npz(npz, 'av_density')
-        true_image = np.concatenate((np.fliplr(true_image), true_image), axis=1)
-        nY, nX = true_image.shape
-        true_image = true_image.reshape((1, nY, nX))
-        true_image = torch.tensor(true_image).to(torch.float32)
+        true_image = np.concatenate((np.fliplr(true_image),
+                                     true_image),
+                                    axis=1)
+        # unbias image
+        unbias_true_image = true_image - self.avg_rho_by_time[str(round_sim_time)]
+        nY, nX = unbias_true_image.shape
+        unbias_true_image = unbias_true_image.reshape((1, nY, nX))
+        unbias_true_image = torch.tensor(unbias_true_image).to(torch.float32)
 
         ## Get the contours and sim_time
         sim_key = LSCnpz2key(self.LSC_NPZ_DIR+filepath)
         Bspline_nodes = LSCcsv2bspline_pts(self.design_file, sim_key)
-        sim_time = npz['sim_time']
+
         npz.close()
 
-        sim_params = np.append(Bspline_nodes, sim_time)
-        sim_params = torch.from_numpy(sim_params).to(torch.float32)
+        # Scale round_sim_time
+        norm_time = round_sim_time/25.0
+
+        # Normalize Bspline nodes
+        norm_Bspline_nodes = (Bspline_nodes - self.Bspline_min)/(self.Bspline_max - self.Bspline_min)
+        norm_sim_params = np.append(norm_Bspline_nodes, norm_time)
+        norm_sim_params = torch.from_numpy(norm_sim_params).to(torch.float32)
         
-        return sim_params, true_image
+        return norm_sim_params, unbias_true_image
 
 
 if __name__ == '__main__':
@@ -279,48 +298,42 @@ if __name__ == '__main__':
     csv_filename = LSC_DESIGN_DIR + 'design_lsc240420_MASTER.csv'
     bspline_pts = LSCcsv2bspline_pts(csv_filename, LSCkey)
     print('Shape of B-spline points:', bspline_pts.shape)
-    print('B-spline points:', bspline_pts)
+    #print('B-spline points:', bspline_pts)
     
     filelist = YOKE_DIR + 'filelists/lsc240420_test_10pct.txt'
     # LSC_ds = LSC_cntr2rho_DataSet(LSC_NPZ_DIR,
     #                               filelist,
     #                               csv_filename)
-    # sampIDX = 1
-    # sim_params, true_image = LSC_ds.__getitem__(sampIDX)
-    
-    # print('Shape of true_image tensor: ', true_image.shape)
-    # print('Shape of sim_params tensor: ', sim_params.shape)
-    # print('sim_params:', sim_params)
-
     normalization_file = '/data2/yoke/normalization/lsc240420_norm.npz'
     LSC_ds  = LSCnorm_cntr2rho_DataSet(LSC_NPZ_DIR,
                                        filelist,
                                        csv_filename,
                                        normalization_file)
     sampIDX = 1
+    # Normalization dataset returns: norm_sim_params, unbias_true_image
     sim_params, true_image = LSC_ds.__getitem__(sampIDX)
 
     print('Shape of true_image tensor: ', true_image.shape)
     print('Shape of sim_params tensor: ', sim_params.shape)
-
-    # sim_params = sim_params.numpy()
-    # true_image = np.squeeze(true_image.numpy())
     
-    # # Plot normalized radiograph and density field for diagnostics.
-    # fig1, ax1 = plt.subplots(1, 1, figsize=(12, 12))
-    # img1 = ax1.imshow(true_image,
-    #                   aspect='equal',
-    #                   origin='lower',
-    #                   cmap='jet')
-    # ax1.set_ylabel("Z-axis", fontsize=16)                 
-    # ax1.set_xlabel("R-axis", fontsize=16)
-    # ax1.set_title('Time={:.3f}us'.format(sim_params[-1]), fontsize=18)
+    sim_params = sim_params.numpy()
+    true_image = np.squeeze(true_image.numpy())
+    
+    # Plot normalized radiograph and density field for diagnostics.
+    fig1, ax1 = plt.subplots(1, 1, figsize=(12, 12))
+    img1 = ax1.imshow(true_image,
+                      aspect='equal',
+                      origin='lower',
+                      cmap='jet')
+    ax1.set_ylabel("Z-axis", fontsize=16)                 
+    ax1.set_xlabel("R-axis", fontsize=16)
+    ax1.set_title('Time={:.3f}us'.format(sim_params[-1]), fontsize=18)
 
-    # divider1 = make_axes_locatable(ax1)
-    # cax1 = divider1.append_axes('right', size='10%', pad=0.1)
-    # fig1.colorbar(img1,
-    #               cax=cax1).set_label('Density',
-    #                                   fontsize=14)
+    divider1 = make_axes_locatable(ax1)
+    cax1 = divider1.append_axes('right', size='10%', pad=0.1)
+    fig1.colorbar(img1,
+                  cax=cax1).set_label('Density',
+                                      fontsize=14)
 
-    # plt.show()
+    plt.show()
     

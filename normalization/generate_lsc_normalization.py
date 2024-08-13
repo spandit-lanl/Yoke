@@ -67,6 +67,7 @@ Nsamp = len(eval_filelist)
 print('Number of samples:', Nsamp)
 
 avg_time_dict = {}
+nsamp_time_dict = {}
 
 # Build arrays to normalize with
 for k, filepath in enumerate(eval_filelist):
@@ -92,8 +93,10 @@ for k, filepath in enumerate(eval_filelist):
 
     if round_sim_time in avg_time_dict.keys():
         avg_time_dict[round_sim_time] += true_image
+        nsamp_time_dict[round_sim_time] += 1
     else:
         avg_time_dict[round_sim_time] = true_image
+        nsamp_time_dict[round_sim_time] = 1
 
     # Calculate normalization quantities
     if k == 0:
@@ -124,7 +127,7 @@ image_avg = image_avg/Nsamp
 Bspline_avg = Bspline_avg/Nsamp
 
 for k, v in avg_time_dict.items():
-    avg_time_dict[k] = v/Nsamp
+    avg_time_dict[k] = v/nsamp_time_dict[k]
 
 # Save normalization information
 np.savez('./lsc240420_norm.npz',
