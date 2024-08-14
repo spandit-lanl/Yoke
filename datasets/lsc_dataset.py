@@ -239,6 +239,7 @@ class LSCnorm_cntr2rho_DataSet(Dataset):
                                     axis=1)
         # unbias image
         unbias_true_image = true_image - self.avg_rho_by_time[str(round_sim_time)]
+        #unbias_true_image = self.avg_rho_by_time[str(round_sim_time)]
         nY, nX = unbias_true_image.shape
         unbias_true_image = unbias_true_image.reshape((1, nY, nX))
         unbias_true_image = torch.tensor(unbias_true_image).to(torch.float32)
