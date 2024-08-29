@@ -119,16 +119,16 @@ initial_learningrate = 0.0007
 #                           act_layer=nn.GELU)
 
 model = tCNNsurrogate(input_size=29,
-                      linear_features=(7, 5, 256),
-                      #linear_features=(7, 5, 512),
+                      #linear_features=(7, 5, 256),
+                      linear_features=(7, 5, 512),
                       initial_tconv_kernel=(5, 5),
                       initial_tconv_stride=(5, 5),
                       initial_tconv_padding=(0, 0),
                       initial_tconv_outpadding=(0, 0),
                       initial_tconv_dilation=(1, 1),
                       kernel=(3, 3),
-                      nfeature_list=[256, 128, 64, 32, 16],
-                      #nfeature_list=[512, 512, 256, 128, 64],
+                      #nfeature_list=[256, 128, 64, 32, 16],
+                      nfeature_list=[512, 512, 256, 128, 64],
                       output_image_size=(1120, 800),
                       act_layer=nn.GELU)
 

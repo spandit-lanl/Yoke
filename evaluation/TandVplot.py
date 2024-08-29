@@ -192,7 +192,7 @@ for tIDX, Tcsv in enumerate(trn_csv_list):
 plt.legend(fontsize=16)
 
 # No xlim
-ax.set_ylim(0.0, 0.005)
+ax.set_ylim(0.0, 0.003)
 
 # Set axis labels
 ax.set_ylabel('Loss', fontsize=16)
