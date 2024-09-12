@@ -42,9 +42,38 @@ class WindowMSA(nn.Module):
         
         super().__init__()
         # Check size compatibilities
-        assert emb_size % num_heads == 0
-        assert patch_grid_size[0] % window_size[0] == 0
-        assert patch_grid_size[1] % window_size[1] == 0
+        try:
+            msg = 'Embedding size not divisible by number of heads!!!'
+            assert emb_size % num_heads == 0, msg
+        except AssertionError as e:
+            msg_tuple = ('Embedding size:',
+                         emb_size,
+                         'Number of heads:',
+                         num_heads)
+            e.args += msg_tuple
+            raise
+
+        try:
+            msg = 'Patch-grid not divisible by window-size!!!'
+            assert patch_grid_size[0] % window_size[0] == 0, msg
+        except AssertionError as e:
+            msg_tuple = ('Patch-grid 1:',
+                         patch_grid_size[0],
+                         'Window-size 1:',
+                         window_size[0])
+            e.args += msg_tuple
+            raise
+        
+        try:
+            msg = 'Patch-grid not divisible by window-size!!!'
+            assert patch_grid_size[1] % window_size[1] == 0, msg
+        except AssertionError as e:
+            msg_tuple = ('Patch-grid 2:',
+                         patch_grid_size[0],
+                         'Window-size 2:',
+                         window_size[0])
+            e.args += msg_tuple
+            raise
         
         self.emb_size = emb_size
         self.num_heads = num_heads
@@ -154,12 +183,55 @@ class ShiftedWindowMSA(nn.Module):
         
         super().__init__()
         # Check size compatibilities
-        assert emb_size % num_heads == 0
-        assert patch_grid_size[0] % window_size[0] == 0
-        assert patch_grid_size[1] % window_size[1] == 0
-        assert window_size[0] % 2 == 0
-        assert window_size[1] % 2 == 0
+        try:
+            msg = 'Embedding size not divisible by number of heads!!!'
+            assert emb_size % num_heads == 0, msg
+        except AssertionError as e:
+            msg_tuple = ('Embedding size:',
+                         emb_size,
+                         'Number of heads:',
+                         num_heads)
+            e.args += msg_tuple
+            raise
+
+        try:
+            msg = 'Patch-grid not divisible by window-size!!!'
+            assert patch_grid_size[0] % window_size[0] == 0, msg
+        except AssertionError as e:
+            msg_tuple = ('Patch-grid 1:',
+                         patch_grid_size[0],
+                         'Window-size 1:',
+                         window_size[0])
+            e.args += msg_tuple
+            raise
         
+        try:
+            msg = 'Patch-grid not divisible by window-size!!!'
+            assert patch_grid_size[1] % window_size[1] == 0, msg
+        except AssertionError as e:
+            msg_tuple = ('Patch-grid 2:',
+                         patch_grid_size[0],
+                         'Window-size 2:',
+                         window_size[0])
+            e.args += msg_tuple
+            raise
+
+        try:
+            msg = 'Window height not divisble by 2!!!'
+            assert window_size[0] % 2 == 0, msg
+        except AssertionError as e:
+            msg_tuple = ('Window height:', window_size[0])
+            e.args += msg_tuple
+            raise
+
+        try:
+            msg = 'Window width not divisble by 2!!!'
+            assert window_size[1] % 2 == 0, msg
+        except AssertionError as e:
+            msg_tuple = ('Window width:', window_size[1])
+            e.args += msg_tuple
+            raise
+
         self.emb_size = emb_size
         self.num_heads = num_heads
         self.patch_grid_size = patch_grid_size

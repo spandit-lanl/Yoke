@@ -60,11 +60,7 @@ class SwinEncoder(nn.Module):
                  patch_grid_size: (int, int)=(16, 32),
                  window_size: (int, int)=(8, 4)):
         super().__init__()
-        # Check size compatibilities
-        assert emb_size % num_heads == 0
-        assert patch_grid_size[0] % window_size[0] == 0
-        assert patch_grid_size[1] % window_size[1] == 0
-        
+
         self.emb_size = emb_size
         self.num_heads = num_heads
         self.patch_grid_size = patch_grid_size

@@ -20,6 +20,28 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, RandomSampler
 
 
+def count_torch_params(model, trainable=True):
+    """Count parameters in a pytorch model.
+
+    Args:
+        model (nn.Module): Model to count parameters for.
+        trainable (bool): If TRUE, count only trainable parameters.
+
+    """
+
+    plist = []
+    for p in model.parameters():
+        if trainable:
+            if p.requires_grad:
+                plist.append(p.numel())
+            else:
+                pass
+        else:
+            plist.append(p.numel())
+
+    return sum(plist)
+
+
 ######################################################
 ## Helper function for model/optimizer saving/loading
 ######################################################

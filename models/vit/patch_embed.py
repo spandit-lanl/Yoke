@@ -59,7 +59,29 @@ class ClimaX_ParallelVarPatchEmbed(nn.Module):
                  norm_layer=None):
         
         super().__init__()
+        # Check size compatibilities
+        try:
+            msg = 'Image height not divisible by patch height!!!'
+            assert img_size[0] % patch_size[0] == 0, msg
+        except AssertionError as e:
+            msg_tuple = ('Image height:',
+                         img_size[0],
+                         'Patch height:',
+                         patch_size[0])
+            e.args += msg_tuple
+            raise
 
+        try:
+            msg = 'Image width not divisible by patch widht!!!'
+            assert img_size[1] % patch_size[1] == 0, msg
+        except AssertionError as e:
+            msg_tuple = ('Image width:',
+                         img_size[1],
+                         'Patch width:',
+                         patch_size[1])
+            e.args += msg_tuple
+            raise
+        
         self.max_vars = max_vars
         self.img_size = img_size
         self.patch_size = patch_size
@@ -156,9 +178,28 @@ class SwinEmbedding(nn.Module):
                  embed_dim: int=64,
                  norm_layer=None):
         super().__init__()
-        # NOTE: There is no padding used and the stride is equal to the patch
-        # size. Also, the kernel and stride are equal in both directions. These
-        # choices may need to be adjusted for use with rectangular images.
+        # Check size compatibilities
+        try:
+            msg = 'Image height not divisible by patch height!!!'
+            assert img_size[0] % patch_size[0] == 0, msg
+        except AssertionError as e:
+            msg_tuple = ('Image height:',
+                         img_size[0],
+                         'Patch height:',
+                         patch_size[0])
+            e.args += msg_tuple
+            raise
+
+        try:
+            msg = 'Image width not divisible by patch widht!!!'
+            assert img_size[1] % patch_size[1] == 0, msg
+        except AssertionError as e:
+            msg_tuple = ('Image width:',
+                         img_size[1],
+                         'Patch width:',
+                         patch_size[1])
+            e.args += msg_tuple
+            raise
 
         self.num_vars = num_vars
         self.img_size = img_size

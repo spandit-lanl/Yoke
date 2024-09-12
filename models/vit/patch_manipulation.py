@@ -50,8 +50,30 @@ class PatchMerging(nn.Module):
                  s1: int=2,
                  s2: int=2):
         super().__init__()
+        # Check size compatibilities
+        try:
+            msg = 'Patch-grid height not divisible by height of patch-merge scale!!!'
+            assert patch_grid_size[0] % s1 == 0, msg
+        except AssertionError as e:
+            msg_tuple = ('Patch-grid height:',
+                         patch_grid_size[0],
+                         'Patch-merge scale height:',
+                         s1)
+            e.args += msg_tuple
+            raise
 
-        self.emb_size = emb_size
+        try:
+            msg = 'Patch-grid width not divisible by width of patch-merge scale!!!'
+            assert patch_grid_size[1] % s2 == 0, msg
+        except AssertionError as e:
+            msg_tuple = ('Patch-grid width:',
+                         patch_grid_size[1],
+                         'Patch-merge scale width:',
+                         s2)
+            e.args += msg_tuple
+            raise
+        
+        self.in_emb_size = emb_size
         
         # Patch grid parameters
         self.H = patch_grid_size[0]
@@ -60,12 +82,18 @@ class PatchMerging(nn.Module):
         # Patch division factors
         self.s1 = s1
         self.s2 = s2
+
+        # New patch grid
+        self.out_patch_grid_size = (int(self.H/self.s1),
+                                    int(self.W/self.s2))
+        
         # Embedding dimension factor
         self.emb_factor = emb_factor
-
+        self.out_emb_size = self.emb_factor*self.in_emb_size
+        
         # Linear re-embedding
-        self.linear = nn.Linear(self.s1*self.s2*emb_size,
-                                self.emb_factor*emb_size)        
+        self.linear = nn.Linear(self.s1*self.s2*self.in_emb_size,
+                                self.out_emb_size)        
         
     def forward(self, x):
         # The input tensor is shape (B, num_tokens, embedding_dim)
@@ -74,14 +102,12 @@ class PatchMerging(nn.Module):
         # NOTE: The number of tokens is assumed to be L=H*W
         assert L == self.H*self.W
 
-        H_new = int(self.H/self.s1)
-        W_new = int(self.W/self.s2)
         x = rearrange(x,
                       'b (h s1 w s2) c -> b (h w) (s1 s2 c)',
                       s1=self.s1,
                       s2=self.s2,
-                      h=H_new,
-                      w=W_new)
+                      h=self.out_patch_grid_size[0],
+                      w=self.out_patch_grid_size[1])
         x = self.linear(x)
 
         return x
