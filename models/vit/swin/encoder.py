@@ -12,6 +12,7 @@ import numpy as np
 import sys, os
 sys.path.insert(0, os.getenv('YOKE_DIR'))
 from models.vit.swin.windowed_msa import WindowMSA, ShiftedWindowMSA
+from models.vit.swin.windowed_msa import WindowCosMSA, ShiftedWindowCosMSA
 
 
 class MLP(nn.Module):
@@ -89,6 +90,55 @@ class SwinEncoder(nn.Module):
         return x
 
 
+class SwinEncoder2(nn.Module):
+    """The main SWIN-V2 encoder changes the original SWIN encoder to apply
+    layer normalization after the MLP layers and MSA layers. The MSA layers are
+    also modified to use a *cosine* self-attention mechanism with a learnable,
+    per-head, scaling.
+
+    Args:
+        emb_size (int): Incoming embedding dimension.
+        num_heads (int): Number of heads to use in the MSA.
+        patch_grid_size (int, int): Grid dimensions making up the token list.
+        window_size (int, int): Dimensions of window to use on the patch grid.
+
+    """
+    
+    def __init__(self,
+                 emb_size: int=64,
+                 num_heads: int=10,
+                 patch_grid_size: (int, int)=(16, 32),
+                 window_size: (int, int)=(8, 4)):
+        super().__init__()
+
+        self.emb_size = emb_size
+        self.num_heads = num_heads
+        self.patch_grid_size = patch_grid_size
+        self.window_size = window_size
+
+        self.WMSA = WindowCosMSA(emb_size=self.emb_size,
+                                 num_heads=self.num_heads,
+                                 patch_grid_size=self.patch_grid_size,
+                                 window_size=self.window_size)
+        self.SWMSA = ShiftedWindowCosMSA(emb_size=self.emb_size,
+                                         num_heads=self.num_heads,
+                                         patch_grid_size=self.patch_grid_size,
+                                         window_size=self.window_size)
+
+        self.ln = nn.LayerNorm(self.emb_size)
+        self.MLP = MLP(self.emb_size)
+        
+    def forward(self, x):
+        # Window Attention
+        x = x + self.ln(self.WMSA(x))
+        x = x + self.ln(self.MLP(x))
+        # Shifted Window Attention
+        x = x + self.ln(self.SWMSA(x))
+        x = x + self.ln(self.MLP(x))
+        
+        return x
+
+
 if __name__ == '__main__':
     """Usage Example.
 
@@ -111,8 +161,12 @@ if __name__ == '__main__':
                                      num_heads=num_heads,
                                      patch_grid_size=patch_grid_size,
                                      window_size=window_size).to(device)
-        
+    model_swinV2_encoder = SwinEncoder2(emb_size=emb_size,
+                                        num_heads=num_heads,
+                                        patch_grid_size=patch_grid_size,
+                                        window_size=window_size).to(device)
     print('Input shape:', x.shape)
     print('SWIN encoder shape:', model_swin_encoder(x).shape)
+    print('SWIN-V2 encoder shape:', model_swinV2_encoder(x).shape)
 
 
