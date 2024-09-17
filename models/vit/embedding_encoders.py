@@ -255,7 +255,7 @@ class ClimaX_PosEmbed(nn.Module):
 
     def forward(self, x):
         # The input tensor is shape:
-        #  (B, L, D)=(B, NumTokens/Patches, embed_dim)
+        #  (B, L, D)=(B, NumTokens[i.e. Patches], embed_dim)
 
         x = x + self.pos_embed
         
