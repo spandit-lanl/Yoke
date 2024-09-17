@@ -106,11 +106,11 @@ class LodeRunner(nn.Module):
                                   patch_grid_size=self.parallel_embed.grid_size,
                                   patch_size=self.patch_size)
 
-    def forward(self, x, in_vars, out_vars, lead_times: torch.Tensor, device):
+    def forward(self, x, in_vars, out_vars, lead_times: torch.Tensor):
         print('Input shape:', x.shape)
         
         # First embed input
-        varIDXs = self.var_embed_layer.get_var_ids(tuple(in_vars), device)
+        varIDXs = self.var_embed_layer.get_var_ids(tuple(in_vars), x.device)
         x = self.parallel_embed(x, varIDXs)
         print('Shape after parallel patch-embed:', x.shape)
         
@@ -143,7 +143,7 @@ class LodeRunner(nn.Module):
         print('Shape after Unpatch:', x.shape)
 
         # Select only entries corresponding to out_vars for loss
-        out_var_ids = self.var_embed_layer.get_var_ids(tuple(out_vars), device)
+        out_var_ids = self.var_embed_layer.get_var_ids(tuple(out_vars), x.device)
         preds = x[:, out_var_ids]
         
         return preds
@@ -215,5 +215,5 @@ if __name__ == '__main__':
                              window_sizes=window_sizes,
                              patch_merge_scales=patch_merge_scales,
                              verbose=False).to(device)
-    print('Lode Runner output shape:', lode_runner(x, x_vars, out_vars, lead_times, device).shape)
+    print('Lode Runner output shape:', lode_runner(x, x_vars, out_vars, lead_times).shape)
     print('Lode Runner parameters:', count_torch_params(lode_runner, trainable=True))
