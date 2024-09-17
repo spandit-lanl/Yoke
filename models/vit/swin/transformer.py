@@ -13,7 +13,7 @@ import sys, os
 sys.path.insert(0, os.getenv('YOKE_DIR'))
 from models.vit.swin.encoder import SwinEncoder, SwinEncoder2
 from models.vit.patch_embed import SwinEmbedding
-from models.vit.patch_manipulation import PatchMerging
+from models.vit.patch_manipulation import PatchMerge, PatchExpand
 
 
 class Swin(nn.Module):
@@ -87,7 +87,7 @@ class Swin(nn.Module):
         self.stage3 = nn.ModuleList()
         self.stage4 = nn.ModuleList()
         
-        self.PatchMerging = nn.ModuleList()
+        self.PatchMerge = nn.ModuleList()
 
         # A series of SWIN encoders with embedding size and number of heads
         # doubled every stage.
@@ -98,14 +98,14 @@ class Swin(nn.Module):
                                            window_size=self.window_sizes[0]))
 
         # Patch-merging between each SWIN encoder block.
-        self.PatchMerging.append(PatchMerging(emb_size=self.emb_size,
-                                              emb_factor=self.emb_factor,
-                                              patch_grid_size=self.patch_grid_size,
-                                              s1=self.patch_merge_scales[0][0],
-                                              s2=self.patch_merge_scales[0][1]))
+        self.PatchMerge.append(PatchMerge(emb_size=self.emb_size,
+                                          emb_factor=self.emb_factor,
+                                          patch_grid_size=self.patch_grid_size,
+                                          s1=self.patch_merge_scales[0][0],
+                                          s2=self.patch_merge_scales[0][1]))
 
-        new_patch_grid_size = self.PatchMerging[-1].out_patch_grid_size
-        new_emb_size = self.PatchMerging[-1].out_emb_size
+        new_patch_grid_size = self.PatchMerge[-1].out_patch_grid_size
+        new_emb_size = self.PatchMerge[-1].out_emb_size
         new_num_heads = self.emb_factor*self.num_heads
         if verbose:
             print('New patch-grid size after merge 1:', new_patch_grid_size)
@@ -118,14 +118,14 @@ class Swin(nn.Module):
                                            patch_grid_size=new_patch_grid_size,
                                            window_size=self.window_sizes[1]))
             
-        self.PatchMerging.append(PatchMerging(emb_size=new_emb_size,
-                                              emb_factor=self.emb_factor,
-                                              patch_grid_size=new_patch_grid_size,
-                                              s1=self.patch_merge_scales[1][0],
-                                              s2=self.patch_merge_scales[1][1]))
+        self.PatchMerge.append(PatchMerge(emb_size=new_emb_size,
+                                          emb_factor=self.emb_factor,
+                                          patch_grid_size=new_patch_grid_size,
+                                          s1=self.patch_merge_scales[1][0],
+                                          s2=self.patch_merge_scales[1][1]))
 
-        new_patch_grid_size = self.PatchMerging[-1].out_patch_grid_size
-        new_emb_size = self.PatchMerging[-1].out_emb_size
+        new_patch_grid_size = self.PatchMerge[-1].out_patch_grid_size
+        new_emb_size = self.PatchMerge[-1].out_emb_size
         new_num_heads = self.emb_factor*new_num_heads
         if verbose:
             print('New patch-grid size after merge 2:', new_patch_grid_size)
@@ -138,14 +138,14 @@ class Swin(nn.Module):
                                            patch_grid_size=new_patch_grid_size,
                                            window_size=self.window_sizes[2]))
 
-        self.PatchMerging.append(PatchMerging(emb_size=new_emb_size,
-                                              emb_factor=self.emb_factor,
-                                              patch_grid_size=new_patch_grid_size,
-                                              s1=self.patch_merge_scales[2][0],
-                                              s2=self.patch_merge_scales[2][1]))
+        self.PatchMerge.append(PatchMerge(emb_size=new_emb_size,
+                                          emb_factor=self.emb_factor,
+                                          patch_grid_size=new_patch_grid_size,
+                                          s1=self.patch_merge_scales[2][0],
+                                          s2=self.patch_merge_scales[2][1]))
 
-        new_patch_grid_size = self.PatchMerging[-1].out_patch_grid_size
-        new_emb_size = self.PatchMerging[-1].out_emb_size
+        new_patch_grid_size = self.PatchMerge[-1].out_patch_grid_size
+        new_emb_size = self.PatchMerge[-1].out_emb_size
         new_num_heads = self.emb_factor*new_num_heads
         if verbose:
             print('New patch-grid size after merge 3:', new_patch_grid_size)
@@ -170,17 +170,17 @@ class Swin(nn.Module):
         for i, stage in enumerate(self.stage1):
             x = stage(x)
             
-        x = self.PatchMerging[0](x)
+        x = self.PatchMerge[0](x)
 
         for i, stage in enumerate(self.stage2):
             x = stage(x)
             
-        x = self.PatchMerging[1](x)
+        x = self.PatchMerge[1](x)
 
         for i, stage in enumerate(self.stage3):
             x = stage(x)
 
-        x = self.PatchMerging[2](x)
+        x = self.PatchMerge[2](x)
 
         for i, stage in enumerate(self.stage4):
             x = stage(x)
@@ -264,7 +264,7 @@ class SwinV2(nn.Module):
         self.stage3 = nn.ModuleList()
         self.stage4 = nn.ModuleList()
         
-        self.PatchMerging = nn.ModuleList()
+        self.PatchMerge = nn.ModuleList()
 
         # A series of SWIN encoders with embedding size and number of heads
         # doubled every stage.
@@ -279,14 +279,14 @@ class SwinV2(nn.Module):
                 self.stage1.append(nn.LayerNorm(self.emb_size))
 
         # Patch-merging between each SWIN encoder block.
-        self.PatchMerging.append(PatchMerging(emb_size=self.emb_size,
-                                              emb_factor=self.emb_factor,
-                                              patch_grid_size=self.patch_grid_size,
-                                              s1=self.patch_merge_scales[0][0],
-                                              s2=self.patch_merge_scales[0][1]))
+        self.PatchMerge.append(PatchMerge(emb_size=self.emb_size,
+                                          emb_factor=self.emb_factor,
+                                          patch_grid_size=self.patch_grid_size,
+                                          s1=self.patch_merge_scales[0][0],
+                                          s2=self.patch_merge_scales[0][1]))
 
-        new_patch_grid_size = self.PatchMerging[-1].out_patch_grid_size
-        new_emb_size = self.PatchMerging[-1].out_emb_size
+        new_patch_grid_size = self.PatchMerge[-1].out_patch_grid_size
+        new_emb_size = self.PatchMerge[-1].out_emb_size
         new_num_heads = self.emb_factor*self.num_heads
         if verbose:
             print('New patch-grid size after merge 1:', new_patch_grid_size)
@@ -303,14 +303,14 @@ class SwinV2(nn.Module):
             if (i+1) % 3 == 0:
                 self.stage2.append(nn.LayerNorm(new_emb_size))
             
-        self.PatchMerging.append(PatchMerging(emb_size=new_emb_size,
-                                              emb_factor=self.emb_factor,
-                                              patch_grid_size=new_patch_grid_size,
-                                              s1=self.patch_merge_scales[1][0],
-                                              s2=self.patch_merge_scales[1][1]))
+        self.PatchMerge.append(PatchMerge(emb_size=new_emb_size,
+                                          emb_factor=self.emb_factor,
+                                          patch_grid_size=new_patch_grid_size,
+                                          s1=self.patch_merge_scales[1][0],
+                                          s2=self.patch_merge_scales[1][1]))
 
-        new_patch_grid_size = self.PatchMerging[-1].out_patch_grid_size
-        new_emb_size = self.PatchMerging[-1].out_emb_size
+        new_patch_grid_size = self.PatchMerge[-1].out_patch_grid_size
+        new_emb_size = self.PatchMerge[-1].out_emb_size
         new_num_heads = self.emb_factor*new_num_heads
         if verbose:
             print('New patch-grid size after merge 2:', new_patch_grid_size)
@@ -326,14 +326,14 @@ class SwinV2(nn.Module):
             if (i+1) % 3 == 0:
                 self.stage3.append(nn.LayerNorm(new_emb_size))
                 
-        self.PatchMerging.append(PatchMerging(emb_size=new_emb_size,
-                                              emb_factor=self.emb_factor,
-                                              patch_grid_size=new_patch_grid_size,
-                                              s1=self.patch_merge_scales[2][0],
-                                              s2=self.patch_merge_scales[2][1]))
+        self.PatchMerge.append(PatchMerge(emb_size=new_emb_size,
+                                          emb_factor=self.emb_factor,
+                                          patch_grid_size=new_patch_grid_size,
+                                          s1=self.patch_merge_scales[2][0],
+                                          s2=self.patch_merge_scales[2][1]))
 
-        new_patch_grid_size = self.PatchMerging[-1].out_patch_grid_size
-        new_emb_size = self.PatchMerging[-1].out_emb_size
+        new_patch_grid_size = self.PatchMerge[-1].out_patch_grid_size
+        new_emb_size = self.PatchMerge[-1].out_emb_size
         new_num_heads = self.emb_factor*new_num_heads
         if verbose:
             print('New patch-grid size after merge 3:', new_patch_grid_size)
@@ -362,17 +362,17 @@ class SwinV2(nn.Module):
         for i, stage in enumerate(self.stage1):
             x = stage(x)
             
-        x = self.PatchMerging[0](x)
+        x = self.PatchMerge[0](x)
 
         for i, stage in enumerate(self.stage2):
             x = stage(x)
             
-        x = self.PatchMerging[1](x)
+        x = self.PatchMerge[1](x)
 
         for i, stage in enumerate(self.stage3):
             x = stage(x)
 
-        x = self.PatchMerging[2](x)
+        x = self.PatchMerge[2](x)
 
         for i, stage in enumerate(self.stage4):
             x = stage(x)

@@ -139,6 +139,73 @@ class SwinEncoder2(nn.Module):
         return x
 
 
+class SwinConnectEncoder(SwinEncoder2):
+    """A SWIN-V2 encoder that outputs a copy of its forward pass to use in
+    residual or skip connection layers.
+
+    Args:
+        emb_size (int): Incoming embedding dimension.
+        num_heads (int): Number of heads to use in the MSA.
+        patch_grid_size (int, int): Grid dimensions making up the token list.
+        window_size (int, int): Dimensions of window to use on the patch grid.
+
+    """
+    
+    def __init__(self,
+                 emb_size: int=64,
+                 num_heads: int=10,
+                 patch_grid_size: (int, int)=(16, 32),
+                 window_size: (int, int)=(8, 4)):
+        super().__init__(emb_size=emb_size,
+                         num_heads=num_heads,
+                         patch_grid_size=patch_grid_size,
+                         window_size=window_size)
+        
+    def forward(self, x):
+        x = super().forward(x)
+        
+        return x, x
+
+
+class SwinConnectDecoder(SwinEncoder2):
+    """A SWIN-V2 encoder that appends an extra input tensor and then remaps to
+    the embedding dimension through a linear layer prior to passing the result
+    through a standard SWIN-V2 encoder.
+
+    Args:
+        emb_size (int): Incoming embedding dimension.
+        num_heads (int): Number of heads to use in the MSA.
+        patch_grid_size (int, int): Grid dimensions making up the token list.
+        window_size (int, int): Dimensions of window to use on the patch grid.
+
+    """
+    
+    def __init__(self,
+                 emb_size: int=64,
+                 num_heads: int=10,
+                 patch_grid_size: (int, int)=(16, 32),
+                 window_size: (int, int)=(8, 4)):
+        super().__init__(emb_size=emb_size,
+                         num_heads=num_heads,
+                         patch_grid_size=patch_grid_size,
+                         window_size=window_size)
+
+        self.linear_remap = nn.Linear(2*emb_size, emb_size)
+        
+        
+    def forward(self, x, y):
+        # Concatenate with the skip connection input
+        x = torch.cat([x, y], dim=-1)
+
+        # Remap to embedding dimension linearly
+        x = self.linear_remap(x)
+
+        # Standard SWIN-V2 encoding
+        x = super().forward(x)
+        
+        return x
+
+
 if __name__ == '__main__':
     """Usage Example.
 
@@ -165,8 +232,20 @@ if __name__ == '__main__':
                                         num_heads=num_heads,
                                         patch_grid_size=patch_grid_size,
                                         window_size=window_size).to(device)
+    model_swin_connect = SwinConnectEncoder(emb_size=emb_size,
+                                            num_heads=num_heads,
+                                            patch_grid_size=patch_grid_size,
+                                            window_size=window_size).to(device)
+    model_swin_decoder = SwinConnectDecoder(emb_size=emb_size,
+                                            num_heads=num_heads,
+                                            patch_grid_size=patch_grid_size,
+                                            window_size=window_size).to(device)
+
     print('Input shape:', x.shape)
     print('SWIN encoder shape:', model_swin_encoder(x).shape)
     print('SWIN-V2 encoder shape:', model_swinV2_encoder(x).shape)
+    x, y = model_swin_connect(x)
+    print('SWIN connect encoder shape:', x.shape, y.shape)
+    print('SWIN connect decoder shape:', model_swin_decoder(x, y).shape)
 
 

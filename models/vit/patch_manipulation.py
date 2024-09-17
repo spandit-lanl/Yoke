@@ -16,7 +16,7 @@ from einops.layers.torch import Rearrange
 import numpy as np
     
 
-class PatchMerging(nn.Module):
+class PatchMerge(nn.Module):
     """Merge patches and increase embedding dimension.
 
     This layer is passed a (B, L, C) tensor, batches of L tokens, each of
@@ -151,6 +151,19 @@ class PatchExpand(nn.Module):
                  s2: int=2):
         super().__init__()
 
+        # Check size compatibilities
+        try:
+            msg = 'New embedding dimension not divisible by patch-expansion factors!!!'
+            assert (emb_size*emb_factor) % (s1*s2) == 0, msg
+        except AssertionError as e:
+            msg_tuple = ('Input embedding size:', emb_size,
+                         'Embedding factor:', emb_factor,
+                         'Height expansion factor:', s1,
+                         'Width expansion factor:', s2)
+            e.args += msg_tuple
+            raise
+
+        # Input embedding size
         self.emb_size = emb_size
         
         # Patch grid parameters
@@ -160,11 +173,19 @@ class PatchExpand(nn.Module):
         # Patch division factors
         self.s1 = s1
         self.s2 = s2
+
         # Embedding dimension factor
         self.emb_factor = emb_factor
 
+        # New patch grid
+        self.out_patch_grid_size = (int(self.H*self.s1),
+                                    int(self.W*self.s2))
+
+        # Add output embedding size for model building
+        self.out_emb_size = int(self.emb_factor*self.emb_size/(self.s1*self.s2))
+
         # Linear re-embedding
-        self.linear = nn.Linear(self.emb_size, self.emb_factor*emb_size)
+        self.linear = nn.Linear(self.emb_size, self.emb_factor*self.emb_size)
         
     def forward(self, x):
         # The input tensor is shape (B, num_tokens, embedding_dim)
@@ -265,11 +286,11 @@ if __name__ == '__main__':
     s1 = 4
     s2 = 4
     emb_factor = 2
-    merge_model = PatchMerging(emb_dim,
-                               emb_factor=emb_factor,
-                               patch_grid_size=patch_grid_size,
-                               s1=s1,
-                               s2=s2).to(device)
+    merge_model = PatchMerge(emb_dim,
+                             emb_factor=emb_factor,
+                             patch_grid_size=patch_grid_size,
+                             s1=s1,
+                             s2=s2).to(device)
 
     print('Input shape:', x.shape)
     x = merge_model(x)
