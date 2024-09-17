@@ -18,7 +18,7 @@ sys.path.insert(0, os.getenv('YOKE_DIR'))
 from models.vit.swin.encoder import SwinEncoder2
 from models.vit.swin.unet import SwinUnetBackbone
 from models.vit.patch_embed import ClimaX_ParallelVarPatchEmbed
-from models.vit.patch_manipulation import PatchMerge, PatchExpand
+from models.vit.patch_manipulation import PatchMerge, PatchExpand, Unpatchify
 
 from models.vit.aggregate_variables import ClimaX_AggVars
 from models.vit.embedding_encoders import ClimaX_VarEmbed, ClimaX_PosEmbed, ClimaX_TimeEmbed
@@ -98,16 +98,24 @@ class LodeRunner(nn.Module):
                                      patch_merge_scales=self.patch_merge_scales,
                                      verbose=verbose)
 
-    def forward(self, x, vars, lead_times: torch.Tensor, device):
+        # Linear embed the last dimension into V*p_h*p_w
+        self.linear4unpatch = nn.Linear(self.embed_dim,
+                                        self.max_vars*self.patch_size[0]*self.patch_size[1])
+    
+        self.unpatch = Unpatchify(total_num_vars=self.max_vars,
+                                  patch_grid_size=self.parallel_embed.grid_size,
+                                  patch_size=self.patch_size)
+
+    def forward(self, x, in_vars, out_vars, lead_times: torch.Tensor, device):
         print('Input shape:', x.shape)
         
         # First embed input
-        varIDXs = self.var_embed_layer.get_var_ids(tuple(vars), device)
+        varIDXs = self.var_embed_layer.get_var_ids(tuple(in_vars), device)
         x = self.parallel_embed(x, varIDXs)
         print('Shape after parallel patch-embed:', x.shape)
         
         # Encode variables
-        x = self.var_embed_layer(x, vars)
+        x = self.var_embed_layer(x, in_vars)
         print('Shape after variable encoding:', x.shape)
 
         # Aggregate variables
@@ -125,8 +133,20 @@ class LodeRunner(nn.Module):
         # Pass through SWIN-V2 U-Net encoder
         x = self.unet(x)
         print('Shape after U-Net:', x.shape)
+
+        # Use linear map to remap to correct variable and patchsize dimension
+        x = self.linear4unpatch(x)
+        print('Shape after Linear4Unpatch:', x.shape)
         
-        return x
+        # Unpatchify back to original shape
+        x = self.unpatch(x)
+        print('Shape after Unpatch:', x.shape)
+
+        # Select only entries corresponding to out_vars for loss
+        out_var_ids = self.var_embed_layer.get_var_ids(tuple(out_vars), device)
+        preds = x[:, out_var_ids]
+        
+        return preds
 
 
 if __name__ == '__main__':
@@ -166,7 +186,12 @@ if __name__ == '__main__':
             'ss_density',
             'ply_density',
             'air_density']
-    x_varIDX = [1, 7, 10, 13]
+    
+    out_vars=['cu_density',
+              'ss_density',
+              'ply_density',
+              'air_density']
+    
     embed_dim = 128
     emb_factor = 2
     patch_size = (10, 10)
@@ -190,5 +215,5 @@ if __name__ == '__main__':
                              window_sizes=window_sizes,
                              patch_merge_scales=patch_merge_scales,
                              verbose=False).to(device)
-    print('Lode Runner output shape:', lode_runner(x, x_vars, lead_times, device).shape)
+    print('Lode Runner output shape:', lode_runner(x, x_vars, out_vars, lead_times, device).shape)
     print('Lode Runner parameters:', count_torch_params(lode_runner, trainable=True))
