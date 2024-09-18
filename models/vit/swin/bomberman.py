@@ -71,24 +71,32 @@ class LodeRunner(nn.Module):
         self.window_sizes = window_sizes
         self.patch_merge_scales = patch_merge_scales
 
-        
+        # First embed the image as a sequence of tokenized patches. Each
+        # channel is embedded independently.
         self.parallel_embed = ClimaX_ParallelVarPatchEmbed(max_vars=self.max_vars,
                                                            img_size=self.image_size,
                                                            patch_size=self.patch_size,
                                                            embed_dim=self.embed_dim,
                                                            norm_layer=None)
 
+        # Encode tokens corresponding to each variable with a learnable tag
         self.var_embed_layer = ClimaX_VarEmbed(self.default_vars, self.embed_dim)
-    
+
+        # Aggregate variable tokenizations using an attention mechanism
         self.agg_vars = ClimaX_AggVars(self.embed_dim, self.num_heads)
 
+        # Encode each patch with position information. Position encoding is
+        # only index-aware and does not take into account actual spatial
+        # information.
         self.pos_embed = ClimaX_PosEmbed(self.embed_dim,
                                          self.patch_size,
                                          self.image_size,
                                          self.parallel_embed.num_patches)
 
+        # Encode temporal-offset information using a linear mapping.
         self.temporal_encoding = ClimaX_TimeEmbed(self.embed_dim)
-    
+
+        # Pass encoded patch tokens through a SWIN-Unet structure
         self.unet = SwinUnetBackbone(emb_size=self.embed_dim,
                                      emb_factor=self.emb_factor,
                                      patch_grid_size=self.parallel_embed.grid_size,
@@ -101,46 +109,37 @@ class LodeRunner(nn.Module):
         # Linear embed the last dimension into V*p_h*p_w
         self.linear4unpatch = nn.Linear(self.embed_dim,
                                         self.max_vars*self.patch_size[0]*self.patch_size[1])
-    
+
+        # Unmap the tokenized embeddings to variables and images.
         self.unpatch = Unpatchify(total_num_vars=self.max_vars,
                                   patch_grid_size=self.parallel_embed.grid_size,
                                   patch_size=self.patch_size)
 
     def forward(self, x, in_vars, out_vars, lead_times: torch.Tensor):
-        print('Input shape:', x.shape)
-        
         # First embed input
         varIDXs = self.var_embed_layer.get_var_ids(tuple(in_vars), x.device)
         x = self.parallel_embed(x, varIDXs)
-        print('Shape after parallel patch-embed:', x.shape)
         
         # Encode variables
         x = self.var_embed_layer(x, in_vars)
-        print('Shape after variable encoding:', x.shape)
 
         # Aggregate variables
         x = self.agg_vars(x)
-        print('Shape after variable aggregation:', x.shape)
 
         # Encode patch positions, spatial information
         x = self.pos_embed(x)
-        print('Shape after position encoding:', x.shape)
 
         # Encode temporal information
         x = self.temporal_encoding(x, lead_times)
-        print('Shape after temporal encoding:', x.shape)
 
         # Pass through SWIN-V2 U-Net encoder
         x = self.unet(x)
-        print('Shape after U-Net:', x.shape)
 
         # Use linear map to remap to correct variable and patchsize dimension
         x = self.linear4unpatch(x)
-        print('Shape after Linear4Unpatch:', x.shape)
         
         # Unpatchify back to original shape
         x = self.unpatch(x)
-        print('Shape after Unpatch:', x.shape)
 
         # Select only entries corresponding to out_vars for loss
         out_var_ids = self.var_embed_layer.get_var_ids(tuple(out_vars), x.device)
