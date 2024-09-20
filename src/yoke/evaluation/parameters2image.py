@@ -4,14 +4,13 @@ this will become a GUI interface to probe trained image generation models.
 
 """
 
-import os, sys, argparse
+import os, argparse
 import numpy as np
 import torch
 import torch.nn as nn
 
-sys.path.insert(0, os.getenv('YOKE_DIR'))
-from models.surrogateCNNmodules import jekelCNNsurrogate
-import torch_training_utils as tr
+from yoke.models.surrogateCNNmodules import jekelCNNsurrogate
+import yoke.torch_training_utils as tr
 
 # Imports for plotting
 # To view possible matplotlib backends use

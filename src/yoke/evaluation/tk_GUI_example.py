@@ -4,7 +4,6 @@ probe input parameter effects.
 
 """
 
-import os, sys, argparse
 import numpy as np
 
 import tkinter as tk

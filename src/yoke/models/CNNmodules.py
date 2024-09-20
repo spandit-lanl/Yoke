@@ -11,8 +11,7 @@ import math
 import torch
 import torch.nn as nn
 
-sys.path.insert(0, os.getenv('YOKE_DIR'))
-from models.cnn_utils import conv2d_shape
+from yoke.models.cnn_utils import conv2d_shape
 
 
 ####################################

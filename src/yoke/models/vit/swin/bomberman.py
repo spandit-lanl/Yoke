@@ -13,15 +13,13 @@ from einops import rearrange
 from einops.layers.torch import Rearrange
 import numpy as np
 
-import sys, os
-sys.path.insert(0, os.getenv('YOKE_DIR'))
-from models.vit.swin.encoder import SwinEncoder2
-from models.vit.swin.unet import SwinUnetBackbone
-from models.vit.patch_embed import ClimaX_ParallelVarPatchEmbed
-from models.vit.patch_manipulation import PatchMerge, PatchExpand, Unpatchify
+from yoke.models.vit.swin.encoder import SwinEncoder2
+from yoke.models.vit.swin.unet import SwinUnetBackbone
+from yoke.models.vit.patch_embed import ClimaX_ParallelVarPatchEmbed
+from yoke.models.vit.patch_manipulation import PatchMerge, PatchExpand, Unpatchify
 
-from models.vit.aggregate_variables import ClimaX_AggVars
-from models.vit.embedding_encoders import ClimaX_VarEmbed, ClimaX_PosEmbed, ClimaX_TimeEmbed
+from yoke.models.vit.aggregate_variables import ClimaX_AggVars
+from yoke.models.vit.embedding_encoders import ClimaX_VarEmbed, ClimaX_PosEmbed, ClimaX_TimeEmbed
 
 
 class LodeRunner(nn.Module):
@@ -149,9 +147,7 @@ class LodeRunner(nn.Module):
 
 
 if __name__ == '__main__':
-    import sys, os
-    sys.path.insert(0, os.getenv('YOKE_DIR'))
-    from torch_training_utils import count_torch_params
+    from yoke.torch_training_utils import count_torch_params
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 

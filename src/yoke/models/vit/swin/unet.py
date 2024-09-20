@@ -9,12 +9,10 @@ from einops import rearrange
 from einops.layers.torch import Rearrange
 import numpy as np
 
-import sys, os
-sys.path.insert(0, os.getenv('YOKE_DIR'))
-from models.vit.swin.encoder import SwinEncoder2, SwinConnectEncoder
-from models.vit.swin.encoder import SwinConnectDecoder
-from models.vit.patch_embed import SwinEmbedding
-from models.vit.patch_manipulation import PatchMerge, PatchExpand
+from yoke.models.vit.swin.encoder import SwinEncoder2, SwinConnectEncoder
+from yoke.models.vit.swin.encoder import SwinConnectDecoder
+from yoke.models.vit.patch_embed import SwinEmbedding
+from yoke.models.vit.patch_manipulation import PatchMerge, PatchExpand
 
 
 class SwinUnetBackbone(nn.Module):
@@ -396,9 +394,7 @@ class SwinUnetBackbone(nn.Module):
 
 
 if __name__ == '__main__':
-    import sys, os
-    sys.path.insert(0, os.getenv('YOKE_DIR'))
-    from torch_training_utils import count_torch_params
+    from yoke.torch_training_utils import count_torch_params
     
     # (B, H*W, C)
     x = torch.rand(5, 112*80, 96)  # 112*80=8960

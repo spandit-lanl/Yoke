@@ -9,11 +9,9 @@ from einops import rearrange
 from einops.layers.torch import Rearrange
 import numpy as np
 
-import sys, os
-sys.path.insert(0, os.getenv('YOKE_DIR'))
-from models.vit.swin.encoder import SwinEncoder, SwinEncoder2
-from models.vit.patch_embed import SwinEmbedding
-from models.vit.patch_manipulation import PatchMerge, PatchExpand
+from yoke.models.vit.swin.encoder import SwinEncoder, SwinEncoder2
+from yoke.models.vit.patch_embed import SwinEmbedding
+from yoke.models.vit.patch_manipulation import PatchMerge, PatchExpand
 
 
 class Swin(nn.Module):
@@ -383,9 +381,7 @@ class SwinV2(nn.Module):
 
 
 if __name__ == '__main__':
-    import sys, os
-    sys.path.insert(0, os.getenv('YOKE_DIR'))
-    from torch_training_utils import count_torch_params
+    from yoke.torch_training_utils import count_torch_params
     
     # (B, C, H, W)
     x = torch.rand(5, 25, 1120, 800)

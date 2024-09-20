@@ -11,9 +11,7 @@ from einops import rearrange
 from einops.layers.torch import Rearrange
 import numpy as np
 
-import sys, os
-sys.path.insert(0, os.getenv('YOKE_DIR'))
-from models.vit.embedding_encoders import RelativePositionEmbed
+from yoke.models.vit.embedding_encoders import RelativePositionEmbed
 
 
 class WindowMSA(nn.Module):

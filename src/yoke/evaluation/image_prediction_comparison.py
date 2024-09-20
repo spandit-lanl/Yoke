@@ -3,15 +3,14 @@ comparison of the true and predicted image along with the inputs.
 
 """
 
-import os, sys, argparse
+import os, argparse
 import numpy as np
 import torch
 import torch.nn as nn
 
-sys.path.insert(0, os.getenv('YOKE_DIR'))
-from models.surrogateCNNmodules import jekelCNNsurrogate, tCNNsurrogate
-from datasets.lsc_dataset import LSCnpz2key, LSC_cntr2rho_DataSet
-import torch_training_utils as tr
+from yoke.models.surrogateCNNmodules import jekelCNNsurrogate, tCNNsurrogate
+from yoke.datasets.lsc_dataset import LSCnpz2key, LSC_cntr2rho_DataSet
+import yoke.torch_training_utils as tr
 
 # Imports for plotting
 # To view possible matplotlib backends use

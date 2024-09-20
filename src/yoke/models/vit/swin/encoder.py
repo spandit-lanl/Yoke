@@ -9,10 +9,8 @@ from einops import rearrange
 from einops.layers.torch import Rearrange
 import numpy as np
 
-import sys, os
-sys.path.insert(0, os.getenv('YOKE_DIR'))
-from models.vit.swin.windowed_msa import WindowMSA, ShiftedWindowMSA
-from models.vit.swin.windowed_msa import WindowCosMSA, ShiftedWindowCosMSA
+from yoke.models.vit.swin.windowed_msa import WindowMSA, ShiftedWindowMSA
+from yoke.models.vit.swin.windowed_msa import WindowCosMSA, ShiftedWindowCosMSA
 
 
 class MLP(nn.Module):

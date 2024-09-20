@@ -76,19 +76,6 @@ def convtranspose2d_shape(w, h, k_w, k_h, s_w, s_h, p_w, p_h, op_w, op_h, d_w, d
     return new_w, new_h, total
 
 
-def count_parameters(model):
-    """Counts trainable parameters in an instantiated pytorch model. Returns the
-    count and prints a statement of the count.
-
-    """
-    
-    num_trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-
-    print('Model has this many trainable parameters:', num_trainable_params)
-
-    return num_trainable_params
-
-
 if __name__ == '__main__':
     """For testing and debugging.
 

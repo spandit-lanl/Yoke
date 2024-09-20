@@ -14,10 +14,9 @@ import pandas as pd
 import torch
 import torch.nn as nn
 
-sys.path.insert(0, os.getenv('YOKE_DIR'))
-from models.CNNmodules import PVI_SingleField_CNN
-from datasets.nestedcyl_dataset import PVI_SingleField_DataSet
-import torch_training_utils as tr
+from yoke.models.CNNmodules import PVI_SingleField_CNN
+from yoke.datasets.nestedcyl_dataset import PVI_SingleField_DataSet
+import yoke.torch_training_utils as tr
 
 #############################################
 ## Inputs

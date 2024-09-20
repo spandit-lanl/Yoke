@@ -18,10 +18,9 @@ import pandas as pd
 import torch
 import torch.nn as nn
 
-sys.path.insert(0, os.getenv('YOKE_DIR'))
-from models.surrogateCNNmodules import tCNNsurrogate
-from datasets.lsc_dataset import LSC_cntr2rho_DataSet
-import torch_training_utils as tr
+from yoke.models.surrogateCNNmodules import tCNNsurrogate
+from yoke.datasets.lsc_dataset import LSC_cntr2rho_DataSet
+import yoke.torch_training_utils as tr
 
 #############################################
 ## Inputs

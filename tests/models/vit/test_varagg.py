@@ -4,12 +4,9 @@
 
 import unittest
 import torch
-import sys
 from pathlib import Path
 
-import sys, os
-sys.path.insert(0, os.getenv('YOKE_DIR'))
-from models.vit.aggregate_variables import ClimaX_AggVars
+from yoke.models.vit.aggregate_variables import ClimaX_AggVars
 
 
 class TestClimaX_AggVars(unittest.TestCase):

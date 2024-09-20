@@ -22,9 +22,8 @@ from torch.utils.data import Dataset
 
 NoneStr = typing.Union[None, str]
 
-sys.path.insert(0, os.getenv('YOKE_DIR'))
-from datasets.lsc_dataset import LSCnpz2key, LSCcsv2bspline_pts
-from datasets.lsc_dataset import LSCread_npz, LSC_cntr2rho_DataSet
+from yoke.datasets.lsc_dataset import LSCnpz2key, LSCcsv2bspline_pts
+from yoke.datasets.lsc_dataset import LSCread_npz, LSC_cntr2rho_DataSet
 
 
 ###################################################################

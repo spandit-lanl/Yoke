@@ -12,8 +12,7 @@ from collections import OrderedDict
 import torch
 import torch.nn as nn
 
-sys.path.insert(0, os.getenv('YOKE_DIR'))
-from models.cnn_utils import count_parameters
+from yoke.models.cnn_utils import count_parameters
 
 
 class jekelCNNsurrogate(nn.Module):
