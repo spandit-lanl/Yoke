@@ -261,6 +261,75 @@ class LSCnorm_cntr2rho_DataSet(Dataset):
         return norm_sim_params, unbias_true_image
 
 
+class LSC_rho2rho_temporal_DataSet(Dataset):
+    def __init__(self,
+                 LSC_NPZ_DIR: str,
+                 filelist: str,
+                 design_file: str,
+                 max_time_offset: float):
+        """This dataset returns multi-channel images at two different times
+        from the *Layered Shaped Charge* simulation. The *maximum time-offset*
+        can be specified. The channels in the images returned are the densities
+        for each material at a given time as well as the (R, Z)-velocity
+        fields. The time-offset between the two images is also returned.
+
+        Args:
+            LSC_NPZ_DIR (str): Location of LSC NPZ files. A YOKE env variable.
+            filelist (str): Text file listing file names to read
+            design_file (str): .csv file with master design study parameters
+            max_time_offset (float): Maximum time-ahead to attempt prediction for.
+                                     A prediction image will be chosen within this
+                                     timeframe at random.
+        
+        """
+
+        ## Model Arguments
+        self.LSC_NPZ_DIR = LSC_NPZ_DIR
+        self.filelist = filelist
+        self.design_file = design_file
+        self.max_time_offset = max_time_offset
+        
+        ## Create filelist
+        with open(filelist, 'r') as f:
+            self.filelist = [line.rstrip() for line in f]
+            
+        self.Nsamples = len(self.filelist)
+
+    def __len__(self):
+        """Return number of samples in dataset.
+
+        """
+
+        return self.Nsamples
+
+    def __getitem__(self, index):
+        """Return a tuple of a batch's input and output data for training at a given
+        index.
+
+        """
+
+        ## Get the input image
+        filepath = self.filelist[index]
+        npz = np.load(self.LSC_NPZ_DIR+filepath)
+        
+        true_image = LSCread_npz(npz, 'av_density')
+        true_image = np.concatenate((np.fliplr(true_image), true_image), axis=1)
+        nY, nX = true_image.shape
+        true_image = true_image.reshape((1, nY, nX))
+        true_image = torch.tensor(true_image).to(torch.float32)
+
+        ## Get the contours and sim_time
+        sim_key = LSCnpz2key(self.LSC_NPZ_DIR+filepath)
+        Bspline_nodes = LSCcsv2bspline_pts(self.design_file, sim_key)
+        sim_time = npz['sim_time']
+        npz.close()
+
+        sim_params = np.append(Bspline_nodes, sim_time)
+        sim_params = torch.from_numpy(sim_params).to(torch.float32)
+        
+        return sim_params, true_image
+
+
 if __name__ == '__main__':
     """For testing and debugging.
 
