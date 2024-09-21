@@ -16,7 +16,9 @@ About:
 ------
 
 A general prototyping, training, and testing harness for pytorch used
-for models developed under the ASC-PEM-EADA project.
+for models developed under the **ArtIMis: Multi-physics/Multi-material
+Applications** and **ASC-PEM-EADA(Enabling Agile Design and Assessment)**
+projects.
 
 Module is divided into submodules:
 
