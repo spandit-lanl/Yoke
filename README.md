@@ -3,14 +3,6 @@ YOKE: Yielding Optimal Knowledge Enhancement
 
 ![Get YOKEd!](./YOKE_DALLE_512x512.png)
 
-> [!WARNING]
-> We're in the process of updating Yoke to be installable
-> using Flit.  To install locally (in your personal conda
-> environment)...
-> 
-> ```
-> >> flit install --user --symlink
-> ```
 
 About:
 ------
@@ -20,23 +12,50 @@ for models developed under the **ArtIMis: Multi-physics/Multi-material
 Applications** and **ASC-PEM-EADA(Enabling Agile Design and Assessment)**
 projects.
 
-Module is divided into submodules:
+Module is divided into submodules, installed in a python environment:
 
+- torch_training_utils.py
 - datasets
 - models
-- torch_training_utils.py
-- evaluation
+- metrics
+
+Helper utilities and examples:
+
 - harnesses
+- filelists
+- evaluation
 - viewers
 
-Data for training is not housed within YOKE and the python environment
-is not controlled or specified, currently, through YOKE. To aid
-portability a bash script, `yoke_env_setup.sh`, has been included to
-help the user set the necessary environment variables.
+Data for training is not housed within YOKE, data locations are
+specified through command-line arguments passed to the programs in
+`harnesses`, `evaluation`, and `viewers`.
 
-> [!NOTE]
-> **First step is to edit `yoke_env_setup.sh` to work with your current
->  environment and then source that script.**
+
+Installation:
+-------------
+
+The python environment is specified through an Anaconda
+`environment.yml` file included in this repo. **Make sure to edit the
+`environment.yml` file appropriately. You can then build a copy of a
+working environment and activate it using...
+
+```
+>> conda env create -f environment.yml
+>> conda activate yoke_<operating_system>_<YYMMDD>
+```
+
+For **developers**, you can install a **development version** of your
+`yoke` checkout using...
+
+```
+>> flit install --user --symlink
+```
+
+For **non-developers**, you can install `yoke` using...
+
+```
+>> flit install
+```
 
 Testing:
 --------
@@ -49,8 +68,8 @@ To run the tests use...
 >> pytest --cov --cov-report term-missing
 ```
 
-**yoke_env_setup.sh**
----------------------
+[DEPRECATED] **yoke_env_setup.sh**
+--------------------------------
 
 File exists as a way to setup a local environment without turning
 `Yoke` into an installable module. Due to limited storage for per-user
