@@ -48,3 +48,33 @@ To run the tests use...
 >> pytest --cov
 >> pytest --cov --cov-report term-missing
 ```
+
+**yoke_env_setup.sh**
+---------------------
+
+File exists as a way to setup a local environment without turning
+`Yoke` into an installable module. Due to limited storage for per-user
+python environments this is neccessary on LANL HPC/IC systems.
+
+The script sets environment variables:
+
+- `YOKE_DIR`: Absolute path to top level directory where this
+  README.md is. Mostly used to access `filelists`.
+
+- `YOKE_CONDA`: Absolute path to conda install. Necessary in *Slurm*
+  scripts to load conda environment.
+
+- `YOKE_TORCH`: Name of the conda environment with torch
+  installed. Used during runs with a *harness*
+
+- `LSC_DESIGN_DIR`: Absolute path to *design.txt* file for the
+  **lsc240420** dataset.
+
+- `LSC_NPZ_DIR`: Absolute path to the directory with NPZ files for the
+  **lsc240420** dataset.
+
+- `NC_DESIGN_DIR`: Absolute path to *design.txt* file for the
+  **nc231213** dataset.
+
+- `NC_NPZ_DIR`: Absolute path to the directory with NPZ files for the
+  **nc231213** dataset.
