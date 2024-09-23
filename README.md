@@ -22,11 +22,13 @@ Module is divided into submodules, installed in a python environment:
 Helper utilities and examples:
 
 - harnesses
+- makefilelists.py
 - filelists
+- normalization
 - evaluation
 - viewers
 
-Data for training is not housed within YOKE, data locations are
+NOTE: Data for training is not housed within YOKE. The data locations are
 specified through command-line arguments passed to the programs in
 `harnesses`, `evaluation`, and `viewers`.
 
