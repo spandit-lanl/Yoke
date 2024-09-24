@@ -53,7 +53,8 @@ For **developers**, you can install a **development version** of your
 >> flit install --user --symlink
 ```
 
-For **non-developers**, you can install `yoke` using...
+For **non-developers**, you can install `yoke` in your own environment
+using...
 
 ```
 >> flit install

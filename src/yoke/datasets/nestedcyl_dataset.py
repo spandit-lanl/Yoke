@@ -170,61 +170,61 @@ class PVI_SingleField_DataSet(Dataset):
     #     """
 
 
-if __name__ == '__main__':
-    """For testing and debugging.
+# if __name__ == '__main__':
+#     """For testing and debugging.
 
-    """
+#     """
 
-    # Imports for plotting
-    # To view possible matplotlib backends use
-    # >>> import matplotlib
-    # >>> bklist = matplotlib.rcsetup.interactive_bk
-    # >>> print(bklist)
-    import matplotlib
-    #matplotlib.use('MacOSX')
-    matplotlib.use('TkAgg')
-    # Get rid of type 3 fonts in figures
-    matplotlib.rcParams['pdf.fonttype'] = 42
-    matplotlib.rcParams['ps.fonttype'] = 42
-    import matplotlib.pyplot as plt
-    # Ensure LaTeX font
-    font = {'family': 'serif'}
-    plt.rc('font', **font)
-    plt.rcParams['figure.figsize'] = (6, 6)
-    from mpl_toolkits.axes_grid1 import make_axes_locatable
+#     # Imports for plotting
+#     # To view possible matplotlib backends use
+#     # >>> import matplotlib
+#     # >>> bklist = matplotlib.rcsetup.interactive_bk
+#     # >>> print(bklist)
+#     import matplotlib
+#     #matplotlib.use('MacOSX')
+#     matplotlib.use('TkAgg')
+#     # Get rid of type 3 fonts in figures
+#     matplotlib.rcParams['pdf.fonttype'] = 42
+#     matplotlib.rcParams['ps.fonttype'] = 42
+#     import matplotlib.pyplot as plt
+#     # Ensure LaTeX font
+#     font = {'family': 'serif'}
+#     plt.rc('font', **font)
+#     plt.rcParams['figure.figsize'] = (6, 6)
+#     from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-    # Get yoke environment variables
-    YOKE_DIR = os.getenv('YOKE_DIR')
-    NC_NPZ_DIR = os.getenv('NC_NPZ_DIR')
-    NC_DESIGN_DIR = os.getenv('NC_DESIGN_DIR')
+#     # Get yoke environment variables
+#     YOKE_DIR = os.getenv('YOKE_DIR')
+#     NC_NPZ_DIR = os.getenv('NC_NPZ_DIR')
+#     NC_DESIGN_DIR = os.getenv('NC_DESIGN_DIR')
 
-    pvi_test_ds = PVI_SingleField_DataSet(NC_NPZ_DIR,
-                                          YOKE_DIR+'filelists/nc231213_test_10pct.txt',
-                                          input_field='rho',
-                                          predicted='ptw_scale',
-                                          design_file=NC_DESIGN_DIR+'design_nc231213_Sn_MASTER.csv')
+#     pvi_test_ds = PVI_SingleField_DataSet(NC_NPZ_DIR,
+#                                           YOKE_DIR+'filelists/nc231213_test_10pct.txt',
+#                                           input_field='rho',
+#                                           predicted='ptw_scale',
+#                                           design_file=NC_DESIGN_DIR+'design_nc231213_Sn_MASTER.csv')
 
-    sampIDX = 123
-    rho_samp, ptw_scale_samp = pvi_test_ds.__getitem__(sampIDX)
+#     sampIDX = 123
+#     rho_samp, ptw_scale_samp = pvi_test_ds.__getitem__(sampIDX)
 
-    print('Shape of density field tensor: ', rho_samp.shape)
-    rho_samp = np.squeeze(rho_samp.numpy())
+#     print('Shape of density field tensor: ', rho_samp.shape)
+#     rho_samp = np.squeeze(rho_samp.numpy())
     
-    # Plot normalized radiograph and density field for diagnostics.
-    fig1, ax1 = plt.subplots(1, 1, figsize=(12, 12))
-    img1 = ax1.imshow(rho_samp,
-                      aspect='equal',
-                      origin='lower',
-                      cmap='jet')
-    ax1.set_ylabel("Z-axis", fontsize=16)                 
-    ax1.set_xlabel("R-axis", fontsize=16)
-    ax1.set_title('c-PTW={:.3f}'.format(float(ptw_scale_samp)), fontsize=18)
+#     # Plot normalized radiograph and density field for diagnostics.
+#     fig1, ax1 = plt.subplots(1, 1, figsize=(12, 12))
+#     img1 = ax1.imshow(rho_samp,
+#                       aspect='equal',
+#                       origin='lower',
+#                       cmap='jet')
+#     ax1.set_ylabel("Z-axis", fontsize=16)                 
+#     ax1.set_xlabel("R-axis", fontsize=16)
+#     ax1.set_title('c-PTW={:.3f}'.format(float(ptw_scale_samp)), fontsize=18)
 
-    divider1 = make_axes_locatable(ax1)
-    cax1 = divider1.append_axes('right', size='10%', pad=0.1)
-    fig1.colorbar(img1,
-                  cax=cax1).set_label('Density',
-                                      fontsize=14)
+#     divider1 = make_axes_locatable(ax1)
+#     cax1 = divider1.append_axes('right', size='10%', pad=0.1)
+#     fig1.colorbar(img1,
+#                   cax=cax1).set_label('Density',
+#                                       fontsize=14)
 
-    plt.show()
+#     plt.show()
     

@@ -740,8 +740,7 @@ if __name__ == '__main__':
 
     """
 
-    sys.path.insert(0, os.getenv('YOKE_DIR'))
-    from models.CNN_modules import PVI_SingleField_CNN
+    from yoke.models.CNN_modules import PVI_SingleField_CNN
 
     # Excercise model setup, save, and load
     # NOTE: Model takes (BatchSize, Channels, Height, Width) tensor.
