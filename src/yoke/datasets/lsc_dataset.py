@@ -330,80 +330,80 @@ class LSC_rho2rho_temporal_DataSet(Dataset):
         return sim_params, true_image
 
 
-if __name__ == '__main__':
-    """For testing and debugging.
+# if __name__ == '__main__':
+#     """For testing and debugging.
 
-    """
+#     """
 
-    # Imports for plotting
-    # To view possible matplotlib backends use
-    # >>> import matplotlib
-    # >>> bklist = matplotlib.rcsetup.interactive_bk
-    # >>> print(bklist)
-    import matplotlib
-    #matplotlib.use('MacOSX')
-    matplotlib.use('TkAgg')
-    # Get rid of type 3 fonts in figures
-    matplotlib.rcParams['pdf.fonttype'] = 42
-    matplotlib.rcParams['ps.fonttype'] = 42
-    import matplotlib.pyplot as plt
-    # Ensure LaTeX font
-    font = {'family': 'serif'}
-    plt.rc('font', **font)
-    plt.rcParams['figure.figsize'] = (6, 6)
-    from mpl_toolkits.axes_grid1 import make_axes_locatable
+#     # Imports for plotting
+#     # To view possible matplotlib backends use
+#     # >>> import matplotlib
+#     # >>> bklist = matplotlib.rcsetup.interactive_bk
+#     # >>> print(bklist)
+#     import matplotlib
+#     #matplotlib.use('MacOSX')
+#     matplotlib.use('TkAgg')
+#     # Get rid of type 3 fonts in figures
+#     matplotlib.rcParams['pdf.fonttype'] = 42
+#     matplotlib.rcParams['ps.fonttype'] = 42
+#     import matplotlib.pyplot as plt
+#     # Ensure LaTeX font
+#     font = {'family': 'serif'}
+#     plt.rc('font', **font)
+#     plt.rcParams['figure.figsize'] = (6, 6)
+#     from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-    # Get yoke environment variables
-    YOKE_DIR = os.getenv('YOKE_DIR')
-    LSC_NPZ_DIR = os.getenv('LSC_NPZ_DIR')
-    LSC_DESIGN_DIR = os.getenv('LSC_DESIGN_DIR')
+#     # Get yoke environment variables
+#     YOKE_DIR = os.getenv('YOKE_DIR')
+#     LSC_NPZ_DIR = os.getenv('LSC_NPZ_DIR')
+#     LSC_DESIGN_DIR = os.getenv('LSC_DESIGN_DIR')
     
-    # Test key
-    npz_filename = LSC_NPZ_DIR + 'lsc240420_id00001_pvi_idx00000.npz'
-    print('LSC NPZ filename:', npz_filename)
-    LSCkey = LSCnpz2key(npz_filename)
-    print('LSC key:', LSCkey)
+#     # Test key
+#     npz_filename = LSC_NPZ_DIR + 'lsc240420_id00001_pvi_idx00000.npz'
+#     print('LSC NPZ filename:', npz_filename)
+#     LSCkey = LSCnpz2key(npz_filename)
+#     print('LSC key:', LSCkey)
 
-    # Test B-spline retrieval
-    csv_filename = LSC_DESIGN_DIR + 'design_lsc240420_MASTER.csv'
-    bspline_pts = LSCcsv2bspline_pts(csv_filename, LSCkey)
-    print('Shape of B-spline points:', bspline_pts.shape)
-    #print('B-spline points:', bspline_pts)
+#     # Test B-spline retrieval
+#     csv_filename = LSC_DESIGN_DIR + 'design_lsc240420_MASTER.csv'
+#     bspline_pts = LSCcsv2bspline_pts(csv_filename, LSCkey)
+#     print('Shape of B-spline points:', bspline_pts.shape)
+#     #print('B-spline points:', bspline_pts)
     
-    filelist = YOKE_DIR + 'filelists/lsc240420_test_10pct.txt'
-    # LSC_ds = LSC_cntr2rho_DataSet(LSC_NPZ_DIR,
-    #                               filelist,
-    #                               csv_filename)
-    normalization_file = '/data2/yoke/normalization/lsc240420_norm.npz'
-    LSC_ds  = LSCnorm_cntr2rho_DataSet(LSC_NPZ_DIR,
-                                       filelist,
-                                       csv_filename,
-                                       normalization_file)
-    sampIDX = 1
-    # Normalization dataset returns: norm_sim_params, unbias_true_image
-    sim_params, true_image = LSC_ds.__getitem__(sampIDX)
+#     filelist = YOKE_DIR + 'filelists/lsc240420_test_10pct.txt'
+#     # LSC_ds = LSC_cntr2rho_DataSet(LSC_NPZ_DIR,
+#     #                               filelist,
+#     #                               csv_filename)
+#     normalization_file = '/data2/yoke/normalization/lsc240420_norm.npz'
+#     LSC_ds  = LSCnorm_cntr2rho_DataSet(LSC_NPZ_DIR,
+#                                        filelist,
+#                                        csv_filename,
+#                                        normalization_file)
+#     sampIDX = 1
+#     # Normalization dataset returns: norm_sim_params, unbias_true_image
+#     sim_params, true_image = LSC_ds.__getitem__(sampIDX)
 
-    print('Shape of true_image tensor: ', true_image.shape)
-    print('Shape of sim_params tensor: ', sim_params.shape)
+#     print('Shape of true_image tensor: ', true_image.shape)
+#     print('Shape of sim_params tensor: ', sim_params.shape)
     
-    sim_params = sim_params.numpy()
-    true_image = np.squeeze(true_image.numpy())
+#     sim_params = sim_params.numpy()
+#     true_image = np.squeeze(true_image.numpy())
     
-    # Plot normalized radiograph and density field for diagnostics.
-    fig1, ax1 = plt.subplots(1, 1, figsize=(12, 12))
-    img1 = ax1.imshow(true_image,
-                      aspect='equal',
-                      origin='lower',
-                      cmap='jet')
-    ax1.set_ylabel("Z-axis", fontsize=16)                 
-    ax1.set_xlabel("R-axis", fontsize=16)
-    ax1.set_title('Time={:.3f}us'.format(sim_params[-1]), fontsize=18)
+#     # Plot normalized radiograph and density field for diagnostics.
+#     fig1, ax1 = plt.subplots(1, 1, figsize=(12, 12))
+#     img1 = ax1.imshow(true_image,
+#                       aspect='equal',
+#                       origin='lower',
+#                       cmap='jet')
+#     ax1.set_ylabel("Z-axis", fontsize=16)                 
+#     ax1.set_xlabel("R-axis", fontsize=16)
+#     ax1.set_title('Time={:.3f}us'.format(sim_params[-1]), fontsize=18)
 
-    divider1 = make_axes_locatable(ax1)
-    cax1 = divider1.append_axes('right', size='10%', pad=0.1)
-    fig1.colorbar(img1,
-                  cax=cax1).set_label('Density',
-                                      fontsize=14)
+#     divider1 = make_axes_locatable(ax1)
+#     cax1 = divider1.append_axes('right', size='10%', pad=0.1)
+#     fig1.colorbar(img1,
+#                   cax=cax1).set_label('Density',
+#                                       fontsize=14)
 
-    plt.show()
+#     plt.show()
     
