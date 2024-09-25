@@ -1,6 +1,5 @@
-# MAKE FILE LISTS 
 """
-Defines functions to make file list
+Defines functions to make file list.
 
 If run, will make file lists to that specification
 
@@ -151,7 +150,8 @@ parser.add_argument('--save_dir',
 parser.add_argument('--input_dir',
                     action='store',
                     type=str,
-                    default=os.getenv('NC_NPZ_DIR'),
+                    default=os.path.join(os.path.dirname(__file__),
+                                         '../data_examples/nc231213/'),
                     help='Where the data files are located')
 
 parser.add_argument('--data_tag',
@@ -165,19 +165,19 @@ parser.add_argument('--data_tag',
 parser.add_argument('--train_split',
                     action='store',
                     type=float,
-                    default=0.60,
+                    default=0.4,
                     help='Percentage of total avialable data to use for training')
 
 parser.add_argument('--validation_split',
                     action='store',
                     type=float,
-                    default=0.20,
+                    default=0.4,
                     help='Percentage of total avialable data to use for validation')
 
 parser.add_argument('--test_split',
                     action='store',
                     type=float,
-                    default=0.20,
+                    default=0.2,
                     help='Percentage of total avialable data to use for testing')
 
 ####################################
