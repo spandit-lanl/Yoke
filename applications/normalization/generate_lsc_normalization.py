@@ -33,30 +33,52 @@ parser = argparse.ArgumentParser(prog='Generate Normalization',
                                  description=descr_str,
                                  fromfile_prefix_chars='@')
 
-parser.add_argument('--design_file',
+parser.add_argument('--FILELIST_DIR',
                     action='store',
                     type=str,
-                    default='design_lsc240420_MASTER.csv',
-                    help='.csv file that contains the truth values for data files')
+                    default=os.path.join(os.path.dirname(__file__),
+                                         '../filelists/'),
+                    help='Directory where filelists are located.')
 
 parser.add_argument('--eval_filelist',
                     action='store',
                     type=str,
-                    default='lsc240420_train_80pct.txt',
-                    help='Path to list of files to evaluate normalizations for.')
+                    default='lsc240420_train_sample.txt',
+                    help='Name of filelist file to evaluate normalizations for.')
+
+parser.add_argument('--LSC_DESIGN_DIR',
+                    action='store',
+                    type=str,
+                    default=os.path.join(os.path.dirname(__file__),
+                                         '../../data_examples/'),
+                    help='Directory in which LSC design.txt file lives.')
+
+parser.add_argument('--design_file',
+                    action='store',
+                    type=str,
+                    default='design_lsc240420_MASTER.csv',
+                    help='.csv file that contains the parameter values for data files')
+
+parser.add_argument('--LSC_NPZ_DIR',
+                    action='store',
+                    type=str,
+                    default=os.path.join(os.path.dirname(__file__),
+                                         '../../data_examples/lsc240420/'),
+                    help='Directory in which LSC *.npz files lives.')
+
+parser.add_argument('--fileout',
+                    action='store',
+                    type=str,
+                    default='./sample_norm.npz',
+                    help='Name of file containing computed normalization information')
 
 
 # Main script
 args = parser.parse_args()
 
-# YOKE env variables
-YOKE_DIR = os.getenv('YOKE_DIR')
-LSC_NPZ_DIR = os.getenv('LSC_NPZ_DIR')
-LSC_DESIGN_DIR = os.getenv('LSC_DESIGN_DIR')
-
 ## Data Paths
-design_file = os.path.abspath(LSC_DESIGN_DIR+args.design_file)
-eval_files = YOKE_DIR + 'filelists/' + args.eval_filelist
+design_file = os.path.abspath(args.LSC_DESIGN_DIR+args.design_file)
+eval_files = args.FILELIST_DIR + args.eval_filelist
 
 ## Create filelist
 with open(eval_files, 'r') as f:
@@ -71,7 +93,7 @@ nsamp_time_dict = {}
 # Build arrays to normalize with
 for k, filepath in enumerate(eval_filelist):
     ## Get the input image
-    npz = np.load(LSC_NPZ_DIR+filepath)
+    npz = np.load(args.LSC_NPZ_DIR+filepath)
 
     true_image = LSCread_npz(npz, 'av_density')
     true_image = np.concatenate((np.fliplr(true_image), true_image), axis=1)
@@ -79,7 +101,7 @@ for k, filepath in enumerate(eval_filelist):
     #print('True image shape:', nY, nX)
 
     ## Get the contours and sim_time
-    sim_key = LSCnpz2key(LSC_NPZ_DIR+filepath)
+    sim_key = LSCnpz2key(args.LSC_NPZ_DIR+filepath)
     Bspline_nodes = LSCcsv2bspline_pts(design_file, sim_key)
     #print('Shape of Bspline node array:', Bspline_nodes.shape)
     
@@ -129,7 +151,7 @@ for k, v in avg_time_dict.items():
     avg_time_dict[k] = v/nsamp_time_dict[k]
 
 # Save normalization information
-np.savez('./lsc240420_norm.npz',
+np.savez(args.fileout,
          image_avg=image_avg,
          image_min=image_min,
          image_max=image_max,
