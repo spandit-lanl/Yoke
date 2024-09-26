@@ -7,7 +7,7 @@ job-submission script.
 
 """
 
-import os, sys, argparse
+import os, argparse
 import glob
 import numpy as np
 import pandas as pd

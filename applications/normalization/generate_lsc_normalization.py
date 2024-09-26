@@ -11,7 +11,7 @@ When run as a script an NPZ of calculated parameters is generated.
 ####################################
 ## Packages
 ####################################
-import os, sys, argparse
+import os, argparse
 import glob
 import random
 import typing
@@ -56,7 +56,7 @@ parser.add_argument('--LSC_DESIGN_DIR',
 parser.add_argument('--design_file',
                     action='store',
                     type=str,
-                    default='design_lsc240420_MASTER.csv',
+                    default='design_lsc240420_SAMPLE.csv',
                     help='.csv file that contains the parameter values for data files')
 
 parser.add_argument('--LSC_NPZ_DIR',

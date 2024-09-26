@@ -38,23 +38,44 @@ parser = argparse.ArgumentParser(prog='Image Comparison.',
                                  description=descr_str,
                                  fromfile_prefix_chars='@')
 
+parser.add_argument('--FILELIST_DIR',
+                    action='store',
+                    type=str,
+                    default=os.path.join(os.path.dirname(__file__),
+                                         '../filelists/'),
+                    help='Directory where filelists are located.')
+
+parser.add_argument('--eval_filelist',
+                    action='store',
+                    type=str,
+                    default='lsc240420_train_sample.txt',
+                    help='Name of filelist file to evaluate normalizations for.')
+
+parser.add_argument('--LSC_DESIGN_DIR',
+                    action='store',
+                    type=str,
+                    default=os.path.join(os.path.dirname(__file__),
+                                         '../../data_examples/'),
+                    help='Directory in which LSC design.txt file lives.')
+
+parser.add_argument('--design_file',
+                    action='store',
+                    type=str,
+                    default='design_lsc240420_SAMPLE.csv',
+                    help='.csv file that contains the truth values for data files')
+
+parser.add_argument('--LSC_NPZ_DIR',
+                    action='store',
+                    type=str,
+                    default=os.path.join(os.path.dirname(__file__),
+                                         '../../data_examples/lsc240420/'),
+                    help='Directory in which LSC *.npz files lives.')
+
 parser.add_argument('--checkpoint',
                     action='store',
                     type=str,
                     default='./study001_modelState_epoch0070.hdf5',
                     help='Name of HDF5 model checkpoint to evaluate output for.')
-
-parser.add_argument('--design_file',
-                    action='store',
-                    type=str,
-                    default='design_lsc240420_MASTER.csv',
-                    help='.csv file that contains the truth values for data files')
-
-parser.add_argument('--eval_filelist',
-                    action='store',
-                    type=str,
-                    default='lsc240420_test_10pct.txt',
-                    help='Path to list of files to evaluate network on.')
 
 parser.add_argument('--sampIDX',
                     action='store',
@@ -80,16 +101,11 @@ parser.add_argument('--savefig', '-S',
 
 args = parser.parse_args()
 
-# YOKE env variables
-YOKE_DIR = os.getenv('YOKE_DIR')
-LSC_NPZ_DIR = os.getenv('LSC_NPZ_DIR')
-LSC_DESIGN_DIR = os.getenv('LSC_DESIGN_DIR')
-
 checkpoint = args.checkpoint
     
 ## Data Paths
-design_file = os.path.abspath(LSC_DESIGN_DIR+args.design_file)
-eval_filelist = YOKE_DIR + 'filelists/' + args.eval_filelist
+design_file = os.path.abspath(args.LSC_DESIGN_DIR+args.design_file)
+eval_filelist = args.FILELIST_DIR + args.eval_filelist
 
 # Additional inpu variables
 sampIDX = args.sampIDX
@@ -98,6 +114,8 @@ savedir = args.savedir
 SAVEFIG = args.savefig
 
 # Hardcode model hyperparameters for now.
+#
+# NOTE: This should be handled in a MUCH more elegant manner!!!
 kernel = [3, 3]
 featureList = [512,
                512,
@@ -151,7 +169,7 @@ checkpoint_epoch = tr.load_model_and_optimizer_hdf5(model,
 ################
 ## Load dataset
 ################
-eval_dataset = LSC_cntr2rho_DataSet(LSC_NPZ_DIR,
+eval_dataset = LSC_cntr2rho_DataSet(args.LSC_NPZ_DIR,
                                     eval_filelist,
                                     design_file)
 
@@ -166,7 +184,7 @@ with open(eval_filelist, 'r') as f:
 eval_filename = eval_filenames[sampIDX]
 
 ## Get the simulation key associated with evaluation
-eval_key = LSCnpz2key(LSC_NPZ_DIR+eval_filename)
+eval_key = LSCnpz2key(args.LSC_NPZ_DIR+eval_filename)
 print('Evaluation file key:', eval_key)
 
 # Evaluate model

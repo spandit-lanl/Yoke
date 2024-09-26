@@ -54,16 +54,20 @@ parser.add_argument('--savefig', '-S',
                     action='store_true',
                     help='Flag to save figures.')
 
-args = parser.parse_args()
+parser.add_argument('--image_name',
+                    action='store',
+                    type=str,
+                    default='param_prediction.png',
+                    help='Name of image file to save.')
 
-# YOKE env variables
-YOKE_DIR = os.getenv('YOKE_DIR')
+args = parser.parse_args()
 
 checkpoint = args.checkpoint
     
 # Additional input variables
 savedir = args.savedir
 SAVEFIG = args.savefig
+image_file_name = args.image_name
 
 # Hardcode model hyperparameters for now.
 kernel = [3, 3]
@@ -153,7 +157,7 @@ if SAVEFIG:
         os.makedirs(savedir)
 
     plt.figure(fig1.number)
-    filenameA = f'{savedir}/jCNN_param_pred_image.png'
+    filenameA = f'{savedir}/{image_file_name}'
     plt.savefig(filenameA, bbox_inches='tight')
 else:
     plt.show()

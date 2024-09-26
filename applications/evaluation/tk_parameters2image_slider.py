@@ -32,9 +32,6 @@ parser.add_argument('--checkpoint', '-C',
 
 args = parser.parse_args()
 
-# YOKE env variables
-YOKE_DIR = os.getenv('YOKE_DIR')
-
 checkpoint = args.checkpoint
 
 # Hardcode model hyperparameters for now.

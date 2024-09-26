@@ -5,7 +5,7 @@ lsc240420_train_sample.txt
 --LSC_DESIGN_DIR
 ../../data_examples/
 --design_file
-design_lsc240420_MASTER.csv
+design_lsc240420_SAMPLE.csv
 --LSC_NPZ_DIR
 ../../data_examples/lsc240420/
 --fileout
