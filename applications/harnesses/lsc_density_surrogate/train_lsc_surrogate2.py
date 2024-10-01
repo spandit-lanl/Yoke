@@ -41,28 +41,49 @@ parser.add_argument('--studyIDX',
 #############################################
 ## File Paths
 #############################################
+parser.add_argument('--FILELIST_DIR',
+                    action='store',
+                    type=str,
+                    default=os.path.join(os.path.dirname(__file__),
+                                         '../../filelists/'),
+                    help='Directory where filelists are located.')
+
+parser.add_argument('--LSC_DESIGN_DIR',
+                    action='store',
+                    type=str,
+                    default=os.path.join(os.path.dirname(__file__),
+                                         '../../../data_examples/'),
+                    help='Directory in which LSC design.txt file lives.')
+
 parser.add_argument('--design_file',
                     action='store',
                     type=str,
                     default='design_lsc240420_MASTER.csv',
                     help='.csv file that contains the truth values for data files')
 
+parser.add_argument('--LSC_NPZ_DIR',
+                    action='store',
+                    type=str,
+                    default=os.path.join(os.path.dirname(__file__),
+                                         '../../../data_examples/lsc240420/'),
+                    help='Directory in which LSC *.npz files lives.')
+
 parser.add_argument('--train_filelist',
                     action='store',
                     type=str,
-                    default='nc231213_train_80pct.txt',
+                    default='lsc240420_train_80pct.txt',
                     help='Path to list of files to train on.')
 
 parser.add_argument('--validation_filelist',
                     action='store',
                     type=str,
-                    default='nc231213_val_10pct.txt',
+                    default='lsc240420_val_10pct.txt',
                     help='Path to list of files to validate on.')
 
 parser.add_argument('--test_filelist',
                     action='store',
                     type=str,
-                    default='nc231213_test_10pct.txt',
+                    default='lsc240420_test_10pct.txt',
                     help='Path to list of files to test on.')
 
 #############################################
@@ -165,17 +186,12 @@ if __name__ == '__main__':
 
     ## Study ID
     studyIDX = args.studyIDX
-
-    # YOKE env variables
-    YOKE_DIR = os.getenv('YOKE_DIR')
-    LSC_NPZ_DIR = os.getenv('LSC_NPZ_DIR')
-    LSC_DESIGN_DIR = os.getenv('LSC_DESIGN_DIR')
     
     ## Data Paths
-    design_file = os.path.abspath(LSC_DESIGN_DIR+args.design_file)
-    train_filelist = YOKE_DIR + 'filelists/' + args.train_filelist
-    validation_filelist = YOKE_DIR + 'filelists/' + args.validation_filelist
-    test_filelist = YOKE_DIR + 'filelists/' + args.test_filelist
+    design_file = os.path.abspath(args.LSC_DESIGN_DIR+args.design_file)
+    train_filelist = args.FILELIST_DIR + args.train_filelist
+    validation_filelist = args.FILELIST_DIR + args.validation_filelist
+    test_filelist = args.FILELIST_DIR + args.test_filelist
     
     ## Model Parameters
     featureList = args.featureList
@@ -293,13 +309,13 @@ if __name__ == '__main__':
     #############################################
     ## Initialize Data
     #############################################
-    train_dataset = LSC_cntr2rho_DataSet(LSC_NPZ_DIR,
+    train_dataset = LSC_cntr2rho_DataSet(args.LSC_NPZ_DIR,
                                          train_filelist,
                                          design_file)
-    val_dataset = LSC_cntr2rho_DataSet(LSC_NPZ_DIR,
+    val_dataset = LSC_cntr2rho_DataSet(args.LSC_NPZ_DIR,
                                        validation_filelist,
                                        design_file)
-    test_dataset = LSC_cntr2rho_DataSet(LSC_NPZ_DIR,
+    test_dataset = LSC_cntr2rho_DataSet(args.LSC_NPZ_DIR,
                                         test_filelist,
                                         design_file)
     
