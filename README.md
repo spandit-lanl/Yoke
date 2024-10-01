@@ -36,14 +36,18 @@ specified through command-line arguments passed to the programs in
 Installation:
 -------------
 
-The python environment is specified through an Anaconda
-`environment.yml` file included in this repo. **Make sure to edit the
-`environment.yml` file appropriately. You can then build a copy of a
-working environment and activate it using...
+The python environment is specified through a Anaconda *environment
+files*. There are two in this repo...
+
+- `sample_environment.yml`
+- `osx_environment.yml`
+
+On OSX you should be able to edit the `osx_environment.yml` to replace
+the `<YYMMDD>` token with the relevant date. Then...
 
 ```
->> conda env create -f environment.yml
->> conda activate yoke_<operating_system>_<YYMMDD>
+>> conda env create -f osx_environment.yml
+>> conda activate yoke_OSX_<YYMMDD>
 ```
 
 For **developers**, you can install a **development version** of your
@@ -71,32 +75,13 @@ To run the tests use...
 >> pytest --cov --cov-report term-missing
 ```
 
-[DEPRECATED] **yoke_env_setup.sh**
---------------------------------
+Create Environment Specification:
+---------------------------------
 
-File exists as a way to setup a local environment without turning
-`Yoke` into an installable module. Due to limited storage for per-user
-python environments this is neccessary on LANL HPC/IC systems.
+Conda environment file was created using
 
-The script sets environment variables:
+```
+>> conda env export > environment.yml
+```
 
-- `YOKE_DIR`: Absolute path to top level directory where this
-  README.md is. Mostly used to access `filelists`.
-
-- `YOKE_CONDA`: Absolute path to conda install. Necessary in *Slurm*
-  scripts to load conda environment.
-
-- `YOKE_TORCH`: Name of the conda environment with torch
-  installed. Used during runs with a *harness*
-
-- `LSC_DESIGN_DIR`: Absolute path to *design.txt* file for the
-  **lsc240420** dataset.
-
-- `LSC_NPZ_DIR`: Absolute path to the directory with NPZ files for the
-  **lsc240420** dataset.
-
-- `NC_DESIGN_DIR`: Absolute path to *design.txt* file for the
-  **nc231213** dataset.
-
-- `NC_NPZ_DIR`: Absolute path to the directory with NPZ files for the
-  **nc231213** dataset.
+and then removing the final hashes from each package specification.
