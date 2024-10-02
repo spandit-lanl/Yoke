@@ -21,7 +21,8 @@ import yoke.torch_training_utils as tr
 #############################################
 ## Inputs
 #############################################
-descr_str = 'Trains CNN to estimate PTW strength scale from density for the nested cylinder'
+descr_str = ('Trains CNN to estimate PTW strength scale from density '
+             'for the nested cylinder')
 parser = argparse.ArgumentParser(prog='NC CNN Training',
                                  description=descr_str,
                                  fromfile_prefix_chars='@')
@@ -44,28 +45,52 @@ parser.add_argument('--input_field',
 #############################################
 ## File Paths
 #############################################
+#############################################
+## File Paths
+#############################################
+parser.add_argument('--FILELIST_DIR',
+                    action='store',
+                    type=str,
+                    default=os.path.join(os.path.dirname(__file__),
+                                         '../../filelists/'),
+                    help='Directory where filelists are located.')
+
+parser.add_argument('--NC_DESIGN_DIR',
+                    action='store',
+                    type=str,
+                    default=os.path.join(os.path.dirname(__file__),
+                                         '../../../data_examples/'),
+                    help='Directory in which NC design.txt file lives.')
+
 parser.add_argument('--design_file',
                     action='store',
                     type=str,
-                    default='/data2/design_nc231213_Sn_MASTER.csv',
+                    default='design_nc231213_SAMPLE.csv',
                     help='.csv file that contains the truth values for data files')
+
+parser.add_argument('--NC_NPZ_DIR',
+                    action='store',
+                    type=str,
+                    default=os.path.join(os.path.dirname(__file__),
+                                         '../../../data_examples/nc231213/'),
+                    help='Directory in which NC *.npz files lives.')
 
 parser.add_argument('--train_filelist',
                     action='store',
                     type=str,
-                    default='nc231213_train_80pct.txt',
+                    default='nc231213_train_sample.txt',
                     help='Path to list of files to train on.')
 
 parser.add_argument('--validation_filelist',
                     action='store',
                     type=str,
-                    default='nc231213_val_10pct.txt',
+                    default='nc231213_val_sample.txt',
                     help='Path to list of files to validate on.')
 
 parser.add_argument('--test_filelist',
                     action='store',
                     type=str,
-                    default='nc231213_test_10pct.txt',
+                    default='nc231213_test_sample.txt',
                     help='Path to list of files to test on.')
 
 #############################################
@@ -212,17 +237,12 @@ if __name__ == '__main__':
     ## Study ID
     studyIDX = args.studyIDX
 
-    # YOKE env variables
-    YOKE_DIR = os.getenv('YOKE_DIR')
-    NC_NPZ_DIR = os.getenv('NC_NPZ_DIR')
-    NC_DESIGN_DIR = os.getenv('NC_DESIGN_DIR')
-
     ## Data Paths
     input_field = args.input_field
-    design_file = os.path.abspath(NC_DESIGN_DIR+args.design_file)
-    train_filelist = YOKE_DIR + 'filelists/' + args.train_filelist
-    validation_filelist = YOKE_DIR + 'filelists/' + args.validation_filelist
-    test_filelist = YOKE_DIR + 'filelists/' + args.test_filelist
+    design_file = os.path.abspath(args.LSC_DESIGN_DIR+args.design_file)
+    train_filelist = args.FILELIST_DIR + args.train_filelist
+    validation_filelist = args.FILELIST_DIR + args.validation_filelist
+    test_filelist = args.FILELIST_DIR + args.test_filelist
 
     ## Model Parameters
     thresholdW = args.size_threshold_W
@@ -324,15 +344,15 @@ if __name__ == '__main__':
     #############################################
     ## Initialize Data
     #############################################
-    train_dataset = PVI_SingleField_DataSet(NC_NPZ_DIR,
+    train_dataset = PVI_SingleField_DataSet(args.NC_NPZ_DIR,
                                             train_filelist,
                                             input_field=input_field,
                                             design_file=design_file)
-    val_dataset = PVI_SingleField_DataSet(NC_NPZ_DIR,
+    val_dataset = PVI_SingleField_DataSet(args.NC_NPZ_DIR,
                                           validation_filelist,
                                           input_field=input_field,
                                           design_file=design_file)
-    test_dataset = PVI_SingleField_DataSet(NC_NPZ_DIR,
+    test_dataset = PVI_SingleField_DataSet(args.NC_NPZ_DIR,
                                            test_filelist,
                                            input_field=input_field,
                                            design_file=design_file)
