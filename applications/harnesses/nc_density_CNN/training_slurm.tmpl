@@ -19,7 +19,7 @@ sinfo  -o "%P %.24G %N"
 srun /usr/bin/echo $CUDA_AVAILABLE_DEVICES
 
 # Load correct conda environment
-source $YOKE_CONDA/bin/activate $YOKE_TORCH
+source <YOKE_CONDA_BASE>/bin/activate <YOKE_TORCH_ENV>
 
 # Get start time
 export date00=`date`
