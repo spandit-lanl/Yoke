@@ -7,7 +7,8 @@ job-submission script.
 
 """
 
-import os, argparse
+import os
+import argparse
 import glob
 import numpy as np
 import pandas as pd
@@ -18,17 +19,16 @@ import pandas as pd
 # >>> bklist = matplotlib.rcsetup.interactive_bk
 # >>> print(bklist)
 import matplotlib
+import matplotlib.pyplot as plt
 #matplotlib.use('MacOSX')
 #matplotlib.use('pdf')
 # Get rid of type 3 fonts in figures
 matplotlib.rcParams['pdf.fonttype'] = 42
 matplotlib.rcParams['ps.fonttype'] = 42
-import matplotlib.pyplot as plt
 # Ensure LaTeX font
 font = {'family': 'serif'}
 plt.rc('font', **font)
 plt.rcParams['figure.figsize'] = (6, 6)
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 
 ###################################################################
