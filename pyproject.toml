@@ -45,3 +45,21 @@ Source = "https://gitlab.lanl.gov/multiphysmultimatapps/yoke"
 
 #[project.scripts]
 #flit = "flit:main"
+
+[tool.ruff]
+line-length = 89
+
+[tool.ruff.format]
+docstring-code-format = true
+docstring-code-line-length = 89
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "F",
+    "D",
+    "UP",
+    "W"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
