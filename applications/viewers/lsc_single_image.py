@@ -68,7 +68,7 @@ parser.add_argument('--field', '-F',
                     type=str,
                     default=None,
                     help='Depends on keys stored in file. Use -K option to print keys.')
-                                
+
 parser.add_argument('--keys', '-K',
                     action='store_true',
                     help='Flag to print keys of NPZ file.')
@@ -82,14 +82,13 @@ def print_NPZ_keys(npzfile='./lsc_nonconvex_pvi_idx00115.npz'):
     """Print keys of NPZ file.
 
     """
-
     NPZ = np.load(npzfile)
     print('NPZ file keys:')
     for key in NPZ.keys():
         print(key)
 
     NPZ.close()
-    
+
     return
 
 
@@ -105,7 +104,6 @@ def singlePVIarray(npzfile='./lsc_nonconvex_pvi_idx00115.npz',
        field (np.array): Array of hydro-dynamic field for plotting
 
     """
-
     NPZ = np.load(npzfile)
     arrays_dict = dict()
     for key in NPZ.keys():
@@ -133,7 +131,7 @@ if __name__ == '__main__':
     # Example: lsc_nonconvex_pvi_idx00115.npz
     npzfile = os.path.join(indir, runID+'_idx%05d.npz' % pviIDX)
     print('filename:', npzfile)
-    
+
     if KEYS:
         print_NPZ_keys(npzfile=npzfile)
     else:
@@ -162,9 +160,9 @@ if __name__ == '__main__':
                                   Zcoord.max()],
                           origin='lower',
                           cmap='cividis' if FIELD=='pRad' else 'jet')
-        ax1.set_ylabel("Z-axis (um)", fontsize=16)                 
+        ax1.set_ylabel("Z-axis (um)", fontsize=16)
         ax1.set_xlabel("R-axis (um)", fontsize=16)
-        ax1.set_title('T={:.2f}us'.format(float(simtime)), fontsize=18)
+        ax1.set_title(f'T={float(simtime):.2f}us', fontsize=18)
 
         divider1 = make_axes_locatable(ax1)
         cax1 = divider1.append_axes('right', size='10%', pad=0.1)
@@ -174,7 +172,7 @@ if __name__ == '__main__':
 
         if SAVEFIG:
             fig1.savefig(os.path.join(outdir,
-                                      f'{runID}_idx{pviIDX:05d}_{FIELD}.png'), 
+                                      f'{runID}_idx{pviIDX:05d}_{FIELD}.png'),
                          bbox_inches='tight')
         else:
             plt.show()

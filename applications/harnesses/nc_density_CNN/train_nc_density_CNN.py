@@ -4,12 +4,8 @@
 #############################################
 ## Packages
 #############################################
-import sys
 import os
-import typing
-import time
 import argparse
-import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
@@ -261,7 +257,7 @@ if __name__ == '__main__':
     batch_size = args.batch_size
     num_workers = int(os.environ['SLURM_JOB_CPUS_PER_NODE'])
     train_per_val = args.TRAIN_PER_VAL
-    
+
     ## Epoch Parameters
     total_epochs = args.total_epochs
     cycle_epochs = args.cycle_epochs
@@ -295,7 +291,7 @@ if __name__ == '__main__':
     model = PVI_SingleField_CNN(img_size=(1, 1700, 500),
                                 size_threshold=size_threshold,
                                 kernel=kernel,
-                                features=features, 
+                                features=features,
                                 interp_depth=interp_depth,
                                 conv_onlyweights=conv_onlyweights,
                                 batchnorm_onlybias=batchnorm_onlybias,
@@ -380,7 +376,7 @@ if __name__ == '__main__':
 
         ## Train an Epoch
         tr.train_scalar_csv_epoch(training_data=train_dataloader,
-                                  validation_data=val_dataloader, 
+                                  validation_data=val_dataloader,
                                   model=model,
                                   optimizer=optimizer,
                                   loss_fn=loss_fn,
@@ -397,7 +393,7 @@ if __name__ == '__main__':
     print("Saving model checkpoint at end of epoch "+ str(epochIDX) + ". . .")
 
     # Move the model back to CPU prior to saving to increase portability
-    model.to('cpu')  
+    model.to('cpu')
     # Move optimizer state back to CPU
     for state in optimizer.state.values():
         for k, v in state.items():
@@ -434,11 +430,11 @@ if __name__ == '__main__':
 
         # Move model back to GPU for final evaluation
         model.to(device)
-        
+
         with torch.no_grad():
             for testdata in test_dataloader:
                 testbatch_ID += 1
-                truth, pred, loss = tr.eval_scalar_datastep(testdata, 
+                truth, pred, loss = tr.eval_scalar_datastep(testdata,
                                                             model,
                                                             loss_fn,
                                                             device)
@@ -455,4 +451,4 @@ if __name__ == '__main__':
         testingdf.to_csv(os.path.join('./', test_csv_filename.format(studyIDX)))
         print('Model testing results saved.')
 
-        print('STUDY{0:03d} COMPLETE'.format(studyIDX))
+        print(f'STUDY{studyIDX:03d} COMPLETE')

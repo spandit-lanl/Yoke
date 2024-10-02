@@ -96,7 +96,7 @@ trn_csv_list = sorted(glob.glob(trn_glob))
 # Throw out most recent training CSV if still in progress
 if INPROGRESS:
     trn_csv_list.pop()
-    
+
 trn_file_epochs = []
 for Tcsv in trn_csv_list:
     epoch = Tcsv.split('epoch')[1]
@@ -150,7 +150,7 @@ for tIDX, Tcsv in enumerate(trn_csv_list):
         plt.plot(startIDX+trn_positions, trn_qnts[0,:], ':b')
         plt.plot(startIDX+trn_positions, trn_qnts[1,:], '-b')
         plt.plot(startIDX+trn_positions, trn_qnts[2,:], ':b')
-    
+
     startIDX += trn_positions[-1]
 
     # print('trn_file_epochs length:', len(trn_file_epochs))
@@ -187,7 +187,7 @@ for tIDX, Tcsv in enumerate(trn_csv_list):
 
             vIDX += 1
             startIDX += val_positions[-1]
-        
+
 # Make legend
 plt.legend(fontsize=16)
 

@@ -3,15 +3,10 @@
 """
 
 import torch
-import torch.nn.functional as F
 from torch import nn
-from einops import rearrange
-from einops.layers.torch import Rearrange
-import numpy as np
 
 from yoke.models.vit.swin.encoder import SwinEncoder2, SwinConnectEncoder
 from yoke.models.vit.swin.encoder import SwinConnectDecoder
-from yoke.models.vit.patch_embed import SwinEmbedding
 from yoke.models.vit.patch_manipulation import PatchMerge, PatchExpand
 
 
@@ -40,7 +35,7 @@ class SwinUnetBackbone(nn.Module):
                         during initialization.
 
     """
-    
+
     def __init__(self,
                  emb_size: int=96,
                  emb_factor: int=2,
@@ -62,12 +57,12 @@ class SwinUnetBackbone(nn.Module):
         self.window_sizes = window_sizes
         self.patch_merge_scales = patch_merge_scales
         self.num_output_classes = num_output_classes
-                
+
         # Set up lists of encoding/decoding, merge/expand layers
         self.dwn_stage1 = nn.ModuleList()
         self.dwn_stage2 = nn.ModuleList()
         self.dwn_stage3 = nn.ModuleList()
-        
+
         self.bottleneck_stage4 = nn.ModuleList()
 
         self.up_stage1 = nn.ModuleList()
@@ -86,7 +81,7 @@ class SwinUnetBackbone(nn.Module):
         dwn_window_size_list = []
         dwn_patch_merge_scale_list = []
         block_structure_list = []
-        
+
         ############################
         # DOWN
         ############################
@@ -97,7 +92,7 @@ class SwinUnetBackbone(nn.Module):
         dwn_window_size_list.append(self.window_sizes[0])
         dwn_patch_merge_scale_list.append(self.patch_merge_scales[0])
         block_structure_list.append(self.block_structure[0])
-        
+
         # A series of SWIN encoders with embedding size and number of heads
         # doubled every stage.
         for i in range(self.block_structure[0]-1):
@@ -138,7 +133,7 @@ class SwinUnetBackbone(nn.Module):
         dwn_window_size_list.append(self.window_sizes[1])
         dwn_patch_merge_scale_list.append(self.patch_merge_scales[1])
         block_structure_list.append(self.block_structure[1])
-        
+
         for i in range(self.block_structure[1]-1):
             self.dwn_stage2.append(SwinEncoder2(emb_size=new_emb_size,
                                                 num_heads=new_num_heads,
@@ -176,7 +171,7 @@ class SwinUnetBackbone(nn.Module):
         dwn_window_size_list.append(self.window_sizes[2])
         dwn_patch_merge_scale_list.append(self.patch_merge_scales[2])
         block_structure_list.append(self.block_structure[2])
-        
+
         for i in range(self.block_structure[2]-1):
             self.dwn_stage3.append(SwinEncoder2(emb_size=new_emb_size,
                                                 num_heads=new_num_heads,
@@ -395,14 +390,14 @@ class SwinUnetBackbone(nn.Module):
 
 if __name__ == '__main__':
     from yoke.torch_training_utils import count_torch_params
-    
+
     # (B, H*W, C)
     x = torch.rand(5, 112*80, 96)  # 112*80=8960
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     x = x.type(torch.FloatTensor).to(device)
 
-    # Swin U-net 
+    # Swin U-net
     swin_t_unet = SwinUnetBackbone(emb_size=96,
                                    emb_factor=2,
                                    patch_grid_size=(112, 80),

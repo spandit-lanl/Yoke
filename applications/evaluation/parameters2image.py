@@ -4,7 +4,8 @@ this will become a GUI interface to probe trained image generation models.
 
 """
 
-import os, argparse
+import os
+import argparse
 import numpy as np
 import torch
 import torch.nn as nn
@@ -63,7 +64,7 @@ parser.add_argument('--image_name',
 args = parser.parse_args()
 
 checkpoint = args.checkpoint
-    
+
 # Additional input variables
 savedir = args.savedir
 SAVEFIG = args.savefig
@@ -134,14 +135,14 @@ pred_image = np.squeeze(pred_image.detach().numpy())
 ###################################
 # Plot normalized radiograph and density field for diagnostics.
 fig1, ax1 = plt.subplots(1, 1, figsize=(12, 12))
-fig1.suptitle('Time={:.3f}us'.format(input_params[-1]), fontsize=18)
+fig1.suptitle(f'Time={input_params[-1]:.3f}us', fontsize=18)
 img1 = ax1.imshow(pred_image,
                   aspect='equal',
                   origin='lower',
                   cmap='jet',
                   vmin=pred_image.min(),
                   vmax=pred_image.max())
-ax1.set_ylabel("Z-axis", fontsize=16)                 
+ax1.set_ylabel("Z-axis", fontsize=16)
 ax1.set_xlabel("R-axis", fontsize=16)
 ax1.set_title('Prediction', fontsize=18)
 

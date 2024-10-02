@@ -3,11 +3,7 @@
 """
 
 import torch
-import torch.nn.functional as F
 from torch import nn
-from einops import rearrange
-from einops.layers.torch import Rearrange
-import numpy as np
 
 from yoke.models.vit.swin.windowed_msa import WindowMSA, ShiftedWindowMSA
 from yoke.models.vit.swin.windowed_msa import WindowCosMSA, ShiftedWindowCosMSA
@@ -22,13 +18,13 @@ class MLP(nn.Module):
         emb_size (int): Embedding layer dimension from input layer.
     
     """
-    
+
     def __init__(self, emb_size: int=64):
         super().__init__()
         self.ff = nn.Sequential(nn.Linear(emb_size, 4*emb_size),
                                 nn.GELU(),
                                 nn.Linear(4*emb_size, emb_size))
-    
+
     def forward(self, x):
         return self.ff(x)
 
@@ -52,7 +48,7 @@ class SwinEncoder(nn.Module):
         window_size (int, int): Dimensions of window to use on the patch grid.
 
     """
-    
+
     def __init__(self,
                  emb_size: int=64,
                  num_heads: int=10,
@@ -76,7 +72,7 @@ class SwinEncoder(nn.Module):
 
         self.ln = nn.LayerNorm(self.emb_size)
         self.MLP = MLP(self.emb_size)
-        
+
     def forward(self, x):
         # Window Attention
         x = x + self.WMSA(self.ln(x))
@@ -84,7 +80,7 @@ class SwinEncoder(nn.Module):
         # Shifted Window Attention
         x = x + self.SWMSA(self.ln(x))
         x = x + self.MLP(self.ln(x))
-        
+
         return x
 
 
@@ -101,7 +97,7 @@ class SwinEncoder2(nn.Module):
         window_size (int, int): Dimensions of window to use on the patch grid.
 
     """
-    
+
     def __init__(self,
                  emb_size: int=64,
                  num_heads: int=10,
@@ -125,7 +121,7 @@ class SwinEncoder2(nn.Module):
 
         self.ln = nn.LayerNorm(self.emb_size)
         self.MLP = MLP(self.emb_size)
-        
+
     def forward(self, x):
         # Window Attention
         x = x + self.ln(self.WMSA(x))
@@ -133,7 +129,7 @@ class SwinEncoder2(nn.Module):
         # Shifted Window Attention
         x = x + self.ln(self.SWMSA(x))
         x = x + self.ln(self.MLP(x))
-        
+
         return x
 
 
@@ -148,7 +144,7 @@ class SwinConnectEncoder(SwinEncoder2):
         window_size (int, int): Dimensions of window to use on the patch grid.
 
     """
-    
+
     def __init__(self,
                  emb_size: int=64,
                  num_heads: int=10,
@@ -158,10 +154,10 @@ class SwinConnectEncoder(SwinEncoder2):
                          num_heads=num_heads,
                          patch_grid_size=patch_grid_size,
                          window_size=window_size)
-        
+
     def forward(self, x):
         x = super().forward(x)
-        
+
         return x, x
 
 
@@ -177,7 +173,7 @@ class SwinConnectDecoder(SwinEncoder2):
         window_size (int, int): Dimensions of window to use on the patch grid.
 
     """
-    
+
     def __init__(self,
                  emb_size: int=64,
                  num_heads: int=10,
@@ -189,8 +185,8 @@ class SwinConnectDecoder(SwinEncoder2):
                          window_size=window_size)
 
         self.linear_remap = nn.Linear(2*emb_size, emb_size)
-        
-        
+
+
     def forward(self, x, y):
         # Concatenate with the skip connection input
         x = torch.cat([x, y], dim=-1)
@@ -200,7 +196,7 @@ class SwinConnectDecoder(SwinEncoder2):
 
         # Standard SWIN-V2 encoding
         x = super().forward(x)
-        
+
         return x
 
 

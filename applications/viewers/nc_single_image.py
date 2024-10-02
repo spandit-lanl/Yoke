@@ -74,15 +74,15 @@ parser.add_argument('--field', '-F',
                           'volhr_innerCylSide, volhr_innerCylBottom, volhr_MOI, '
                           'volhr_sum, pressure, temperature, melt_state, porosity, '
                           'eqps, eqps_rate, eff_stress, bulk_mod, sound_speed, rVel, zVel.'))
-                                
+
 parser.add_argument('--save', '-S',
                     action='store_true',
                     help='Flag to save image.')
 
 
-def singlePVIarray(indir='./', 
-                   runID='Sn00', 
-                   pviIDX=41, 
+def singlePVIarray(indir='./',
+                   runID='Sn00',
+                   pviIDX=41,
                    FIELD='rho'):
     """Function to grab single array from NPZ.
 
@@ -101,7 +101,6 @@ def singlePVIarray(indir='./',
        simtime (float): Simulation time of array
 
     """
-
     # Get field array
     filename = os.path.join(indir,
                             f'{runID}_pvi_idx{pviIDX:05d}.npz')
@@ -109,10 +108,10 @@ def singlePVIarray(indir='./',
     data = np.load(filename)
     if FIELD == 'volhr_sum':
         # Look at sum of vol-avg density for parts
-        volhr_outerWall =  data['volhr_outerWall'] 
-        volhr_bottomWall =  data['volhr_bottomWall'] 
-        volhr_mcSide =  data['volhr_mcSide'] 
-        volhr_mcBottom =  data['volhr_mcBottom'] 
+        volhr_outerWall =  data['volhr_outerWall']
+        volhr_bottomWall =  data['volhr_bottomWall']
+        volhr_mcSide =  data['volhr_mcSide']
+        volhr_mcBottom =  data['volhr_mcBottom']
         volhr_MOI = data['volhr_MOI']
         volhr_innerCylSide = data['volhr_innerCylSide']
         volhr_innerCylBottom = data['volhr_innerCylBottom']
@@ -130,7 +129,7 @@ def singlePVIarray(indir='./',
     # hr_innerCylSide = data['hr_innerCylSide']
     # hr_innerCylBottom = data['hr_innerCylBottom']
     # field = hr_MOI + hr_innerCylSide + hr_innerCylBottom
-    
+
     # Get simulation time
     simtime = data['sim_time']
 
@@ -154,16 +153,16 @@ if __name__ == '__main__':
     SAVEFIG = args_ns.save
 
     # Get the field
-    Hfield, Rcoord, Zcoord, simtime = singlePVIarray(indir=indir, 
-                                                     runID=runID, 
-                                                     pviIDX=pviIDX, 
+    Hfield, Rcoord, Zcoord, simtime = singlePVIarray(indir=indir,
+                                                     runID=runID,
+                                                     pviIDX=pviIDX,
                                                      FIELD=FIELD)
 
     Hfield = np.concatenate((np.fliplr(Hfield), Hfield), axis=1)
     print('Shape of Hfield: ', Hfield.shape)
     #Hfield = Hfield[0:300, 100:1100]
     print(Hfield.shape)
-    
+
     # Plot normalized radiograph and density field for diagnostics.
     fig1, ax1 = plt.subplots(1, 1, figsize=(12, 12))
     img1 = ax1.imshow(Hfield,
@@ -174,9 +173,9 @@ if __name__ == '__main__':
                               Zcoord.max()],
                       origin='lower',
                       cmap='cividis' if FIELD=='pRad' else 'jet')
-    ax1.set_ylabel("Z-axis (um)", fontsize=16)                 
+    ax1.set_ylabel("Z-axis (um)", fontsize=16)
     ax1.set_xlabel("R-axis (um)", fontsize=16)
-    ax1.set_title('T={:.2f}us'.format(float(simtime)), fontsize=18)
+    ax1.set_title(f'T={float(simtime):.2f}us', fontsize=18)
 
     divider1 = make_axes_locatable(ax1)
     cax1 = divider1.append_axes('right', size='10%', pad=0.1)
@@ -186,10 +185,10 @@ if __name__ == '__main__':
 
     if SAVEFIG:
         fig1.savefig(os.path.join(outdir,
-                                  f'{runID}_idx{pviIDX:05d}_{FIELD}.png'), 
+                                  f'{runID}_idx{pviIDX:05d}_{FIELD}.png'),
                      bbox_inches='tight')
         # fig1.savefig(os.path.join(outdir,
-        #                           f'{runID}_idx{pviIDX:05d}_hr_sum.png'), 
+        #                           f'{runID}_idx{pviIDX:05d}_hr_sum.png'),
         #              bbox_inches='tight')
     else:
         plt.show()

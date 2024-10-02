@@ -3,15 +3,11 @@
 """
 
 import torch
-import torch.nn.functional as F
 from torch import nn
-from einops import rearrange
-from einops.layers.torch import Rearrange
-import numpy as np
 
 from yoke.models.vit.swin.encoder import SwinEncoder, SwinEncoder2
 from yoke.models.vit.patch_embed import SwinEmbedding
-from yoke.models.vit.patch_manipulation import PatchMerge, PatchExpand
+from yoke.models.vit.patch_manipulation import PatchMerge
 
 
 class Swin(nn.Module):
@@ -36,7 +32,7 @@ class Swin(nn.Module):
                         during initialization.
 
     """
-    
+
     def __init__(self,
                  input_channels: int=3,
                  img_size: (int, int)=(1120, 800),
@@ -62,7 +58,7 @@ class Swin(nn.Module):
         self.window_sizes = window_sizes
         self.patch_merge_scales = patch_merge_scales
         self.num_output_classes = num_output_classes
-        
+
         # Embedding takes channels-first image (B, C, H, W) and returns patch
         # tokens (B, H'*W', E) with H'=H/ph, W'=W/pw for patch_size=(ph, pw).
         self.Embedding = SwinEmbedding(num_vars=self.input_channels,
@@ -78,13 +74,13 @@ class Swin(nn.Module):
         if verbose:
             print('Input image size:', self.img_size)
             print('Patch-grid size after embedding:', self.patch_grid_size)
-        
+
         # Set up list of encoding and merging layers
         self.stage1 = nn.ModuleList()
         self.stage2 = nn.ModuleList()
         self.stage3 = nn.ModuleList()
         self.stage4 = nn.ModuleList()
-        
+
         self.PatchMerge = nn.ModuleList()
 
         # A series of SWIN encoders with embedding size and number of heads
@@ -115,7 +111,7 @@ class Swin(nn.Module):
                                            num_heads=new_num_heads,
                                            patch_grid_size=new_patch_grid_size,
                                            window_size=self.window_sizes[1]))
-            
+
         self.PatchMerge.append(PatchMerge(emb_size=new_emb_size,
                                           emb_factor=self.emb_factor,
                                           patch_grid_size=new_patch_grid_size,
@@ -158,7 +154,7 @@ class Swin(nn.Module):
 
         # All tokens are pooled using Adaptive Pooling
         self.avgpool1d = nn.AdaptiveAvgPool1d(output_size=1)
-        
+
         self.layer = nn.Linear(new_emb_size, num_output_classes)
 
     def forward(self, x):
@@ -167,12 +163,12 @@ class Swin(nn.Module):
         # enumeration of nn.moduleList is supported under `torch.jit.script`
         for i, stage in enumerate(self.stage1):
             x = stage(x)
-            
+
         x = self.PatchMerge[0](x)
 
         for i, stage in enumerate(self.stage2):
             x = stage(x)
-            
+
         x = self.PatchMerge[1](x)
 
         for i, stage in enumerate(self.stage3):
@@ -182,7 +178,7 @@ class Swin(nn.Module):
 
         for i, stage in enumerate(self.stage4):
             x = stage(x)
-            
+
         x = self.layer(self.avgpool1d(x.transpose(1, 2)).squeeze(2))
 
         return x
@@ -213,7 +209,7 @@ class SwinV2(nn.Module):
                         during initialization.
 
     """
-    
+
     def __init__(self,
                  input_channels: int=3,
                  img_size: (int, int)=(1120, 800),
@@ -239,7 +235,7 @@ class SwinV2(nn.Module):
         self.window_sizes = window_sizes
         self.patch_merge_scales = patch_merge_scales
         self.num_output_classes = num_output_classes
-        
+
         # Embedding takes channels-first image (B, C, H, W) and returns patch
         # tokens (B, H'*W', E) with H'=H/ph, W'=W/pw for patch_size=(ph, pw).
         self.Embedding = SwinEmbedding(num_vars=self.input_channels,
@@ -255,13 +251,13 @@ class SwinV2(nn.Module):
         if verbose:
             print('Input image size:', self.img_size)
             print('Patch-grid size after embedding:', self.patch_grid_size)
-        
+
         # Set up list of encoding and merging layers
         self.stage1 = nn.ModuleList()
         self.stage2 = nn.ModuleList()
         self.stage3 = nn.ModuleList()
         self.stage4 = nn.ModuleList()
-        
+
         self.PatchMerge = nn.ModuleList()
 
         # A series of SWIN encoders with embedding size and number of heads
@@ -300,7 +296,7 @@ class SwinV2(nn.Module):
             # Add additional layer normalization every 3 encoder blocks
             if (i+1) % 3 == 0:
                 self.stage2.append(nn.LayerNorm(new_emb_size))
-            
+
         self.PatchMerge.append(PatchMerge(emb_size=new_emb_size,
                                           emb_factor=self.emb_factor,
                                           patch_grid_size=new_patch_grid_size,
@@ -323,7 +319,7 @@ class SwinV2(nn.Module):
             # Add additional layer normalization every 3 encoder blocks
             if (i+1) % 3 == 0:
                 self.stage3.append(nn.LayerNorm(new_emb_size))
-                
+
         self.PatchMerge.append(PatchMerge(emb_size=new_emb_size,
                                           emb_factor=self.emb_factor,
                                           patch_grid_size=new_patch_grid_size,
@@ -347,10 +343,10 @@ class SwinV2(nn.Module):
             # Add additional layer normalization every 3 encoder blocks
             if (i+1) % 3 == 0:
                 self.stage4.append(nn.LayerNorm(new_emb_size))
-            
+
         # All tokens are pooled using Adaptive Pooling
         self.avgpool1d = nn.AdaptiveAvgPool1d(output_size=1)
-        
+
         self.layer = nn.Linear(new_emb_size, num_output_classes)
 
     def forward(self, x):
@@ -359,12 +355,12 @@ class SwinV2(nn.Module):
         # enumeration of nn.moduleList is supported under `torch.jit.script`
         for i, stage in enumerate(self.stage1):
             x = stage(x)
-            
+
         x = self.PatchMerge[0](x)
 
         for i, stage in enumerate(self.stage2):
             x = stage(x)
-            
+
         x = self.PatchMerge[1](x)
 
         for i, stage in enumerate(self.stage3):
@@ -374,7 +370,7 @@ class SwinV2(nn.Module):
 
         for i, stage in enumerate(self.stage4):
             x = stage(x)
-            
+
         x = self.layer(self.avgpool1d(x.transpose(1, 2)).squeeze(2))
 
         return x
@@ -382,7 +378,7 @@ class SwinV2(nn.Module):
 
 if __name__ == '__main__':
     from yoke.torch_training_utils import count_torch_params
-    
+
     # (B, C, H, W)
     x = torch.rand(5, 25, 1120, 800)
 
@@ -409,7 +405,7 @@ if __name__ == '__main__':
                   patch_size=(10, 10),
                   block_structure=(1, 1, 9, 1),
                   emb_size=96,
-                  emb_factor=2, 
+                  emb_factor=2,
                   num_heads=8,
                   window_sizes=[(8, 8), (8, 8), (4, 4), (2, 2)],
                   patch_merge_scales=[(2, 2), (2, 2), (2, 2)],
@@ -421,7 +417,7 @@ if __name__ == '__main__':
                   patch_size=(10, 10),
                   block_structure=(1, 1, 9, 1),
                   emb_size=128,
-                  emb_factor=2, 
+                  emb_factor=2,
                   num_heads=8,
                   window_sizes=[(8, 8), (8, 8), (4, 4), (2, 2)],
                   patch_merge_scales=[(2, 2), (2, 2), (2, 2)],
@@ -433,7 +429,7 @@ if __name__ == '__main__':
                   patch_size=(10, 10),
                   block_structure=(1, 1, 9, 1),
                   emb_size=192,
-                  emb_factor=2, 
+                  emb_factor=2,
                   num_heads=8,
                   window_sizes=[(8, 8), (8, 8), (4, 4), (2, 2)],
                   patch_merge_scales=[(2, 2), (2, 2), (2, 2)],
@@ -445,7 +441,7 @@ if __name__ == '__main__':
                   patch_size=(10, 10),
                   block_structure=(1, 1, 9, 1),
                   emb_size=352,
-                  emb_factor=2, 
+                  emb_factor=2,
                   num_heads=8,
                   window_sizes=[(8, 8), (8, 8), (4, 4), (2, 2)],
                   patch_merge_scales=[(2, 2), (2, 2), (2, 2)],
@@ -457,7 +453,7 @@ if __name__ == '__main__':
                   patch_size=(10, 10),
                   block_structure=(1, 1, 11, 2),
                   emb_size=512,
-                  emb_factor=2, 
+                  emb_factor=2,
                   num_heads=8,
                   window_sizes=[(8, 8), (8, 8), (4, 4), (2, 2)],
                   patch_merge_scales=[(2, 2), (2, 2), (2, 2)],
@@ -469,7 +465,7 @@ if __name__ == '__main__':
                       patch_size=(10, 10),
                       block_structure=(1, 1, 11, 2),
                       emb_size=512,
-                      emb_factor=2, 
+                      emb_factor=2,
                       num_heads=8,
                       window_sizes=[(8, 8), (8, 8), (4, 4), (2, 2)],
                       patch_merge_scales=[(2, 2), (2, 2), (2, 2)],

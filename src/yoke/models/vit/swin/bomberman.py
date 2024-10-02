@@ -7,16 +7,11 @@ emulator.
 """
 
 import torch
-import torch.nn.functional as F
 from torch import nn
-from einops import rearrange
-from einops.layers.torch import Rearrange
-import numpy as np
 
-from yoke.models.vit.swin.encoder import SwinEncoder2
 from yoke.models.vit.swin.unet import SwinUnetBackbone
 from yoke.models.vit.patch_embed import ClimaX_ParallelVarPatchEmbed
-from yoke.models.vit.patch_manipulation import PatchMerge, PatchExpand, Unpatchify
+from yoke.models.vit.patch_manipulation import Unpatchify
 
 from yoke.models.vit.aggregate_variables import ClimaX_AggVars
 from yoke.models.vit.embedding_encoders import ClimaX_VarEmbed, ClimaX_PosEmbed, ClimaX_TimeEmbed
@@ -44,7 +39,7 @@ class LodeRunner(nn.Module):
                         during initialization.
 
     """
-    
+
     def __init__(self,
                  default_vars,
                  image_size: (int, int)=(1120, 800),
@@ -117,7 +112,7 @@ class LodeRunner(nn.Module):
         # First embed input
         varIDXs = self.var_embed_layer.get_var_ids(tuple(in_vars), x.device)
         x = self.parallel_embed(x, varIDXs)
-        
+
         # Encode variables
         x = self.var_embed_layer(x, in_vars)
 
@@ -135,14 +130,14 @@ class LodeRunner(nn.Module):
 
         # Use linear map to remap to correct variable and patchsize dimension
         x = self.linear4unpatch(x)
-        
+
         # Unpatchify back to original shape
         x = self.unpatch(x)
 
         # Select only entries corresponding to out_vars for loss
         out_var_ids = self.var_embed_layer.get_var_ids(tuple(out_vars), x.device)
         preds = x[:, out_var_ids]
-        
+
         return preds
 
 
@@ -175,18 +170,18 @@ if __name__ == '__main__':
     # (B, C, H, W)
     x = torch.rand(5, 4, 1120, 800)
     x = x.type(torch.FloatTensor).to(device)
-    
+
     lead_times = torch.rand(5)  # Lead time for each entry in batch
     x_vars=['cu_density',
             'ss_density',
             'ply_density',
             'air_density']
-    
+
     out_vars=['cu_density',
               'ss_density',
               'ply_density',
               'air_density']
-    
+
     embed_dim = 128
     emb_factor = 2
     patch_size = (10, 10)
@@ -195,7 +190,7 @@ if __name__ == '__main__':
     num_heads = 8
     window_sizes = [(8, 8), (8, 8), (4, 4), (2, 2)]
     patch_merge_scales = [(2, 2), (2, 2), (2, 2)]
-    
+
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     x = x.type(torch.FloatTensor).to(device)
 

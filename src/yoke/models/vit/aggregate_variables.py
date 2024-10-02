@@ -3,7 +3,6 @@ embedding. Variable aggregation eliminates the variable dimension.
 
 """
 
-import numpy as np
 import torch
 import torch.nn as nn
 
@@ -24,7 +23,7 @@ class ClimaX_AggVars(nn.Module):
 
         """
         super().__init__()
-        
+
         self.var_query = nn.Parameter(torch.zeros(1, 1, embed_dim),
                                       requires_grad=True)
         self.var_agg = nn.MultiheadAttention(embed_dim,
@@ -36,22 +35,22 @@ class ClimaX_AggVars(nn.Module):
         B, V, L, D = x.shape
 
         x = rearrange(x, 'b v l d -> (b l) v d')  # BxL, V, D
-        
+
         Q = self.var_query.repeat_interleave(x.shape[0], dim=0)  # BxL, 1, D
 
         # Attention is softmax(Q*K^T)*V. Q*K^T is shape (BxL, 1, V).
         # So Attention is shape (BxL, 1, D).
         #
         # Literally using Q=var_query, K=x, V=x ?!
-        x, _ = self.var_agg(Q, x, x)  
-        
+        x, _ = self.var_agg(Q, x, x)
+
         x = x.squeeze()
 
         x = rearrange(x,
                       '(b l) d -> b l d',
                       b=B,
                       l=L)
-        
+
         return x
 
 
@@ -59,13 +58,13 @@ if __name__ == '__main__':
     """Usage Example.
 
     """
-    
+
     # (B, V, token_number, E) = (3, 15, 128, 32)
     x = torch.rand(3, 15, 128, 32)
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     x = x.type(torch.FloatTensor).to(device)
-    
+
     model = ClimaX_AggVars(embed_dim=32, num_heads=4).to(device)
     print('Input shape:', x.shape)
     print('Aggregate shape:', model(x).shape)

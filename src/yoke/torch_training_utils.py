@@ -7,11 +7,7 @@
 ## Packages
 ####################################
 import os
-import sys
-import glob
-import random
 import time
-import math
 import h5py
 import numpy as np
 import pandas as pd
@@ -28,7 +24,6 @@ def count_torch_params(model, trainable=True):
         trainable (bool): If TRUE, count only trainable parameters.
 
     """
-
     plist = []
     for p in model.parameters():
         if trainable:
@@ -58,16 +53,15 @@ def save_model_and_optimizer_hdf5(model, optimizer, epoch, filepath, compiled=Fa
                          was compiled.
 
     """
-
     # If the model is a `torch.compiled` version the original model must be
     # extracted first.
     if compiled:
         model = model._orig_mod
-    
+
     with h5py.File(filepath, 'w') as h5f:
         # Save epoch number
         h5f.attrs['epoch'] = epoch
-        
+
         # Save model parameters and buffers
         for name, param in model.named_parameters():
             data = param.detach().cpu().numpy()
@@ -84,7 +78,7 @@ def save_model_and_optimizer_hdf5(model, optimizer, epoch, filepath, compiled=Fa
             else:
                 h5f.create_dataset('model/buffers/' + name,
                                    data=data)
-            
+
         # Save optimizer state
         optimizer_state = optimizer.state_dict()
         for idx, group in enumerate(optimizer_state['param_groups']):
@@ -121,7 +115,7 @@ def load_model_and_optimizer_hdf5(model, optimizer, filepath):
     with h5py.File(filepath, 'r') as h5f:
         # Get epoch number
         epoch = h5f.attrs['epoch']
-        
+
         # Load model parameters and buffers
         for name in h5f.get('model/parameters', []):  # Get the group
             if isinstance(h5f['model/parameters/' + name], h5py.Dataset):
@@ -203,7 +197,6 @@ def make_dataloader(dataset: torch.utils.data.Dataset,
         dataloader (torch.utils.data.DataLoader): pytorch dataloader 
 
     """
-
     # Use randomsampler instead of just shuffle=True so we can specify the
     # number of batchs during an epoch.
     randomsampler = RandomSampler(dataset, num_samples=batch_size*num_batches)
@@ -217,23 +210,22 @@ def make_dataloader(dataset: torch.utils.data.Dataset,
 
     return dataloader
 
-    
+
 ####################################
 ## Saving Results
 ####################################
 def save_append_df(path: str, df: pd.DataFrame, START: bool):
     """Function to save/append dataframe contents to a csv file
 
-        Args:
-            path (str): path of csv file
-            df (pd.DataFrame): pandas dataframe to save
-            START (bool): indicates if the file path needs to be initiated
+    Args:
+        path (str): path of csv file
+        df (pd.DataFrame): pandas dataframe to save
+        START (bool): indicates if the file path needs to be initiated
 
-        Returns:
-            No Return Objects
+    Returns:
+        No Return Objects
 
     """
-    
     if START:
         assert not os.path.isfile(path), 'If starting training, '+path+' should not exist.'
         df.to_csv(path, header=True, index=True, mode='x')
@@ -243,7 +235,7 @@ def save_append_df(path: str, df: pd.DataFrame, START: bool):
 
 
 def append_to_dict(dictt: dict, batch_ID: int, truth, pred, loss):
-    """Function to appending sample information to a dictionary Dictionary must 
+    """Function to appending sample information to a dictionary Dictionary must
     be initialized with correct keys
 
     Args:
@@ -257,9 +249,8 @@ def append_to_dict(dictt: dict, batch_ID: int, truth, pred, loss):
         dictt (dict): dictionary with appended sample information
 
     """
-    
     batchsize = np.shape(truth.cpu().detach().numpy().flatten())[0]
-    
+
     for i in range(batchsize):
         dictt["epoch"].append(0)  # To be easily identified later
         dictt["batch"].append(batch_ID)
@@ -277,46 +268,45 @@ def continuation_setup(checkpointpath, studyIDX, last_epoch):
     """Function to generate the training.input and training.slurm files for
     continuation of model training
 
-     Args:
+    Args:
          checkpointpath (str): path to model checkpoint to load in model from
          studyIDX (int): study ID to include in file name
          last_epoch (int): numer of epochs completed at this checkpoint
 
-     Returns:
+    Returns:
          new_training_slurm_filepath (str): Name of slurm file to submit job for 
                                             continued training
 
     """
-    
     ## Identify Template Files
     training_input_tmpl = "./training_input.tmpl"
     training_slurm_tmpl = "./training_slurm.tmpl"
 
     ## Make new training.input file
-    with open(training_input_tmpl, 'r') as f:
+    with open(training_input_tmpl) as f:
         training_input_data = f.read()
-        
+
     new_training_input_data = training_input_data.replace('<CHECKPOINT>',
                                                           checkpointpath)
-    
+
     input_str = 'study{0:03d}_restart_training_epoch{1:04d}.input'
     new_training_input_filepath = input_str.format(studyIDX, last_epoch+1)
-    
+
     with open(os.path.join('./', new_training_input_filepath), 'w') as f:
         f.write(new_training_input_data)
 
-    with open(training_slurm_tmpl, 'r') as f:
+    with open(training_slurm_tmpl) as f:
         training_slurm_data = f.read()
 
     slurm_str = 'study{0:03d}_restart_training_epoch{1:04d}.slurm'
     new_training_slurm_filepath = slurm_str.format(studyIDX, last_epoch+1)
-    
+
     new_training_slurm_data = training_slurm_data.replace('<INPUTFILE>',
                                                           new_training_input_filepath)
-    
+
     new_training_slurm_data = new_training_slurm_data.replace('<epochIDX>',
-                                                              '{0:04d}'.format(last_epoch+1))
-    
+                                                              f'{last_epoch+1:04d}')
+
     with open(os.path.join('./', new_training_slurm_filepath), 'w') as f:
         f.write(new_training_slurm_data)
 
@@ -326,7 +316,7 @@ def continuation_setup(checkpointpath, studyIDX, last_epoch):
 ####################################
 ## Training on a Datastep
 ####################################
-def train_scalar_datastep(data: tuple, 
+def train_scalar_datastep(data: tuple,
                           model,
                           optimizer,
                           loss_fn,
@@ -345,7 +335,6 @@ def train_scalar_datastep(data: tuple,
         loss (): evaluated loss for the data sample
 
     """
-    
     ## Set model to train
     model.train()
 
@@ -354,7 +343,7 @@ def train_scalar_datastep(data: tuple,
     inpt = inpt.to(device, non_blocking=True)
     # Unsqueeze is necessary for scalar ground-truth output
     truth = truth.to(torch.float32).unsqueeze(-1).to(device, non_blocking=True)
-    
+
     ## Perform a forward pass
     # NOTE: If training on GPU model should have already been moved to GPU
     # prior to initalizing optimizer.
@@ -369,7 +358,7 @@ def train_scalar_datastep(data: tuple,
     return truth, pred, loss
 
 
-def train_array_datastep(data: tuple, 
+def train_array_datastep(data: tuple,
                          model,
                          optimizer,
                          loss_fn,
@@ -388,7 +377,6 @@ def train_array_datastep(data: tuple,
         loss (): evaluated loss for the data sample
 
     """
-    
     ## Set model to train
     model.train()
 
@@ -396,7 +384,7 @@ def train_array_datastep(data: tuple,
     (inpt, truth) = data
     inpt = inpt.to(device, non_blocking=True)
     truth = truth.to(device, non_blocking=True)
-    
+
     ## Perform a forward pass
     # NOTE: If training on GPU model should have already been moved to GPU
     # prior to initalizing optimizer.
@@ -415,7 +403,7 @@ def train_array_datastep(data: tuple,
 ####################################
 ## Evaluating on a Datastep
 ####################################
-def eval_scalar_datastep(data: tuple, 
+def eval_scalar_datastep(data: tuple,
                          model,
                          loss_fn,
                          device: torch.device):
@@ -432,7 +420,6 @@ def eval_scalar_datastep(data: tuple,
         loss (): evaluated loss for the data sample
 
     """
-    
     ## Set model to eval
     model.eval()
 
@@ -448,7 +435,7 @@ def eval_scalar_datastep(data: tuple,
     return truth, pred, loss
 
 
-def eval_array_datastep(data: tuple, 
+def eval_array_datastep(data: tuple,
                         model,
                         loss_fn,
                         device: torch.device):
@@ -465,7 +452,6 @@ def eval_array_datastep(data: tuple,
         loss (): evaluated loss for the data sample
 
     """
-    
     ## Set model to eval
     model.eval()
 
@@ -485,7 +471,7 @@ def eval_array_datastep(data: tuple,
 ## Training & Validation for an Epoch
 ######################################
 def train_scalar_dict_epoch(training_data,
-                            validation_data, 
+                            validation_data,
                             model,
                             optimizer,
                             loss_fn,
@@ -514,7 +500,6 @@ def train_scalar_dict_epoch(training_data,
         val_sample_dict (dict): dictionary with validation sample stats
 
     """
-    
     ## Initialize things to save
     startTime = time.time()
     trainbatches = len(training_data)
@@ -525,7 +510,7 @@ def train_scalar_dict_epoch(training_data,
     ## Train on all training samples
     for traindata in training_data:
         trainbatch_ID += 1
-        truth, pred, train_loss = train_scalar_datastep(traindata, 
+        truth, pred, train_loss = train_scalar_datastep(traindata,
                                                         model,
                                                         optimizer,
                                                         loss_fn,
@@ -536,19 +521,19 @@ def train_scalar_dict_epoch(training_data,
                                            truth,
                                            pred,
                                            train_loss)
-        
+
     train_batchsize = np.shape(truth.cpu().detach().numpy().flatten())[0]
 
     ## Calcuate the Epoch Average Loss
     train_samples = train_batchsize * trainbatches
     avgTrainLoss = np.sum(train_sample_dict["loss"][-train_samples:]) / train_samples
     summary_dict["train_loss"].append(avgTrainLoss)
-    
+
     ## Evaluate on all validation samples
     with torch.no_grad():
         for valdata in validation_data:
             valbatch_ID += 1
-            truth, pred, val_loss = eval_scalar_datastep(valdata, 
+            truth, pred, val_loss = eval_scalar_datastep(valdata,
                                                          model,
                                                          loss_fn,
                                                          device)
@@ -576,7 +561,7 @@ def train_scalar_dict_epoch(training_data,
 
 
 def train_scalar_csv_epoch(training_data,
-                           validation_data, 
+                           validation_data,
                            model,
                            optimizer,
                            loss_fn,
@@ -601,7 +586,6 @@ def train_scalar_csv_epoch(training_data,
         device (torch.device): device index to select
 
     """
-    
     ## Initialize things to save
     trainbatches = len(training_data)
     valbatches = len(validation_data)
@@ -612,13 +596,13 @@ def train_scalar_csv_epoch(training_data,
     val_batchsize = validation_data.batch_size
 
 
-    train_rcrd_filename = train_rcrd_filename.replace(f'<epochIDX>',
-                                                      '{:04d}'.format(epochIDX))
+    train_rcrd_filename = train_rcrd_filename.replace('<epochIDX>',
+                                                      f'{epochIDX:04d}')
     ## Train on all training samples
     with open(train_rcrd_filename, 'a') as train_rcrd_file:
         for traindata in training_data:
             trainbatch_ID += 1
-            truth, pred, train_loss = train_scalar_datastep(traindata, 
+            truth, pred, train_loss = train_scalar_datastep(traindata,
                                                             model,
                                                             optimizer,
                                                             loss_fn,
@@ -630,17 +614,17 @@ def train_scalar_csv_epoch(training_data,
                                       trainbatch_ID,
                                       train_loss.cpu().detach().numpy().flatten()[i]),
                       file=train_rcrd_file)
-            
+
     ## Evaluate on all validation samples
     if epochIDX % train_per_val == 0:
         print('Validating...', epochIDX)
-        val_rcrd_filename = val_rcrd_filename.replace(f'<epochIDX>',
-                                                      '{:04d}'.format(epochIDX))
+        val_rcrd_filename = val_rcrd_filename.replace('<epochIDX>',
+                                                      f'{epochIDX:04d}')
         with open(val_rcrd_filename, 'a') as val_rcrd_file:
             with torch.no_grad():
                 for valdata in validation_data:
                     valbatch_ID += 1
-                    truth, pred, val_loss = eval_scalar_datastep(valdata, 
+                    truth, pred, val_loss = eval_scalar_datastep(valdata,
                                                                  model,
                                                                  loss_fn,
                                                                  device)
@@ -656,7 +640,7 @@ def train_scalar_csv_epoch(training_data,
 
 
 def train_array_csv_epoch(training_data,
-                          validation_data, 
+                          validation_data,
                           model,
                           optimizer,
                           loss_fn,
@@ -682,7 +666,6 @@ def train_array_csv_epoch(training_data,
         device (torch.device): device index to select
 
     """
-    
     ## Initialize things to save
     trainbatches = len(training_data)
     valbatches = len(validation_data)
@@ -692,13 +675,13 @@ def train_array_csv_epoch(training_data,
     train_batchsize = training_data.batch_size
     val_batchsize = validation_data.batch_size
 
-    train_rcrd_filename = train_rcrd_filename.replace(f'<epochIDX>',
-                                                      '{:04d}'.format(epochIDX))
+    train_rcrd_filename = train_rcrd_filename.replace('<epochIDX>',
+                                                      f'{epochIDX:04d}')
     ## Train on all training samples
     with open(train_rcrd_filename, 'a') as train_rcrd_file:
         for traindata in training_data:
             trainbatch_ID += 1
-            truth, pred, train_loss = train_array_datastep(traindata, 
+            truth, pred, train_loss = train_array_datastep(traindata,
                                                            model,
                                                            optimizer,
                                                            loss_fn,
@@ -710,17 +693,17 @@ def train_array_csv_epoch(training_data,
                                       trainbatch_ID,
                                       train_loss.cpu().detach().numpy().flatten()[i]),
                       file=train_rcrd_file)
-            
+
     ## Evaluate on all validation samples
     if epochIDX % train_per_val == 0:
         print('Validating...', epochIDX)
-        val_rcrd_filename = val_rcrd_filename.replace(f'<epochIDX>',
-                                                      '{:04d}'.format(epochIDX))
+        val_rcrd_filename = val_rcrd_filename.replace('<epochIDX>',
+                                                      f'{epochIDX:04d}')
         with open(val_rcrd_filename, 'a') as val_rcrd_file:
             with torch.no_grad():
                 for valdata in validation_data:
                     valbatch_ID += 1
-                    truth, pred, val_loss = eval_array_datastep(valdata, 
+                    truth, pred, val_loss = eval_array_datastep(valdata,
                                                                 model,
                                                                 loss_fn,
                                                                 device)
@@ -748,7 +731,7 @@ if __name__ == '__main__':
     pvi_CNN = PVI_SingleField_CNN(img_size=(1, 1700, 500),
                                   size_threshold=(8, 8),
                                   kernel=5,
-                                  features=12, 
+                                  features=12,
                                   interp_depth=15,
                                   conv_onlyweights=True,
                                   batchnorm_onlybias=True,

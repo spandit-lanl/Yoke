@@ -8,13 +8,9 @@ simultaneous batches onto the GPU.
 #############################################
 ## Packages
 #############################################
-import sys
 import os
-import typing
 import time
 import argparse
-import numpy as np
-import pandas as pd
 import torch
 import torch.nn as nn
 
@@ -189,13 +185,13 @@ if __name__ == '__main__':
 
     ## Study ID
     studyIDX = args.studyIDX
-    
+
     ## Data Paths
     design_file = os.path.abspath(args.LSC_DESIGN_DIR+args.design_file)
     train_filelist = args.FILELIST_DIR + args.train_filelist
     validation_filelist = args.FILELIST_DIR + args.validation_filelist
     test_filelist = args.FILELIST_DIR + args.test_filelist
-    
+
     ## Model Parameters
     featureList = args.featureList
     linearFeatures = args.linearFeatures
@@ -206,7 +202,7 @@ if __name__ == '__main__':
     # Leave one CPU out of the worker queue. Not sure if this is necessary.
     num_workers = int(os.environ['SLURM_JOB_CPUS_PER_NODE']) #- 1
     train_per_val = args.TRAIN_PER_VAL
-    
+
     ## Epoch Parameters
     total_epochs = args.total_epochs
     cycle_epochs = args.cycle_epochs
@@ -237,7 +233,7 @@ if __name__ == '__main__':
     #############################################
     ## Initialize Model
     #############################################
-    
+
     model = tCNNsurrogate(input_size=29,
                           linear_features=(7, 5, linearFeatures),
                           initial_tconv_kernel=(5, 5),
@@ -308,7 +304,7 @@ if __name__ == '__main__':
                                                             # modes that may
                                                             # provide better
                                                             # performance
-                                   
+
     #############################################
     ## Initialize Data
     #############################################
@@ -321,7 +317,7 @@ if __name__ == '__main__':
     test_dataset = LSC_cntr2rho_DataSet(args.LSC_NPZ_DIR,
                                         test_filelist,
                                         design_file)
-    
+
     print('Datasets initialized.')
 
     #############################################
@@ -365,17 +361,17 @@ if __name__ == '__main__':
         train_batchsize = train_dataloader.batch_size
         val_batchsize = val_dataloader.batch_size
 
-        trn_rcrd_filename = trn_rcrd_filename.replace(f'<epochIDX>',
-                                                      '{:04d}'.format(epochIDX))
+        trn_rcrd_filename = trn_rcrd_filename.replace('<epochIDX>',
+                                                      f'{epochIDX:04d}')
         ## Train on all training samples
         with open(trn_rcrd_filename, 'a') as train_rcrd_file:
             ## Set model to train
             compiled_model.train()
             stream_idx = 0
-            
+
             for traindata in train_dataloader:
                 trainbatch_ID += 1
-                
+
                 ## Extract data
                 (inpt, truth) = traindata
                 inpt = inpt.to(device, non_blocking=True)
@@ -384,7 +380,7 @@ if __name__ == '__main__':
                 # Use alternating streams for overlapping data transfer and computation
                 stream = streams[stream_idx]
                 stream_idx = (stream_idx + 1) % len(streams)
-                
+
                 ## Perform a forward pass
                 # NOTE: If training on GPU model should have already been moved to GPU
                 # prior to initalizing optimizer.
@@ -401,7 +397,7 @@ if __name__ == '__main__':
                 # before the next iteration
                 stream.synchronize()
 
-                # truth, pred, train_loss = train_array_datastep(traindata, 
+                # truth, pred, train_loss = train_array_datastep(traindata,
                 #                                                compiled_model,
                 #                                                optimizer,
                 #                                                loss_fn,
@@ -413,12 +409,12 @@ if __name__ == '__main__':
                                           trainbatch_ID,
                                           train_loss.cpu().detach().numpy().flatten()[i]),
                           file=train_rcrd_file)
-            
+
         ## Evaluate on all validation samples
         if epochIDX % train_per_val == 0:
             print('Validating...', epochIDX)
-            val_rcrd_filename = val_rcrd_filename.replace(f'<epochIDX>',
-                                                          '{:04d}'.format(epochIDX))
+            val_rcrd_filename = val_rcrd_filename.replace('<epochIDX>',
+                                                          f'{epochIDX:04d}')
             with open(val_rcrd_filename, 'a') as val_rcrd_file:
                 ## Set model to eval
                 compiled_model.eval()
@@ -436,7 +432,7 @@ if __name__ == '__main__':
                         pred = compiled_model(inpt)
                         val_loss = loss_fn(pred, truth)
 
-                        # truth, pred, val_loss = eval_array_datastep(valdata, 
+                        # truth, pred, val_loss = eval_array_datastep(valdata,
                         #                                             compiled_model,
                         #                                             loss_fn,
                         #                                             device)
@@ -450,7 +446,7 @@ if __name__ == '__main__':
 
         endTime = time.time()
         epoch_time = (endTime - startTime) / 60
-        
+
         ## Print Summary Results
         print('Completed epoch '+str(epochIDX)+'...')
         print('Epoch time:', epoch_time)
@@ -459,7 +455,7 @@ if __name__ == '__main__':
     print("Saving model checkpoint at end of epoch "+ str(epochIDX) + ". . .")
 
     # Move the model back to CPU prior to saving to increase portability
-    compiled_model.to('cpu')  
+    compiled_model.to('cpu')
     # Move optimizer state back to CPU
     for state in optimizer.state.values():
         for k, v in state.items():

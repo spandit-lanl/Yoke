@@ -27,10 +27,10 @@ def update_image(*args):
     param1 = slider1.get()
     param2 = slider2.get()
     param3 = slider3.get()
-    
+
     # Run the neural network and get a 2D numpy array
     array = run_neural_network(param1, param2, param3)
-    
+
     # Convert numpy array to PIL Image
     img = Image.fromarray(array, 'L')  # 'L' mode for grayscale
     # Anti-aliased resizing...
@@ -38,7 +38,7 @@ def update_image(*args):
     current_height = max(image_label.winfo_height(), 400)
     img_resized = img.resize((int(0.7*current_width), int(0.7*current_height)),
                              Image.Resampling.LANCZOS)
-    
+
     # Convert PIL Image to Tkinter PhotoImage
     photo = ImageTk.PhotoImage(img_resized)
     image_label.config(image=photo)

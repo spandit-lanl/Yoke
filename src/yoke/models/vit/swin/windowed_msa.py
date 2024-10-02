@@ -8,7 +8,6 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 from einops import rearrange
-from einops.layers.torch import Rearrange
 import numpy as np
 
 from yoke.models.vit.embedding_encoders import RelativePositionEmbed
@@ -31,13 +30,13 @@ class WindowMSA(nn.Module):
         window_size (int, int): Dimensions of window to use on the patch grid.
 
     """
-    
+
     def __init__(self,
                  emb_size: int=64,
                  num_heads: int=10,
                  patch_grid_size: (int, int)=(16, 32),
                  window_size: (int, int)=(8, 4)):
-        
+
         super().__init__()
         # Check size compatibilities
         try:
@@ -61,7 +60,7 @@ class WindowMSA(nn.Module):
                          window_size[0])
             e.args += msg_tuple
             raise
-        
+
         try:
             msg = 'Patch-grid not divisible by window-size!!!'
             assert patch_grid_size[1] % window_size[1] == 0, msg
@@ -72,7 +71,7 @@ class WindowMSA(nn.Module):
                          window_size[0])
             e.args += msg_tuple
             raise
-        
+
         self.emb_size = emb_size
         self.num_heads = num_heads
         self.patch_grid_size = patch_grid_size
@@ -86,13 +85,13 @@ class WindowMSA(nn.Module):
 
         # Initialize relative position embedding
         self.rel_pos_embed = RelativePositionEmbed(window_size=self.window_size)
-            
+
     def forward(self, x):
         # B: Batch-size
         # L: Number of tokens = H*W
         # C: token length or embedding dimension, i.e. emb_size
         B, L, C = x.shape
-        
+
         assert self.patch_grid_size[0]*self.patch_grid_size[1] == L
 
         # Map C to the Q,K,V matrices with linear embedding
@@ -107,7 +106,7 @@ class WindowMSA(nn.Module):
                       w=self.patch_grid_size[1],
                       k=3,
                       c=self.emb_size)
-        
+
         # The height and width dimensions are now *windowed*. There are now
         # Hw*Ww windows, each of size wh*ww. The windowed tokens are arranged
         # in a 2D, Hw x Hw, grid. The embedding dimension is separated into
@@ -119,8 +118,8 @@ class WindowMSA(nn.Module):
                       'b (Hw wh) (Ww ww) (e H) k -> b H Hw Ww (wh ww) e k',
                       wh=self.window_size[0],
                       ww=self.window_size[1],
-                      H=self.num_heads)            
-        
+                      H=self.num_heads)
+
         Q, K, V = x.chunk(3, dim=6)  # Corresponds to k in the rearrange above.
         Q, K, V = Q.squeeze(-1), K.squeeze(-1), V.squeeze(-1)
 
@@ -172,13 +171,13 @@ class ShiftedWindowMSA(nn.Module):
                                 NOTE: Each dimension must be divisble by 2. 
 
     """
-    
+
     def __init__(self,
                  emb_size: int=64,
                  num_heads: int=10,
                  patch_grid_size: (int, int)=(16, 32),
                  window_size: (int, int)=(8, 4)):
-        
+
         super().__init__()
         # Check size compatibilities
         try:
@@ -202,7 +201,7 @@ class ShiftedWindowMSA(nn.Module):
                          window_size[0])
             e.args += msg_tuple
             raise
-        
+
         try:
             msg = 'Patch-grid not divisible by window-size!!!'
             assert patch_grid_size[1] % window_size[1] == 0, msg
@@ -249,7 +248,7 @@ class ShiftedWindowMSA(nn.Module):
         # L: Number of tokens = H*W
         # C: token length or embedding dimension, i.e. emb_size
         B, L, C = x.shape
-        
+
         assert self.patch_grid_size[0]*self.patch_grid_size[1] == L
 
         # Map C to the Q,K,V matrices with linear embedding
@@ -284,8 +283,8 @@ class ShiftedWindowMSA(nn.Module):
                       'b (Hw wh) (Ww ww) (e H) k -> b H Hw Ww (wh ww) e k',
                       wh=self.window_size[0],
                       ww=self.window_size[1],
-                      H=self.num_heads)            
-        
+                      H=self.num_heads)
+
         Q, K, V = x.chunk(3, dim=6)  # Corresponds to k in the rearrange above.
         Q, K, V = Q.squeeze(-1), K.squeeze(-1), V.squeeze(-1)
 
@@ -331,7 +330,7 @@ class ShiftedWindowMSA(nn.Module):
         # for i in range(column_mask.shape[0]):
         #     print(column_mask[i, :].tolist())
         ############################################
-        
+
         # Entries having value *-inf* are zeroed after passing through softmax.
         #
         # For every batch entry and head add row_mask to all entries
@@ -373,13 +372,13 @@ class WindowCosMSA(nn.Module):
         window_size (int, int): Dimensions of window to use on the patch grid.
 
     """
-    
+
     def __init__(self,
                  emb_size: int=64,
                  num_heads: int=10,
                  patch_grid_size: (int, int)=(16, 32),
                  window_size: (int, int)=(8, 4)):
-        
+
         super().__init__()
         # Check size compatibilities
         try:
@@ -403,7 +402,7 @@ class WindowCosMSA(nn.Module):
                          window_size[0])
             e.args += msg_tuple
             raise
-        
+
         try:
             msg = 'Patch-grid not divisible by window-size!!!'
             assert patch_grid_size[1] % window_size[1] == 0, msg
@@ -414,17 +413,17 @@ class WindowCosMSA(nn.Module):
                          window_size[0])
             e.args += msg_tuple
             raise
-        
+
         self.emb_size = emb_size
         self.num_heads = num_heads
         self.patch_grid_size = patch_grid_size
         self.window_size = window_size
 
         # Learnable per-head attention scaling
-        # Multiplies attn.shape=(B, num_heads, Hw, Ww, wh*ww, wh*ww) 
+        # Multiplies attn.shape=(B, num_heads, Hw, Ww, wh*ww, wh*ww)
         self.logit_scale = nn.Parameter(torch.log(10*torch.ones((1, num_heads, 1, 1, 1, 1))),
                                         requires_grad=True)
-        
+
         # QKV embedding
         self.linear1 = nn.Linear(emb_size, 3*emb_size)
 
@@ -433,13 +432,13 @@ class WindowCosMSA(nn.Module):
 
         # Initialize relative position embedding
         self.rel_pos_embed = RelativePositionEmbed(window_size=self.window_size)
-            
+
     def forward(self, x):
         # B: Batch-size
         # L: Number of tokens = H*W
         # C: token length or embedding dimension, i.e. emb_size
         B, L, C = x.shape
-        
+
         assert self.patch_grid_size[0]*self.patch_grid_size[1] == L
 
         # Map C to the Q,K,V matrices with linear embedding
@@ -454,7 +453,7 @@ class WindowCosMSA(nn.Module):
                       w=self.patch_grid_size[1],
                       k=3,
                       c=self.emb_size)
-        
+
         # The height and width dimensions are now *windowed*. There are now
         # Hw*Ww windows, each of size wh*ww. The windowed tokens are arranged
         # in a 2D, Hw x Hw, grid. The embedding dimension is separated into
@@ -466,8 +465,8 @@ class WindowCosMSA(nn.Module):
                       'b (Hw wh) (Ww ww) (e H) k -> b H Hw Ww (wh ww) e k',
                       wh=self.window_size[0],
                       ww=self.window_size[1],
-                      H=self.num_heads)            
-        
+                      H=self.num_heads)
+
         Q, K, V = x.chunk(3, dim=6)  # Corresponds to k in the rearrange above.
         Q, K, V = Q.squeeze(-1), K.squeeze(-1), V.squeeze(-1)
 
@@ -483,7 +482,7 @@ class WindowCosMSA(nn.Module):
         logit_scale = torch.clamp(self.logit_scale,
                                   max=torch.log(torch.tensor(1./0.01))).exp()
         wei = wei * logit_scale
-        
+
         # Relative position embedding.
         wei = self.rel_pos_embed(wei)
 
@@ -519,13 +518,13 @@ class ShiftedWindowCosMSA(nn.Module):
                                 NOTE: Each dimension must be divisble by 2.
 
     """
-    
+
     def __init__(self,
                  emb_size: int=64,
                  num_heads: int=10,
                  patch_grid_size: (int, int)=(16, 32),
                  window_size: (int, int)=(8, 4)):
-        
+
         super().__init__()
         # Check size compatibilities
         try:
@@ -549,7 +548,7 @@ class ShiftedWindowCosMSA(nn.Module):
                          window_size[0])
             e.args += msg_tuple
             raise
-        
+
         try:
             msg = 'Patch-grid not divisible by window-size!!!'
             assert patch_grid_size[1] % window_size[1] == 0, msg
@@ -583,7 +582,7 @@ class ShiftedWindowCosMSA(nn.Module):
         self.window_size = window_size
 
         # Learnable per-head attention scaling
-        # Multiplies attn.shape=(B, num_heads, Hw, Ww, wh*ww, wh*ww) 
+        # Multiplies attn.shape=(B, num_heads, Hw, Ww, wh*ww, wh*ww)
         self.logit_scale = nn.Parameter(torch.log(10*torch.ones((1, num_heads, 1, 1, 1, 1))),
                                         requires_grad=True)
 
@@ -601,7 +600,7 @@ class ShiftedWindowCosMSA(nn.Module):
         # L: Number of tokens = H*W
         # C: token length or embedding dimension, i.e. emb_size
         B, L, C = x.shape
-        
+
         assert self.patch_grid_size[0]*self.patch_grid_size[1] == L
 
         # Map C to the Q,K,V matrices with linear embedding
@@ -636,7 +635,7 @@ class ShiftedWindowCosMSA(nn.Module):
                       'b (Hw wh) (Ww ww) (e H) k -> b H Hw Ww (wh ww) e k',
                       wh=self.window_size[0],
                       ww=self.window_size[1],
-                      H=self.num_heads)                    
+                      H=self.num_heads)
         Q, K, V = x.chunk(3, dim=6)  # Corresponds to k in the rearrange above.
         Q, K, V = Q.squeeze(-1), K.squeeze(-1), V.squeeze(-1)
 
@@ -688,7 +687,7 @@ class ShiftedWindowCosMSA(nn.Module):
         # for i in range(column_mask.shape[0]):
         #     print(column_mask[i, :].tolist())
         ############################################
-        
+
         # Entries having value *-inf* are zeroed after passing through softmax.
         #
         # For every batch entry and head add row_mask to all entries
@@ -744,7 +743,7 @@ if __name__ == '__main__':
                                    num_heads=num_heads,
                                    patch_grid_size=patch_grid_size,
                                    window_size=window_size).to(device)
-    
+
     print('Input shape:', x.shape)
     print('WMSA shape:', model_WMSA(x).shape)
     print('SWMSA shape:', model_SWMSA(x).shape)

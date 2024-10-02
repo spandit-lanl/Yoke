@@ -12,7 +12,6 @@ from torch import nn
 from einops import rearrange
 from einops.layers.torch import Rearrange
 
-import numpy as np
 
 
 def _get_conv2d_weights(in_channels,
@@ -20,7 +19,7 @@ def _get_conv2d_weights(in_channels,
                         kernel_size):
 
     weight = torch.empty(out_channels, in_channels, *kernel_size)
-    
+
     return weight
 
 
@@ -57,7 +56,7 @@ class ClimaX_ParallelVarPatchEmbed(nn.Module):
                  patch_size: (int, int)=(16, 16),
                  embed_dim: int=64,
                  norm_layer=None):
-        
+
         super().__init__()
         # Check size compatibilities
         try:
@@ -81,7 +80,7 @@ class ClimaX_ParallelVarPatchEmbed(nn.Module):
                          patch_size[1])
             e.args += msg_tuple
             raise
-        
+
         self.max_vars = max_vars
         self.img_size = img_size
         self.patch_size = patch_size
@@ -134,7 +133,7 @@ class ClimaX_ParallelVarPatchEmbed(nn.Module):
         # (B, V, H, W) -> (B, VxE, H', W') with H'=H/p1, W'=W/p2
         groups = len(vars)
         proj = F.conv2d(x, weights, biases, groups=groups, stride=self.patch_size)
-        
+
         # Flatten the patch arrays and separate the variables and embeddings.
         proj = rearrange(proj,
                          'b (v e) h1 h2 -> b v (h1 h2) e',
@@ -170,7 +169,7 @@ class SwinEmbedding(nn.Module):
         norm_layer (nn.Module, optional): Normalization layer. Defaults to None.
 
     """
-    
+
     def __init__(self,
                  num_vars: int=5,
                  img_size: (int, int)=(128, 128),
@@ -208,7 +207,7 @@ class SwinEmbedding(nn.Module):
         self.grid_size = (self.img_size[0] // self.patch_size[0],
                           self.img_size[1] // self.patch_size[1])
         self.num_patches = self.grid_size[0] * self.grid_size[1]
-        
+
         self.linear_embedding = nn.Conv2d(self.num_vars,
                                           self.embed_dim,
                                           kernel_size=self.patch_size,
@@ -216,13 +215,13 @@ class SwinEmbedding(nn.Module):
         self.rearrange = Rearrange('b c h w -> b (h w) c')
 
         self.norm = norm_layer(self.embed_dim) if norm_layer else nn.Identity()
-        
+
     def forward(self, x):
         x = self.linear_embedding(x)
         x = self.rearrange(x)
 
         x = self.norm(x)
-        
+
         return x
 
 
@@ -230,7 +229,7 @@ if __name__ == '__main__':
     """Usage Example.
 
     """
-    
+
     # (B, C, H, W) = (3, 5, 128, 128)
     x = torch.rand(3, 4, 128, 128)
 
@@ -242,7 +241,7 @@ if __name__ == '__main__':
                                                  patch_size=(16, 16),
                                                  embed_dim=72,
                                                  norm_layer=nn.LayerNorm).to(device)
-    
+
     print('Input shape:', x.shape)
     print('Parallel-patch embed shape:', PPembed_model(x, vars=[0, 1, 3, 4]).shape)
 

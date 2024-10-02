@@ -9,7 +9,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from yoke.models.surrogateCNNmodules import jekelCNNsurrogate, tCNNsurrogate
+from yoke.models.surrogateCNNmodules import tCNNsurrogate
 import yoke.torch_training_utils as tr
 
 import tkinter as tk
@@ -126,10 +126,10 @@ def update_image(*args):
     ct6 = slider_ct6.get() / 100.0
     ct7 = slider_ct7.get() / 100.0
     time = slider_time.get() / 100.0
-    
+
     # Run the neural network and get a 2D numpy array
     array = run_jCNN(ct6, ct7, time)
-    
+
     # Convert numpy array to PIL Image
     img = Image.fromarray(np.flipud(array), 'L')  # 'L' mode for grayscale
     # Anti-aliased resizing...
@@ -137,7 +137,7 @@ def update_image(*args):
     current_height = max(image_label.winfo_height(), 400)
     img_resized = img.resize((int(0.7*current_width), int(0.7*current_height)),
                              Image.Resampling.LANCZOS)
-    
+
     # Convert PIL Image to Tkinter PhotoImage
     photo = ImageTk.PhotoImage(img_resized)
     image_label.config(image=photo)

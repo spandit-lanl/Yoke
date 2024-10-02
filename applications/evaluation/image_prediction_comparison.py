@@ -3,12 +3,13 @@ comparison of the true and predicted image along with the inputs.
 
 """
 
-import os, argparse
+import os
+import argparse
 import numpy as np
 import torch
 import torch.nn as nn
 
-from yoke.models.surrogateCNNmodules import jekelCNNsurrogate, tCNNsurrogate
+from yoke.models.surrogateCNNmodules import tCNNsurrogate
 from yoke.datasets.lsc_dataset import LSCnpz2key, LSC_cntr2rho_DataSet
 import yoke.torch_training_utils as tr
 
@@ -102,7 +103,7 @@ parser.add_argument('--savefig', '-S',
 args = parser.parse_args()
 
 checkpoint = args.checkpoint
-    
+
 ## Data Paths
 design_file = os.path.abspath(args.LSC_DESIGN_DIR+args.design_file)
 eval_filelist = args.FILELIST_DIR + args.eval_filelist
@@ -177,7 +178,7 @@ eval_dataset = LSC_cntr2rho_DataSet(args.LSC_NPZ_DIR,
 sim_params, true_image = eval_dataset.__getitem__(sampIDX)
 
 ## Read filelist
-with open(eval_filelist, 'r') as f:
+with open(eval_filelist) as f:
     eval_filenames = [line.rstrip() for line in f]
 
 ## Get the input filename evaluated
@@ -201,14 +202,14 @@ pred_image = np.squeeze(pred_image.detach().numpy())
 
 # Plot normalized radiograph and density field for diagnostics.
 fig1, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(16, 6))
-fig1.suptitle('Time={:.3f}us'.format(sim_params[-1]), fontsize=18)
+fig1.suptitle(f'Time={sim_params[-1]:.3f}us', fontsize=18)
 img1 = ax1.imshow(true_image,
                   aspect='equal',
                   origin='lower',
                   cmap='jet',
                   vmin=true_image.min(),
                   vmax=true_image.max())
-ax1.set_ylabel("Z-axis", fontsize=16)                 
+ax1.set_ylabel("Z-axis", fontsize=16)
 ax1.set_xlabel("R-axis", fontsize=16)
 ax1.set_title('True', fontsize=18)
 

@@ -33,7 +33,6 @@ def singlePVIarray(npzfile='./lsc_nonconvex_pvi_idx00115.npz',
        field (np.array): Array of hydro-dynamic field for plotting
 
     """
-
     NPZ = np.load(npzfile)
     arrays_dict = dict()
     for key in NPZ.keys():
@@ -53,9 +52,9 @@ class SCmetrics:
   def __init__(self,filename,liner="throw"):
     self.filename = filename
 
-    # initialize density and vf of liner 
+    # initialize density and vf of liner
     rhofield = singlePVIarray(npzfile=filename, FIELD="density_"+liner)
-    self.density = self.get_field("density_"+liner) 
+    self.density = self.get_field("density_"+liner)
 
     # initialize volume fraction for liner andW-velocity
     self.vofm = self.get_field("vofm_"+liner)
@@ -70,7 +69,7 @@ class SCmetrics:
 
     # initialize other fields such as volume,
     # volume is the cell volume for 2D cylindrical meshes
-    self.volume = self.compute_volume() 
+    self.volume = self.compute_volume()
 
     # create regions field using density of liner
     # this returns density field of connected components
@@ -119,13 +118,13 @@ class SCmetrics:
        Vind = np.where((self.regions) & (self.Wvelocity > vel_thres))
        skeleton = np.zeros(self.regions.shape)
        skeleton[Vind] = self.regions[Vind]
-     else: 
+     else:
        skeleton = self.regions
 
      # get jet width as a function of z (vertical axis)
      Rcoord_map = np.repeat(np.reshape(self.Rcoord[1:],(1,-1)),skeleton.shape[0],axis=0)
      Rcoord_mask = skeleton * Rcoord_map
-     width = np.max(Rcoord_mask,axis=0) 
+     width = np.max(Rcoord_mask,axis=0)
 
      # compute stats
      # multiplying by 2 to consider a "true" width instead of a "radius",
@@ -135,30 +134,30 @@ class SCmetrics:
      max_width = 2.0*np.max(width)
 
      return avg_width, std_width, max_width
-  
+
   ###############################################################
   # Function to compute cumulative value of jet density times
   # velocity squared over a 2D cross section of jet.
-  # This is primarly intended for 2D axi-symmetric calculations. 
+  # This is primarly intended for 2D axi-symmetric calculations.
   #
-  # Variable vel_thres allows for parts of jet below the 
+  # Variable vel_thres allows for parts of jet below the
   # threshold to be ignored.
   ###############################################################
   def get_jet_rho_velsq_2D(self,vel_thres=0.1):
     Vind = np.where((self.Wvelocity >= vel_thres) & (self.regions))
-    return np.sum(self.density[Vind] * np.square(self.Wvelocity[Vind])) 
+    return np.sum(self.density[Vind] * np.square(self.Wvelocity[Vind]))
 
   ###############################################################
-  # Function to compute cumulative value of jet sqrt(density) 
+  # Function to compute cumulative value of jet sqrt(density)
   # times velocity over a 2D cross section of jet.
-  # This is primarly intended for 2D axi-symmetric calculations. 
+  # This is primarly intended for 2D axi-symmetric calculations.
   #
-  # Variable vel_thres allows for parts of jet below the 
+  # Variable vel_thres allows for parts of jet below the
   # threshold to be ignored.
   ###############################################################
   def get_jet_sqrt_rho_vel_2D(self,vel_thres=0.1):
     Vind = np.where((self.Wvelocity > vel_thres) & (self.regions))
-    return np.sum(np.sqrt(self.density[Vind]) * self.Wvelocity[Vind]) 
+    return np.sum(np.sqrt(self.density[Vind]) * self.Wvelocity[Vind])
 
   ###############################################################
   # Function to compute jet kinetic energy of effective jet.
@@ -168,18 +167,18 @@ class SCmetrics:
   ###############################################################
   def get_jet_kinetic_energy(self,vel_thres=0.1):
     eff_jet_mass_map = self.get_eff_jet_mass_map(vel_thres=vel_thres)
-    return 0.5 * np.sum(eff_jet_mass_map * np.square(self.Wvelocity)) 
+    return 0.5 * np.sum(eff_jet_mass_map * np.square(self.Wvelocity))
 
   ###############################################################
-  # Function to compute spatially integrated quantity of 
-  # sqrt(0.5 * mass) * velocity. 
+  # Function to compute spatially integrated quantity of
+  # sqrt(0.5 * mass) * velocity.
   #
   # This differs from function get_jet_sqrt_rho_velsq_2D in that
   # it computes the quantity for the actual 3D jet object.
   ###############################################################
   def get_jet_sqrt_kinetic_energy(self,vel_thres=0.1):
     eff_jet_mass_map = np.sqrt(self.get_eff_jet_mass_map(vel_thres=vel_thres))
-    return 0.70710678 * np.sum(np.sqrt(eff_jet_mass_map) * self.Wvelocity) 
+    return 0.70710678 * np.sum(np.sqrt(eff_jet_mass_map) * self.Wvelocity)
 
   ###############################################################
   # Function to compute volume for 2D axis-symmetric grid cells.
@@ -191,12 +190,12 @@ class SCmetrics:
     return volume
 
   ###############################################################
-  # Compute and return jet mass 
+  # Compute and return jet mass
   ###############################################################
   def get_jet_mass(self):
-    if self.jet_mass == None: 
+    if self.jet_mass == None:
       return np.sum(self.volume * self.density * self.vofm)
-    else: 
+    else:
       return self.jet_mass
 
   ###############################################################
@@ -206,7 +205,7 @@ class SCmetrics:
   #
   # If mask is True, then only return zero/one with
   # one representing an on-axis jet component.
-  # Otherwise, each different connected component will be 
+  # Otherwise, each different connected component will be
   # labeled with an "ID" (just a number) for the component.
   ###############################################################
   def compute_regions(self,mask=False):
@@ -217,7 +216,7 @@ class SCmetrics:
     axis_regions = np.unique(field_regions[:,0])
 
     # removing connected components/regions that are not on-axis
-    count = 1 # label for first connected component, needs to 
+    count = 1 # label for first connected component, needs to
               # be greater than zero.
               # A value of zero represents locations that are
               # not part of any connected component.
@@ -256,13 +255,13 @@ class SCmetrics:
     return avg
 
   ##############################################################
-  # Function to return maximum vertical velocity 
+  # Function to return maximum vertical velocity
   ##############################################################
   def max_Wvelocity(self):
     return self.max_regions(self.Wvelocity)
 
   ##############################################################
-  # Function to return average vertical velocity 
+  # Function to return average vertical velocity
   ##############################################################
   def avg_Wvelocity(self,Wthresh=0.0):
     return self.avg_regions(self.Wvelocity,Wthresh=Wthresh)
@@ -305,9 +304,9 @@ class SCmetrics:
   ##############################################################
   def get_eff_jet_mass(self,vel_thres=0.1,asPercent=False):
     eff_jet_mass = np.sum(self.get_eff_jet_mass_map())
-    if asPercent: 
+    if asPercent:
       return eff_jet_mass / self.get_jet_mass()
-    else: 
+    else:
       return eff_jet_mass
 
   ##############################################################

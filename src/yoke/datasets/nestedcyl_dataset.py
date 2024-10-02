@@ -13,10 +13,6 @@ doppler velocimetry traces
 ####################################
 ## Packages
 ####################################
-import os
-import sys
-import glob
-import random
 import typing
 import numpy as np
 import pandas as pd
@@ -32,15 +28,14 @@ NoneStr = typing.Union[None, str]
 def npz2key(npz_file: str):
     """Function to extract study information from the name of an .npz file
 
-        Args:
-            npz_file (str): file path from working directory to .npz file
+    Args:
+        npz_file (str): file path from working directory to .npz file
         
-        Returns: 
-            key (str): The study information for the simulation that
-                       generated the .npz file; of the form "nc231213_Sn_id####"
+    Returns:
+        key (str): The study information for the simulation that
+                   generated the .npz file; of the form "nc231213_Sn_id####"
 
     """
-
     key = npz_file.split('/')[-1].split('_')
     key = '_'.join(key[0:3])
 
@@ -61,13 +56,12 @@ def csv2scalar(csv_file: str, key:str, scalar:str):
         value (float): the value of the scalar for the specified key
 
     """
-    
     design_df = pd.read_csv(csv_file,
                             sep=',',
                             header=0,
                             index_col=0,
                             engine='python')
-    
+
     #removed spaces from headers
     for col in design_df.columns:
         design_df.rename(columns={col: col.strip()}, inplace=True)
@@ -90,7 +84,6 @@ def npz_pvi2field(npz: np.lib.npyio.NpzFile, field: str):
         pic (np.ndarray[(1700, 500), float]): field 
 
     """
-    
     pic = npz[field]
     pic = pic[800:, :250]
     pic = np.concatenate((np.fliplr(pic), pic), axis=1)
@@ -108,8 +101,7 @@ class PVI_SingleField_DataSet(Dataset):
                  input_field: str='rho',
                  predicted: str='ptw_scale',
                  design_file: str='/data2/design_nc231213_Sn_MASTER.csv'):
-
-        """The definition of a dataset object for the simple nested cylinder 
+        """The definition of a dataset object for the simple nested cylinder
         problem: Nested Cylinder MOI density -> PTW scale value
 
         Args:
@@ -121,7 +113,6 @@ class PVI_SingleField_DataSet(Dataset):
             design_file (str): .csv file with master design study parameters
 
         """
-
         ## Model Arguments
         self.NC_NPZ_DIR = NC_NPZ_DIR
         self.input_field = input_field
@@ -130,23 +121,21 @@ class PVI_SingleField_DataSet(Dataset):
         self.design_file = design_file
 
         ## Create filelist
-        with open(filelist, 'r') as f:
+        with open(filelist) as f:
             self.filelist = [line.rstrip() for line in f]
-            
+
         self.Nsamples = len(self.filelist)
 
     def __len__(self):
         """Return number of samples in dataset.
 
         """
-
         return self.Nsamples
 
     def __getitem__(self, index):
         """Return a tuple of a batch's input and output data for training at a given index.
 
         """
-
         ## Get the input image
         filepath = self.filelist[index]
         npz = np.load(self.NC_NPZ_DIR+filepath)
@@ -209,14 +198,14 @@ class PVI_SingleField_DataSet(Dataset):
 
 #     print('Shape of density field tensor: ', rho_samp.shape)
 #     rho_samp = np.squeeze(rho_samp.numpy())
-    
+
 #     # Plot normalized radiograph and density field for diagnostics.
 #     fig1, ax1 = plt.subplots(1, 1, figsize=(12, 12))
 #     img1 = ax1.imshow(rho_samp,
 #                       aspect='equal',
 #                       origin='lower',
 #                       cmap='jet')
-#     ax1.set_ylabel("Z-axis", fontsize=16)                 
+#     ax1.set_ylabel("Z-axis", fontsize=16)
 #     ax1.set_xlabel("R-axis", fontsize=16)
 #     ax1.set_title('c-PTW={:.3f}'.format(float(ptw_scale_samp)), fontsize=18)
 
@@ -227,4 +216,4 @@ class PVI_SingleField_DataSet(Dataset):
 #                                       fontsize=14)
 
 #     plt.show()
-    
+

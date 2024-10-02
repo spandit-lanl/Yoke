@@ -11,19 +11,15 @@ When run as a script an NPZ of calculated parameters is generated.
 ####################################
 ## Packages
 ####################################
-import os, argparse
-import glob
-import random
+import os
+import argparse
 import typing
 import numpy as np
-import pandas as pd
-import torch
-from torch.utils.data import Dataset
 
 NoneStr = typing.Union[None, str]
 
 from yoke.datasets.lsc_dataset import LSCnpz2key, LSCcsv2bspline_pts
-from yoke.datasets.lsc_dataset import LSCread_npz, LSC_cntr2rho_DataSet
+from yoke.datasets.lsc_dataset import LSCread_npz
 
 
 ###################################################################
@@ -81,7 +77,7 @@ design_file = os.path.abspath(args.LSC_DESIGN_DIR+args.design_file)
 eval_files = args.FILELIST_DIR + args.eval_filelist
 
 ## Create filelist
-with open(eval_files, 'r') as f:
+with open(eval_files) as f:
     eval_filelist = [line.rstrip() for line in f]
 
 Nsamp = len(eval_filelist)
@@ -104,12 +100,12 @@ for k, filepath in enumerate(eval_filelist):
     sim_key = LSCnpz2key(args.LSC_NPZ_DIR+filepath)
     Bspline_nodes = LSCcsv2bspline_pts(design_file, sim_key)
     #print('Shape of Bspline node array:', Bspline_nodes.shape)
-    
+
     sim_time = npz['sim_time']
     #print('Sim. Time:', sim_time)
     round_sim_time = str(round(4.0*sim_time)/4.0)
     #print('Nearest 0.25us Sim. Time:', round_sim_time)
-    
+
     npz.close()
 
     if round_sim_time in avg_time_dict.keys():
@@ -140,9 +136,9 @@ for k, filepath in enumerate(eval_filelist):
         #print('Bspline max array:', Bspline_max)
         #print('Image_min:', image_min)
         #print('Image_max:', image_max)
-        
+
     #print('============')
-    
+
 # Calculate averages
 image_avg = image_avg/Nsamp
 Bspline_avg = Bspline_avg/Nsamp

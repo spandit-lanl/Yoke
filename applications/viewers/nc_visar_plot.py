@@ -22,10 +22,9 @@ import matplotlib.pyplot as plt
 font = {'family': 'serif'}
 plt.rc('font', **font)
 plt.rcParams['figure.figsize'] = (6, 6)
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 
-class Visar(object):
+class Visar:
     """Visar data file class
 
     Methods of this class allow quick reading, manipulating, and plotting from
@@ -54,7 +53,7 @@ class Visar(object):
         # Open the file
         self.visarfilename = visarfilename
 
-        with open(self.visarfilename, 'r') as pdvfile:
+        with open(self.visarfilename) as pdvfile:
             for line in pdvfile:
                 # Strip whitespace
                 line = line.strip()
@@ -98,10 +97,9 @@ class Visar(object):
             self.data[idx]['velocity'] = np.array(self.data[idx]['velocity'])
 
     def channels(self):
-        """Get list of channel indices. 
+        """Get list of channel indices.
 
         """
-
         return list(self.data.keys())
 
     def variables(self, channelIDX=1):
@@ -111,7 +109,6 @@ class Visar(object):
             channelIDX (int): Integer index for a PDV channel
 
         """
-
         return list(self.data[channelIDX].keys())
 
     def getarray(self, channelIDX, varname):
@@ -122,7 +119,6 @@ class Visar(object):
             varname (str): *origin*, *direction*, *time*, *distance*, or *velocity*
 
         """
-
         return self.data[channelIDX][varname]
 
     def plotVelTH(self, channels):
@@ -137,7 +133,6 @@ class Visar(object):
                                      velocity time-history for
 
         """
-
         start_times = []
         stop_times = []
         for idx in channels:
@@ -146,9 +141,9 @@ class Visar(object):
 
             start_times.append(time[0])
             stop_times.append(time[-1])
-            plt.plot(time, 
-                     velocity, 
-                     linewidth=1.7, 
+            plt.plot(time,
+                     velocity,
+                     linewidth=1.7,
                      label=f'Velocity, channel {idx:03d}')
 
         plt.xlim([min(start_times), max(stop_times)])
@@ -173,7 +168,6 @@ class Visar(object):
                                      distance time-history for
 
         """
-
         start_times = []
         stop_times = []
         for idx in channels:
@@ -182,9 +176,9 @@ class Visar(object):
 
             start_times.append(time[0])
             stop_times.append(time[-1])
-            plt.plot(time, 
-                     distance, 
-                     linewidth=1.7, 
+            plt.plot(time,
+                     distance,
+                     linewidth=1.7,
                      label=f'Distance, channel {idx:03d}')
 
         plt.xlim([min(start_times), max(stop_times)])
@@ -223,7 +217,7 @@ parser.add_argument('--outdir', '-O',
                     type=str,
                     default='./',
                     help='Directory to output images to.')
-                                
+
 parser.add_argument('--save', '-S',
                     action='store_true',
                     help='Flag to save image.')
@@ -259,7 +253,7 @@ if __name__ == '__main__':
 
     fig1, ax1 = plt.subplots(1, 1, figsize=(16, 16))
     for channel in range(time.shape[0]):
-        plt.plot(time[channel], 
+        plt.plot(time[channel],
                  velocity[channel],
                  #'-k',
                  linewidth=1.7,
@@ -273,7 +267,7 @@ if __name__ == '__main__':
 
     if SAVEFIG:
         # Save figure
-        fig1.savefig(f'{runID}_PDV.png', 
+        fig1.savefig(f'{runID}_PDV.png',
                      bbox_inches='tight')
     else:
         plt.show()

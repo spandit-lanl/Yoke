@@ -3,9 +3,6 @@ scalar inputs to images.
 
 """
 
-import sys
-import os
-import math
 from typing import List
 from collections import OrderedDict
 
@@ -16,14 +13,14 @@ from yoke.models.cnn_utils import count_parameters
 
 
 class jekelCNNsurrogate(nn.Module):
-    def __init__(self, 
+    def __init__(self,
                  input_size: int=29,
                  linear_features: tuple[int, int]=(4, 4),
                  kernel: tuple[int, int]=(3, 3),
                  nfeature_list: List[int]=[512, 512, 512, 512, 256, 128, 64, 32],
                  output_image_size: tuple[int, int]=(1120, 800),
                  act_layer=nn.GELU):
-        """Convolutional Neural Network Module that creates a scalar-to-image 
+        """Convolutional Neural Network Module that creates a scalar-to-image
         surrogate using a sequence of ConvTranspose2D, Batch Normalization, and
         Activation layers.
 
@@ -44,7 +41,6 @@ class jekelCNNsurrogate(nn.Module):
                                               to use as activation
 
         """
-
         super().__init__()
 
         self.input_size = input_size
@@ -63,7 +59,7 @@ class jekelCNNsurrogate(nn.Module):
         normLayer = nn.BatchNorm2d(self.nfeature_list[0])
         nn.init.constant_(normLayer.weight, 1)
         normLayer.weight.requires_grad = False
-            
+
         self.inNorm = normLayer
         self.inActivation = act_layer()
 
@@ -75,13 +71,13 @@ class jekelCNNsurrogate(nn.Module):
         # Create transpose convolutional layer for each entry in feature list.
         for i in range(self.nConvT-1):
             tconv = nn.ConvTranspose2d(in_channels=self.nfeature_list[i],
-                                       out_channels=self.nfeature_list[i+1], 
-                                       kernel_size=self.kernel, 
-                                       stride=2, 
+                                       out_channels=self.nfeature_list[i+1],
+                                       kernel_size=self.kernel,
+                                       stride=2,
                                        padding=1,
                                        output_padding=1,
                                        bias=False)
-            
+
             self.TConvList.append(tconv)
 
             normLayer = nn.BatchNorm2d(self.nfeature_list[i+1])
@@ -93,9 +89,9 @@ class jekelCNNsurrogate(nn.Module):
 
         # Final Transpose Conv layer followed by hyperbolic tanh activation
         self.final_tconv = nn.ConvTranspose2d(in_channels=self.nfeature_list[-1],
-                                              out_channels=1, 
-                                              kernel_size=self.kernel, 
-                                              stride=2, 
+                                              out_channels=1,
+                                              kernel_size=self.kernel,
+                                              stride=2,
                                               padding=1,
                                               output_padding=1,
                                               bias=True)
@@ -105,7 +101,7 @@ class jekelCNNsurrogate(nn.Module):
 
         # Else...
         self.final_act = nn.Identity()
-        
+
         # NOTE: Upsample layer is alternative to resizing image using
         # nn.functional.interpolate. However, pytorch claims the interpolate
         # method is better for general resizing.
@@ -127,7 +123,7 @@ class jekelCNNsurrogate(nn.Module):
         x = self.inNorm(x)
         x = self.inActivation(x)
         #print('After dense-map shape:', x.shape)
-        
+
         ## ConvT layers
         for i in range(self.nConvT-1):
             x = self.TConvList[i](x)
@@ -150,12 +146,12 @@ class jekelCNNsurrogate(nn.Module):
                                       mode='bilinear',
                                       antialias=True)
         #print('Post-Upsample shape:', x.shape)
-        
+
         return x
 
 
 class tCNNsurrogate(nn.Module):
-    def __init__(self, 
+    def __init__(self,
                  input_size: int=29,
                  linear_features: tuple[int, int]=(7, 5, 256),
                  initial_tconv_kernel: tuple[int, int]=(5, 5),
@@ -167,7 +163,7 @@ class tCNNsurrogate(nn.Module):
                  nfeature_list: List[int]=[256, 256, 256, 128, 64, 64, 32],
                  output_image_size: tuple[int, int]=(1120, 800),
                  act_layer=nn.GELU):
-        """Convolutional Neural Network Module that creates a scalar-to-image 
+        """Convolutional Neural Network Module that creates a scalar-to-image
         surrogate using a sequence of ConvTranspose2D, Batch Normalization, and
         Activation layers.
 
@@ -201,7 +197,6 @@ class tCNNsurrogate(nn.Module):
                                               to use as activation
 
         """
-
         super().__init__()
 
         self.input_size = input_size
@@ -225,15 +220,15 @@ class tCNNsurrogate(nn.Module):
         normLayer = nn.BatchNorm2d(self.linear_features[2])
         nn.init.constant_(normLayer.weight, 1)
         normLayer.weight.requires_grad = False
-            
+
         self.inNorm = normLayer
         self.inActivation = act_layer()
 
         # Initial tconv2d layer to prepare for doubling layers
         self.initTConv = nn.ConvTranspose2d(in_channels=self.linear_features[2],
-                                            out_channels=self.nfeature_list[0], 
-                                            kernel_size=self.initial_tconv_kernel, 
-                                            stride=self.initial_tconv_stride, 
+                                            out_channels=self.nfeature_list[0],
+                                            kernel_size=self.initial_tconv_kernel,
+                                            stride=self.initial_tconv_stride,
                                             padding=self.initial_tconv_padding,
                                             output_padding=self.initial_tconv_outpadding,
                                             dilation=self.initial_tconv_dilation,
@@ -242,7 +237,7 @@ class tCNNsurrogate(nn.Module):
         normLayer = nn.BatchNorm2d(self.linear_features[2])
         nn.init.constant_(normLayer.weight, 1)
         normLayer.weight.requires_grad = False
-            
+
         self.initTconvNorm = normLayer
         self.initTconvActivation = act_layer()
 
@@ -254,13 +249,13 @@ class tCNNsurrogate(nn.Module):
         # Create transpose convolutional layer for each entry in feature list.
         for i in range(self.nConvT-1):
             tconv = nn.ConvTranspose2d(in_channels=self.nfeature_list[i],
-                                       out_channels=self.nfeature_list[i+1], 
-                                       kernel_size=self.kernel, 
-                                       stride=2, 
+                                       out_channels=self.nfeature_list[i+1],
+                                       kernel_size=self.kernel,
+                                       stride=2,
                                        padding=1,
                                        output_padding=1,
                                        bias=False)
-            
+
             #self.TConvList.append(tconv)
 
             normLayer = nn.BatchNorm2d(self.nfeature_list[i+1])
@@ -276,12 +271,12 @@ class tCNNsurrogate(nn.Module):
                                      (f'bnorm{i}', normLayer),
                                      (f'act{i}', act_layer())])
             self.CompoundConvTList.append(nn.Sequential(cmpd_dict))
-                            
+
         # Final Transpose Conv layer followed by hyperbolic tanh activation
         self.final_tconv = nn.ConvTranspose2d(in_channels=self.nfeature_list[-1],
-                                              out_channels=1, 
-                                              kernel_size=self.kernel, 
-                                              stride=2, 
+                                              out_channels=1,
+                                              kernel_size=self.kernel,
+                                              stride=2,
                                               padding=1,
                                               output_padding=1,
                                               bias=True)
@@ -291,7 +286,7 @@ class tCNNsurrogate(nn.Module):
 
         # Else...
         self.final_act = nn.Identity()
-        
+
     def forward(self, x):
         ## Input Layers
         x = self.dense_expand(x)
@@ -311,7 +306,7 @@ class tCNNsurrogate(nn.Module):
         x = self.initTconvNorm(x)
         x = self.initTconvActivation(x)
         #print('After initTconv shape:', x.shape)
-        
+
         ## ConvT layers
         # NOTE: This block interferes with `torch.jit.script`
         # for i in range(self.nConvT-1):
@@ -323,12 +318,12 @@ class tCNNsurrogate(nn.Module):
         # enumeration of nn.moduleList is supported under `torch.jit.script`
         for i, cmpdTconv in enumerate(self.CompoundConvTList):
             x = cmpdTconv(x)
-            
+
         # Final ConvT
         x = self.final_tconv(x)
         x = self.final_act(x)
         #print('After final convT shape:', x.shape)
-        
+
         return x
 
 

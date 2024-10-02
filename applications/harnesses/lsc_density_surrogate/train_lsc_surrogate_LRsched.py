@@ -9,13 +9,9 @@ learning-rate scheduler.
 #############################################
 ## Packages
 #############################################
-import sys
 import os
-import typing
 import time
 import argparse
-import numpy as np
-import pandas as pd
 import torch
 import torch.nn as nn
 
@@ -202,13 +198,13 @@ if __name__ == '__main__':
 
     ## Study ID
     studyIDX = args.studyIDX
-    
+
     ## Data Paths
     design_file = os.path.abspath(args.LSC_DESIGN_DIR+args.design_file)
     train_filelist = args.FILELIST_DIR + args.train_filelist
     validation_filelist = args.FILELIST_DIR + args.validation_filelist
     test_filelist = args.FILELIST_DIR + args.test_filelist
-    
+
     ## Model Parameters
     featureList = args.featureList
     linearFeatures = args.linearFeatures
@@ -221,7 +217,7 @@ if __name__ == '__main__':
     # Leave one CPU out of the worker queue. Not sure if this is necessary.
     num_workers = int(os.environ['SLURM_JOB_CPUS_PER_NODE']) #- 1
     train_per_val = args.TRAIN_PER_VAL
-    
+
     ## Epoch Parameters
     total_epochs = args.total_epochs
     cycle_epochs = args.cycle_epochs
@@ -252,7 +248,7 @@ if __name__ == '__main__':
     #############################################
     ## Initialize Model
     #############################################
-    
+
     model = tCNNsurrogate(input_size=29,
                           linear_features=(7, 5, linearFeatures),
                           initial_tconv_kernel=(5, 5),
@@ -313,7 +309,7 @@ if __name__ == '__main__':
                                                   step_size=LRepoch_per_step,
                                                   gamma=LRdecay,
                                                   last_epoch=starting_epoch - 1)
-    
+
     #############################################
     ## Script and compile model on device
     #############################################
@@ -331,7 +327,7 @@ if __name__ == '__main__':
                                                             # modes that may
                                                             # provide better
                                                             # performance
-                                   
+
     #############################################
     ## Initialize Data
     #############################################
@@ -344,7 +340,7 @@ if __name__ == '__main__':
     test_dataset = LSC_cntr2rho_DataSet(args.LSC_NPZ_DIR,
                                         test_filelist,
                                         design_file)
-    
+
     print('Datasets initialized.')
 
     #############################################
@@ -371,7 +367,7 @@ if __name__ == '__main__':
 
         ## Train an Epoch
         tr.train_array_csv_epoch(training_data=train_dataloader,
-                                 validation_data=val_dataloader, 
+                                 validation_data=val_dataloader,
                                  model=compiled_model,
                                  optimizer=optimizer,
                                  loss_fn=loss_fn,
@@ -383,10 +379,10 @@ if __name__ == '__main__':
 
         # Increment LR scheduler
         stepLRsched.step()
-        
+
         endTime = time.time()
         epoch_time = (endTime - startTime) / 60
-        
+
         ## Print Summary Results
         print('Completed epoch '+str(epochIDX)+'...')
         print('Epoch time:', epoch_time)
@@ -395,7 +391,7 @@ if __name__ == '__main__':
     print("Saving model checkpoint at end of epoch "+ str(epochIDX) + ". . .")
 
     # Move the model back to CPU prior to saving to increase portability
-    compiled_model.to('cpu')  
+    compiled_model.to('cpu')
     # Move optimizer state back to CPU
     for state in optimizer.state.values():
         for k, v in state.items():

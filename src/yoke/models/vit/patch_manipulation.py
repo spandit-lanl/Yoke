@@ -9,12 +9,9 @@ heirarchical feature representation for the image.
 """
 
 import torch
-import torch.nn.functional as F
 from torch import nn
 from einops import rearrange
-from einops.layers.torch import Rearrange
-import numpy as np
-    
+
 
 class PatchMerge(nn.Module):
     """Merge patches and increase embedding dimension.
@@ -42,7 +39,7 @@ class PatchMerge(nn.Module):
         s2 (int): Width reduction factor for the patch grid
 
     """
-    
+
     def __init__(self,
                  emb_size: int=64,
                  emb_factor: int=2,
@@ -72,13 +69,13 @@ class PatchMerge(nn.Module):
                          s2)
             e.args += msg_tuple
             raise
-        
+
         self.in_emb_size = emb_size
-        
+
         # Patch grid parameters
         self.H = patch_grid_size[0]
         self.W = patch_grid_size[1]
-        
+
         # Patch division factors
         self.s1 = s1
         self.s2 = s2
@@ -86,15 +83,15 @@ class PatchMerge(nn.Module):
         # New patch grid
         self.out_patch_grid_size = (int(self.H/self.s1),
                                     int(self.W/self.s2))
-        
+
         # Embedding dimension factor
         self.emb_factor = emb_factor
         self.out_emb_size = self.emb_factor*self.in_emb_size
-        
+
         # Linear re-embedding
         self.linear = nn.Linear(self.s1*self.s2*self.in_emb_size,
-                                self.out_emb_size)        
-        
+                                self.out_emb_size)
+
     def forward(self, x):
         # The input tensor is shape (B, num_tokens, embedding_dim)
         B, L, C = x.shape
@@ -142,7 +139,7 @@ class PatchExpand(nn.Module):
 
 
     """
-    
+
     def __init__(self,
                  emb_size: int=64,
                  emb_factor: int=2,
@@ -165,11 +162,11 @@ class PatchExpand(nn.Module):
 
         # Input embedding size
         self.emb_size = emb_size
-        
+
         # Patch grid parameters
         self.H = patch_grid_size[0]
         self.W = patch_grid_size[1]
-        
+
         # Patch division factors
         self.s1 = s1
         self.s2 = s2
@@ -186,7 +183,7 @@ class PatchExpand(nn.Module):
 
         # Linear re-embedding
         self.linear = nn.Linear(self.emb_size, self.emb_factor*self.emb_size)
-        
+
     def forward(self, x):
         # The input tensor is shape (B, num_tokens, embedding_dim)
         B, L, C = x.shape
@@ -196,7 +193,7 @@ class PatchExpand(nn.Module):
 
         # Linear embedding
         x = self.linear(x)
-        
+
         # Rearrange
         x = rearrange(x,
                       'b (h w) (k s1 s2) -> b (h s1 w s2) k',
@@ -207,7 +204,7 @@ class PatchExpand(nn.Module):
 
         return x
 
-    
+
 class Unpatchify(nn.Module):
     """Expansion from patches to variables and images used in the ClimaX model.
 
@@ -223,7 +220,7 @@ class Unpatchify(nn.Module):
         patch_size (int, int): Height and width of each patch.
     
     """
-    
+
     def __init__(self,
                  total_num_vars: int=5,
                  patch_grid_size: (int, int)=(64, 64),
@@ -233,15 +230,15 @@ class Unpatchify(nn.Module):
 
         # Total number of variables
         self.V = total_num_vars
-        
+
         # Patch grid parameters
         self.H = patch_grid_size[0]
         self.W = patch_grid_size[1]
-        
+
         # Individual patch height and width
         self.p_h = patch_size[0]
         self.p_w = patch_size[1]
-        
+
     def forward(self, x):
         # The input tensor is shape (B, num_tokens, embedding_dim)
         B, L, C = x.shape
@@ -258,7 +255,7 @@ class Unpatchify(nn.Module):
                       v=self.V,
                       ph=self.p_h,
                       pw=self.p_w)
-        
+
         return x
 
 

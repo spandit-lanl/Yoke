@@ -1,5 +1,4 @@
-"""
-Defines functions to make file list.
+"""Defines functions to make file list.
 
 If run, will make file lists to that specification
 
@@ -9,7 +8,6 @@ If run, will make file lists to that specification
 ## Packages
 ####################################
 import os
-import sys
 import glob
 import random
 import typing
@@ -90,7 +88,7 @@ def maketvtlists(search_dir: str,
     corrupted = findcorruptedfiles(input_dir=os.path.dirname(search_dir),
                                    samplelist=sample_list)
     for corrfile in corrupted:
-        try: 
+        try:
             sample_list.remove(corrfile)
         except:
             pass
@@ -111,8 +109,8 @@ def maketvtlists(search_dir: str,
     ## Save to File
     if save:
         if save_path == None:
-            raise ValueError(('None is not a valid save path for makefilelist. '
-                              'Either provide a valid save path or use save=False.'))
+            raise ValueError('None is not a valid save path for makefilelist. '
+                              'Either provide a valid save path or use save=False.')
         else:
             if train > 0:
                 sample_file = open(save_path+'_train_samples.txt', 'w')
@@ -146,7 +144,7 @@ parser.add_argument('--save_dir',
                     type=str,
                     default='./',
                     help='What directory to save model files in')
-                
+
 parser.add_argument('--input_dir',
                     action='store',
                     type=str,
@@ -202,7 +200,7 @@ if __name__ == '__main__':
     ########################
     ## Make File Lists
     ########################
-    TVTsplit = maketvtlists(search_dir=os.path.join(input_dir, data_tag), 
+    TVTsplit = maketvtlists(search_dir=os.path.join(input_dir, data_tag),
                             sample_split=(train, val, test),
                             save_path=os.path.join(save_dir, 'datalist'),
                             save=True)
