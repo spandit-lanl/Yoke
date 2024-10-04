@@ -11,9 +11,28 @@ authors = [
 ]
 dependencies = [
     "flit_core >=3.9.0",
+    "pytorch",
+    "pandas",
+    "matplotlib",
+    "scikit-learn",
+    "scikit-image",
+    "einops",
+    "h5py",
+    "numpy",	
+    "scipy",
+    "torchaudio",
+    "torchvision",
+    "typing",
+    "typing_extensions",
     "requests",
     "docutils",
+    "tomli",
     "tomli-w",
+    "testpath",
+    "pytest",
+    "pytest-cov",
+    "coverage",
+    "ruff",
     "pip",
 ]
 requires-python = ">=3.8"
@@ -26,12 +45,8 @@ classifiers = ["Private :: Do Not Upload",
 #dynamic = ['version']
 
 [project.optional-dependencies]
-test = [
-	"testpath",
-	"pytest>=2.7.3",
-	"pytest-cov",
-	"tomli",
-]
+test = ["pytorch-cuda"]
+
 # doc = [
 # 	"sphinx",
 # 	"sphinxcontrib_github_alt",
@@ -45,3 +60,27 @@ Source = "https://gitlab.lanl.gov/multiphysmultimatapps/yoke"
 
 #[project.scripts]
 #flit = "flit:main"
+
+[tool.ruff]
+line-length = 89
+indent-width = 4
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+docstring-code-format = true
+docstring-code-line-length = 89
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "F",
+    "D",
+    "UP",
+    "W",
+    "ANN"]
+
+ignore = ["ANN101"]  # Wants a `type` defined for `self` argument!
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"

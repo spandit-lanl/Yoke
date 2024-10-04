@@ -1,24 +1,20 @@
-"""Test for `models/vit/variable_aggregation.py`
-
-"""
+"""Test for `models/vit/variable_aggregation.py`"""
 
 import unittest
 import torch
-from pathlib import Path
 
 from yoke.models.vit.aggregate_variables import ClimaX_AggVars
 
 
 class TestClimaX_AggVars(unittest.TestCase):
-
     def setUp(self):
         """Set up common variables for the tests."""
         self.embed_dim = 32
         self.num_heads = 4
         self.model = ClimaX_AggVars(embed_dim=self.embed_dim, num_heads=self.num_heads)
-        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.model.to(self.device)
-    
+
     def test_initialization(self):
         """Test if the model initializes correctly."""
         self.assertIsInstance(self.model.var_query, torch.nn.Parameter)
@@ -30,7 +26,7 @@ class TestClimaX_AggVars(unittest.TestCase):
         # Input tensor of shape (B, NumVars, NumTokens, embed_dim)
         B, V, L, D = 3, 15, 128, self.embed_dim
         x = torch.rand(B, V, L, D).type(torch.FloatTensor).to(self.device)
-        
+
         output = self.model(x)
         expected_output_shape = (B, L, D)
 
@@ -40,9 +36,10 @@ class TestClimaX_AggVars(unittest.TestCase):
         """Test if the forward method runs without errors and the output is a tensor."""
         B, V, L, D = 3, 15, 128, self.embed_dim
         x = torch.rand(B, V, L, D).type(torch.FloatTensor).to(self.device)
-        
+
         output = self.model(x)
         self.assertIsInstance(output, torch.Tensor)
 
+
 if __name__ == "__main__":
-    unittest.main(argv=[''], exit=False)
+    unittest.main(argv=[""], exit=False)
