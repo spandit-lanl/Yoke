@@ -11,7 +11,6 @@ import torch
 import torch.nn as nn
 
 
-
 def get_1d_sincos_pos_embed_from_grid(embed_dim, position):
     """1D Sine/Cosine embedding.
 
@@ -248,7 +247,6 @@ class ClimaX_PosEmbed(nn.Module):
         )
         self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float().unsqueeze(0))
 
-
     def forward(self, x):
         # The input tensor is shape:
         #  (B, L, D)=(B, NumTokens[i.e. Patches], embed_dim)
@@ -269,7 +267,7 @@ class RelativePositionEmbed(nn.Module):
 
     """
 
-    def __init__(self, window_size: (int, int)=(8, 4)):
+    def __init__(self, window_size: (int, int) = (8, 4)):
 
         super().__init__()
 
@@ -278,8 +276,8 @@ class RelativePositionEmbed(nn.Module):
 
         # Since these weights are an nn.Parameter they will be updated during
         # training.
-        self.pos_embeddings = nn.Parameter(torch.randn(2*self.window_size[0] - 1,
-                                                       2*self.window_size[1] - 1))
+        self.pos_embeddings = nn.Parameter(torch.randn(2 * self.window_size[0] - 1,
+                                                       2 * self.window_size[1] - 1))
 
         # Create array of indices for each point in a window of size
         # (wh, ww), 'indices.shape = (wh*ww, 2)'
@@ -442,7 +440,7 @@ if __name__ == '__main__':
 
     # The input tensor is shape:
     #  (B, H, Hw, Ww, wh*ww, wh*ww)
-    win_patches = torch.rand(3, 10, 8, 16, wh*ww, wh*ww)
+    win_patches = torch.rand(3, 10, 8, 16, wh * ww, wh * ww)
     print('Size of relative-position embedding input:', win_patches.shape)
     print('Size of relative-position embedding output:',
           rel_emb_model(win_patches).shape)

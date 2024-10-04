@@ -45,7 +45,7 @@ checkpoint = args.checkpoint
 #                64,
 #                32]
 # linearFeatures = [4, 4]
-initial_learningrate = 0.001  #0.0007
+initial_learningrate = 0.001  # 0.0007
 
 # model = jekelCNNsurrogate(input_size=29,
 #                           linear_features=linearFeatures,
@@ -56,7 +56,7 @@ initial_learningrate = 0.001  #0.0007
 
 model = tCNNsurrogate(input_size=29,
                       linear_features=(7, 5, 256),
-                      #linear_features=(7, 5, 512),
+                      # linear_features=(7, 5, 512),
                       initial_tconv_kernel=(5, 5),
                       initial_tconv_stride=(5, 5),
                       initial_tconv_padding=(0, 0),
@@ -64,12 +64,12 @@ model = tCNNsurrogate(input_size=29,
                       initial_tconv_dilation=(1, 1),
                       kernel=(3, 3),
                       nfeature_list=[256, 128, 64, 32, 16],
-                      #nfeature_list=[512, 512, 256, 128, 64],
+                      # nfeature_list=[512, 512, 256, 128, 64],
                       output_image_size=(1120, 800),
                       act_layer=nn.GELU)
 
 #############################################
-## Initialize Optimizer
+# Initialize Optimizer
 #############################################
 optimizer = torch.optim.AdamW(model.parameters(),
                               lr=initial_learningrate,
@@ -78,7 +78,7 @@ optimizer = torch.optim.AdamW(model.parameters(),
                               weight_decay=0.01)
 
 ##############
-## Load Model
+# Load Model
 ##############
 checkpoint_epoch = tr.load_model_and_optimizer_hdf5(model,
                                                     optimizer,
@@ -116,7 +116,7 @@ def run_jCNN(ct6, ct7, time):
     # Since we will use PIL to view this image we need to convert to 0-255 int
     # array.
     normalized_image = (pred_image - pred_image.min()) / (pred_image.max() - pred_image.min())
-    normalized_image = 255*normalized_image
+    normalized_image = 255 * normalized_image
 
     return normalized_image.astype(np.uint8)
 
@@ -135,7 +135,7 @@ def update_image(*args):
     # Anti-aliased resizing...
     current_width = max(image_label.winfo_width(), 400)
     current_height = max(image_label.winfo_height(), 400)
-    img_resized = img.resize((int(0.7*current_width), int(0.7*current_height)),
+    img_resized = img.resize((int(0.7 * current_width), int(0.7 * current_height)),
                              Image.Resampling.LANCZOS)
 
     # Convert PIL Image to Tkinter PhotoImage
@@ -147,9 +147,10 @@ def update_image(*args):
 def update_sliders():
     current_width = image_label.winfo_width()
     current_height = image_label.winfo_height()
-    slider_ct6.configure(length=0.5*current_height)
-    slider_ct7.configure(length=0.5*current_height)
-    #slider_time.configure(length=0.6*current_width)
+    slider_ct6.configure(length=0.5 * current_height)
+    slider_ct7.configure(length=0.5 * current_height)
+    # slider_time.configure(length=0.6*current_width)
+
 
 root = tk.Tk()
 root.title("Neural Network GUI")

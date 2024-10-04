@@ -3,15 +3,16 @@
 """
 
 ####################################
-## Packages
+# Packages
 ####################################
 import os
 import argparse
 import numpy as np
 import pandas as pd
 
+
 ####################################
-## Helper Function
+# Helper Function
 ####################################
 def replace_keys(study_dict: dict, data: str):
     """Function to replace "key" values in a string with dictionary values
@@ -27,13 +28,13 @@ def replace_keys(study_dict: dict, data: str):
     for key, value in study_dict.items():
         if key == 'studyIDX':
             data = data.replace(f'<{key}>', f'{value:03d}')
-        elif type(value)==np.float64 or type(value)==float:
+        elif type(value) == np.float64 or type(value) == float:
             data = data.replace(f'<{key}>', f'{value:5.4f}')
-        elif type(value)==np.int64 or type(value)==int:
+        elif type(value) == np.int64 or type(value) == int:
             data = data.replace(f'<{key}>', f'{value:d}')
-        elif type(value)==str:
+        elif type(value) == str:
             data = data.replace(f'<{key}>', f'{value}')
-        elif type(value)==np.bool_ or type(value)==bool:
+        elif type(value) == np.bool_ or type(value) == bool:
             data = data.replace(f'<{key}>', f'{str(value)}')
         else:
             print('Key is', key, 'with value of', value, 'with type', type(value))
@@ -43,9 +44,9 @@ def replace_keys(study_dict: dict, data: str):
 
 
 ####################################
-## Process Hyperparameters
+# Process Hyperparameters
 ####################################
-## .csv argparse argument
+# .csv argparse argument
 descr_str = 'Starts execution of Nested Cylinder CNN training'
 parser = argparse.ArgumentParser(prog='NC-CNN START',
                                  description=descr_str)
@@ -61,7 +62,7 @@ training_slurm_tmpl = './training_slurm.tmpl'
 training_START_input = './training_START.input'
 training_START_slurm = './training_START.slurm'
 
-## Process Hyperparmaeters File
+# Process Hyperparmaeters File
 studyDF = pd.read_csv(args.csv,
                       sep=',',
                       header=0,
@@ -71,7 +72,7 @@ studyDF = pd.read_csv(args.csv,
 varnames = studyDF.columns.values
 idxlist = studyDF.index.values
 
-## Save Hyperparameters to list of dictionaries
+# Save Hyperparameters to list of dictionaries
 studylist = []
 for i in idxlist:
     studydict = {}
@@ -83,17 +84,17 @@ for i in idxlist:
     studylist.append(studydict)
 
 ####################################
-## Run Studies
+# Run Studies
 ####################################
-## Iterate Through Dictionary List to Run Studies
+# Iterate Through Dictionary List to Run Studies
 for k, study in enumerate(studylist):
-    ## Make Study Directory
+    # Make Study Directory
     studydirname = 'study_{:03d}'.format(study['studyIDX'])
 
     if not os.path.exists(studydirname):
         os.makedirs(studydirname)
 
-    ## Make new training_input.tmpl file
+    # Make new training_input.tmpl file
     with open(training_input_tmpl) as f:
         training_input_data = f.read()
 
@@ -103,7 +104,7 @@ for k, study in enumerate(studylist):
     with open(training_input_filepath, 'w') as f:
         f.write(training_input_data)
 
-    ## Make new training_slurm.tmpl file
+    # Make new training_slurm.tmpl file
     with open(training_slurm_tmpl) as f:
         training_slurm_data = f.read()
 
@@ -113,7 +114,7 @@ for k, study in enumerate(studylist):
     with open(training_slurm_filepath, 'w') as f:
         f.write(training_slurm_data)
 
-    ## Make new training_START.input file
+    # Make new training_START.input file
     with open(training_START_input) as f:
         START_input_data = f.read()
 
@@ -124,7 +125,7 @@ for k, study in enumerate(studylist):
     with open(START_input_filepath, 'w') as f:
         f.write(START_input_data)
 
-    ## Make a new training_START.slurm file
+    # Make a new training_START.slurm file
     with open(training_START_slurm) as f:
         START_slurm_data = f.read()
 
@@ -135,5 +136,5 @@ for k, study in enumerate(studylist):
     with open(START_slurm_filepath, 'w') as f:
         f.write(START_slurm_data)
 
-    ## Submit Job
+    # Submit Job
     os.system(f'cd {studydirname}; sbatch {START_slurm_name}; cd ..')

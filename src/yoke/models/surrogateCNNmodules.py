@@ -14,11 +14,11 @@ from yoke.models.cnn_utils import count_parameters
 
 class jekelCNNsurrogate(nn.Module):
     def __init__(self,
-                 input_size: int=29,
-                 linear_features: tuple[int, int]=(4, 4),
-                 kernel: tuple[int, int]=(3, 3),
-                 nfeature_list: List[int]=[512, 512, 512, 512, 256, 128, 64, 32],
-                 output_image_size: tuple[int, int]=(1120, 800),
+                 input_size: int = 29,
+                 linear_features: tuple[int, int] = (4, 4),
+                 kernel: tuple[int, int] = (3, 3),
+                 nfeature_list: List[int] = [512, 512, 512, 512, 256, 128, 64, 32],
+                 output_image_size: tuple[int, int] = (1120, 800),
                  act_layer=nn.GELU):
         """Convolutional Neural Network Module that creates a scalar-to-image
         surrogate using a sequence of ConvTranspose2D, Batch Normalization, and
@@ -51,7 +51,7 @@ class jekelCNNsurrogate(nn.Module):
         self.nConvT = len(self.nfeature_list)
 
         # First linear remap
-        out_features = self.linear_features[0]*self.linear_features[1]*self.nfeature_list[0]
+        out_features = self.linear_features[0] * self.linear_features[1] * self.nfeature_list[0]
         self.dense_expand = nn.Linear(in_features=self.input_size,
                                       out_features=out_features,
                                       bias=False)
@@ -69,9 +69,9 @@ class jekelCNNsurrogate(nn.Module):
         self.ActList = nn.ModuleList()
 
         # Create transpose convolutional layer for each entry in feature list.
-        for i in range(self.nConvT-1):
+        for i in range(self.nConvT - 1):
             tconv = nn.ConvTranspose2d(in_channels=self.nfeature_list[i],
-                                       out_channels=self.nfeature_list[i+1],
+                                       out_channels=self.nfeature_list[i + 1],
                                        kernel_size=self.kernel,
                                        stride=2,
                                        padding=1,
@@ -80,7 +80,7 @@ class jekelCNNsurrogate(nn.Module):
 
             self.TConvList.append(tconv)
 
-            normLayer = nn.BatchNorm2d(self.nfeature_list[i+1])
+            normLayer = nn.BatchNorm2d(self.nfeature_list[i + 1])
             nn.init.constant_(normLayer.weight, 1)
             normLayer.weight.requires_grad = False
 
@@ -97,7 +97,7 @@ class jekelCNNsurrogate(nn.Module):
                                               bias=True)
 
         # If normalizing to [-1, 1]
-        #self.final_act = nn.Tanh()
+        # self.final_act = nn.Tanh()
 
         # Else...
         self.final_act = nn.Identity()
@@ -107,11 +107,11 @@ class jekelCNNsurrogate(nn.Module):
         # method is better for general resizing.
         #
         # Upsample layer to get image size correct
-        #self.upsample = nn.Upsample(size=self.output_image_size,
+        # self.upsample = nn.Upsample(size=self.output_image_size,
         #                            mode='bilinear')
 
     def forward(self, x):
-        ## Input Layers
+        # Input Layers
         x = self.dense_expand(x)
         # Reshape to a 2D block with channels
         # NOTE: -1 infers batch size
@@ -122,46 +122,46 @@ class jekelCNNsurrogate(nn.Module):
 
         x = self.inNorm(x)
         x = self.inActivation(x)
-        #print('After dense-map shape:', x.shape)
+        # print('After dense-map shape:', x.shape)
 
-        ## ConvT layers
-        for i in range(self.nConvT-1):
+        # ConvT layers
+        for i in range(self.nConvT - 1):
             x = self.TConvList[i](x)
             x = self.BnormList[i](x)
             x = self.ActList[i](x)
-            #print(f'After convT{i:d} shape:', x.shape)
+            # print(f'After convT{i:d} shape:', x.shape)
 
         # Final ConvT
         x = self.final_tconv(x)
         x = self.final_act(x)
-        #print('After final convT shape:', x.shape)
+        # print('After final convT shape:', x.shape)
 
         # Reshape to output image size.
-        #print('Pre-Upsample shape:', x.shape)
-        #x = self.upsample(x)
+        # print('Pre-Upsample shape:', x.shape)
+        # x = self.upsample(x)
 
         # Alternate resize
         x = nn.functional.interpolate(x,
                                       size=self.output_image_size,
                                       mode='bilinear',
                                       antialias=True)
-        #print('Post-Upsample shape:', x.shape)
+        # print('Post-Upsample shape:', x.shape)
 
         return x
 
 
 class tCNNsurrogate(nn.Module):
     def __init__(self,
-                 input_size: int=29,
-                 linear_features: tuple[int, int]=(7, 5, 256),
-                 initial_tconv_kernel: tuple[int, int]=(5, 5),
-                 initial_tconv_stride: tuple[int, int]=(5, 5),
-                 initial_tconv_padding: tuple[int, int]=(0, 0),
-                 initial_tconv_outpadding: tuple[int, int]=(0, 0),
-                 initial_tconv_dilation: tuple[int, int]=(1, 1),
-                 kernel: tuple[int, int]=(3, 3),
-                 nfeature_list: List[int]=[256, 256, 256, 128, 64, 64, 32],
-                 output_image_size: tuple[int, int]=(1120, 800),
+                 input_size: int = 29,
+                 linear_features: tuple[int, int] = (7, 5, 256),
+                 initial_tconv_kernel: tuple[int, int] = (5, 5),
+                 initial_tconv_stride: tuple[int, int] = (5, 5),
+                 initial_tconv_padding: tuple[int, int] = (0, 0),
+                 initial_tconv_outpadding: tuple[int, int] = (0, 0),
+                 initial_tconv_dilation: tuple[int, int] = (1, 1),
+                 kernel: tuple[int, int] = (3, 3),
+                 nfeature_list: List[int] = [256, 256, 256, 128, 64, 64, 32],
+                 output_image_size: tuple[int, int] = (1120, 800),
                  act_layer=nn.GELU):
         """Convolutional Neural Network Module that creates a scalar-to-image
         surrogate using a sequence of ConvTranspose2D, Batch Normalization, and
@@ -212,7 +212,7 @@ class tCNNsurrogate(nn.Module):
         self.nConvT = len(self.nfeature_list)
 
         # First linear remap
-        out_features = self.linear_features[0]*self.linear_features[1]*self.linear_features[2]
+        out_features = self.linear_features[0] * self.linear_features[1] * self.linear_features[2]
         self.dense_expand = nn.Linear(in_features=self.input_size,
                                       out_features=out_features,
                                       bias=False)
@@ -247,23 +247,23 @@ class tCNNsurrogate(nn.Module):
         # self.ActList = nn.ModuleList()
         self.CompoundConvTList = nn.ModuleList()
         # Create transpose convolutional layer for each entry in feature list.
-        for i in range(self.nConvT-1):
+        for i in range(self.nConvT - 1):
             tconv = nn.ConvTranspose2d(in_channels=self.nfeature_list[i],
-                                       out_channels=self.nfeature_list[i+1],
+                                       out_channels=self.nfeature_list[i + 1],
                                        kernel_size=self.kernel,
                                        stride=2,
                                        padding=1,
                                        output_padding=1,
                                        bias=False)
 
-            #self.TConvList.append(tconv)
+            # self.TConvList.append(tconv)
 
-            normLayer = nn.BatchNorm2d(self.nfeature_list[i+1])
+            normLayer = nn.BatchNorm2d(self.nfeature_list[i + 1])
             nn.init.constant_(normLayer.weight, 1)
             normLayer.weight.requires_grad = False
 
-            #self.BnormList.append(normLayer)
-            #self.ActList.append(act_layer())
+            # self.BnormList.append(normLayer)
+            # self.ActList.append(act_layer())
 
             # Make list of small sequential modules. Then we'll use enumerate
             # in forward method.
@@ -282,13 +282,13 @@ class tCNNsurrogate(nn.Module):
                                               bias=True)
 
         # If normalizing to [-1, 1]
-        #self.final_act = nn.Tanh()
+        # self.final_act = nn.Tanh()
 
         # Else...
         self.final_act = nn.Identity()
 
     def forward(self, x):
-        ## Input Layers
+        # Input Layers
         x = self.dense_expand(x)
         # Reshape to a 2D block with channels
         # NOTE: -1 infers batch size
@@ -299,15 +299,15 @@ class tCNNsurrogate(nn.Module):
 
         x = self.inNorm(x)
         x = self.inActivation(x)
-        #print('After dense-map shape:', x.shape)
+        # print('After dense-map shape:', x.shape)
 
         # Initial resize tConv layer
         x = self.initTConv(x)
         x = self.initTconvNorm(x)
         x = self.initTconvActivation(x)
-        #print('After initTconv shape:', x.shape)
+        # print('After initTconv shape:', x.shape)
 
-        ## ConvT layers
+        # ConvT layers
         # NOTE: This block interferes with `torch.jit.script`
         # for i in range(self.nConvT-1):
         #     x = self.TConvList[i](x)
@@ -322,7 +322,7 @@ class tCNNsurrogate(nn.Module):
         # Final ConvT
         x = self.final_tconv(x)
         x = self.final_act(x)
-        #print('After final convT shape:', x.shape)
+        # print('After final convT shape:', x.shape)
 
         return x
 
@@ -343,7 +343,7 @@ if __name__ == '__main__':
     #                          act_layer=nn.GELU)
 
     jCNN = tCNNsurrogate(input_size=29,
-                         #linear_features=(7, 5, 256),
+                         # linear_features=(7, 5, 256),
                          linear_features=(7, 5, 512),
                          initial_tconv_kernel=(5, 5),
                          initial_tconv_stride=(5, 5),
@@ -351,7 +351,7 @@ if __name__ == '__main__':
                          initial_tconv_outpadding=(0, 0),
                          initial_tconv_dilation=(1, 1),
                          kernel=(3, 3),
-                         #nfeature_list=[256, 128, 64, 32, 16],
+                         # nfeature_list=[256, 128, 64, 32, 16],
                          nfeature_list=[512, 512, 256, 128, 64],
                          output_image_size=(1120, 800),
                          act_layer=nn.GELU)

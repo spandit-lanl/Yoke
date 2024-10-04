@@ -2,7 +2,7 @@
 
 """
 #############################################
-## Packages
+# Packages
 #############################################
 import os
 import argparse
@@ -15,7 +15,7 @@ from yoke.datasets.nestedcyl_dataset import PVI_SingleField_DataSet
 import yoke.torch_training_utils as tr
 
 #############################################
-## Inputs
+# Inputs
 #############################################
 descr_str = ('Trains CNN to estimate PTW strength scale from density '
              'for the nested cylinder')
@@ -24,7 +24,7 @@ parser = argparse.ArgumentParser(prog='NC CNN Training',
                                  fromfile_prefix_chars='@')
 
 #############################################
-## Learning Problem
+# Learning Problem
 #############################################
 parser.add_argument('--studyIDX',
                     action='store',
@@ -39,10 +39,10 @@ parser.add_argument('--input_field',
                     help='Data field the models will train on')
 
 #############################################
-## File Paths
+# File Paths
 #############################################
 #############################################
-## File Paths
+# File Paths
 #############################################
 parser.add_argument('--FILELIST_DIR',
                     action='store',
@@ -90,7 +90,7 @@ parser.add_argument('--test_filelist',
                     help='Path to list of files to test on.')
 
 #############################################
-## Model Parameters
+# Model Parameters
 #############################################
 parser.add_argument('--size_threshold_W',
                     action='store',
@@ -149,7 +149,7 @@ parser.add_argument('--hidden_features',
                     help='Number of features (channels) the dense layers')
 
 #############################################
-## Training Parameters
+# Training Parameters
 #############################################
 parser.add_argument('--init_learnrate',
                     action='store',
@@ -164,7 +164,7 @@ parser.add_argument('--batch_size',
                     help='Batch size')
 
 #############################################
-## Epoch Parameters
+# Epoch Parameters
 #############################################
 parser.add_argument('--total_epochs',
                     action='store',
@@ -225,40 +225,40 @@ parser.add_argument('--checkpoint',
 if __name__ == '__main__':
 
     #############################################
-    ## Process Inputs
+    # Process Inputs
     #############################################
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     args = parser.parse_args()
 
-    ## Study ID
+    # Study ID
     studyIDX = args.studyIDX
 
-    ## Data Paths
+    # Data Paths
     input_field = args.input_field
-    design_file = os.path.abspath(args.LSC_DESIGN_DIR+args.design_file)
+    design_file = os.path.abspath(args.LSC_DESIGN_DIR + args.design_file)
     train_filelist = args.FILELIST_DIR + args.train_filelist
     validation_filelist = args.FILELIST_DIR + args.validation_filelist
     test_filelist = args.FILELIST_DIR + args.test_filelist
 
-    ## Model Parameters
+    # Model Parameters
     thresholdW = args.size_threshold_W
     thresholdH = args.size_threshold_H
     size_threshold = (thresholdH, thresholdW)
     kernel = args.kernel
-    features= args.features
+    features = args.features
     interp_depth = args.interp_depth
     conv_onlyweights = args.conv_onlyweights
     batchnorm_onlybias = args.batchnorm_onlybias
     act_layer = eval(args.act_layer)
     hidden_features = args.hidden_features
 
-    ## Training Parameters
+    # Training Parameters
     initial_learningrate = args.init_learnrate
     batch_size = args.batch_size
     num_workers = int(os.environ['SLURM_JOB_CPUS_PER_NODE'])
     train_per_val = args.TRAIN_PER_VAL
 
-    ## Epoch Parameters
+    # Epoch Parameters
     total_epochs = args.total_epochs
     cycle_epochs = args.cycle_epochs
     train_batches = args.train_batches
@@ -270,7 +270,7 @@ if __name__ == '__main__':
     checkpoint = args.checkpoint
 
     #############################################
-    ## Check Devices
+    # Check Devices
     #############################################
     print('\n')
     print('Slurm & Device Information')
@@ -286,7 +286,7 @@ if __name__ == '__main__':
     print('=========================================')
 
     #############################################
-    ## Initialize Model
+    # Initialize Model
     #############################################
     model = PVI_SingleField_CNN(img_size=(1, 1700, 500),
                                 size_threshold=size_threshold,
@@ -301,7 +301,7 @@ if __name__ == '__main__':
     # explicitly move model and optimizer state to GPU.
 
     #############################################
-    ## Initialize Optimizer
+    # Initialize Optimizer
     #############################################
     optimizer = torch.optim.AdamW(model.parameters(),
                                   lr=initial_learningrate,
@@ -310,14 +310,14 @@ if __name__ == '__main__':
                                   weight_decay=0.01)
 
     #############################################
-    ## Initialize Loss
+    # Initialize Loss
     #############################################
     loss_fn = nn.MSELoss(reduction='none')
 
     print('Model initialized.')
 
     #############################################
-    ## Load Model for Continuation
+    # Load Model for Continuation
     #############################################
     if CONTINUATION:
         starting_epoch = tr.load_model_and_optimizer_hdf5(model,
@@ -328,7 +328,7 @@ if __name__ == '__main__':
         starting_epoch = 0
 
     #############################################
-    ## Move model and optimizer state to GPU
+    # Move model and optimizer state to GPU
     #############################################
     model.to(device)
 
@@ -338,7 +338,7 @@ if __name__ == '__main__':
                 state[k] = v.to(device)
 
     #############################################
-    ## Initialize Data
+    # Initialize Data
     #############################################
     train_dataset = PVI_SingleField_DataSet(args.NC_NPZ_DIR,
                                             train_filelist,
@@ -356,15 +356,15 @@ if __name__ == '__main__':
     print('Datasets initialized.')
 
     #############################################
-    ## Training Loop
+    # Training Loop
     #############################################
-    ## Train Model
+    # Train Model
     print("Training Model . . .")
     starting_epoch += 1
-    ending_epoch = min(starting_epoch+cycle_epochs, total_epochs+1)
+    ending_epoch = min(starting_epoch + cycle_epochs, total_epochs + 1)
 
     for epochIDX in range(starting_epoch, ending_epoch):
-        ## Setup Dataloaders
+        # Setup Dataloaders
         train_dataloader = tr.make_dataloader(train_dataset,
                                               batch_size,
                                               train_batches,
@@ -374,7 +374,7 @@ if __name__ == '__main__':
                                             val_batches,
                                             num_workers=num_workers)
 
-        ## Train an Epoch
+        # Train an Epoch
         tr.train_scalar_csv_epoch(training_data=train_dataloader,
                                   validation_data=val_dataloader,
                                   model=model,
@@ -386,11 +386,11 @@ if __name__ == '__main__':
                                   val_rcrd_filename=val_rcrd_filename,
                                   device=device)
 
-        ## Print Summary Results
-        print('Completed epoch '+str(epochIDX)+'...')
+        # Print Summary Results
+        print('Completed epoch ' + str(epochIDX) + '...')
 
-    ## Save Model Checkpoint
-    print("Saving model checkpoint at end of epoch "+ str(epochIDX) + ". . .")
+    # Save Model Checkpoint
+    print("Saving model checkpoint at end of epoch " + str(epochIDX) + ". . .")
 
     # Move the model back to CPU prior to saving to increase portability
     model.to('cpu')
@@ -406,9 +406,9 @@ if __name__ == '__main__':
     tr.save_model_and_optimizer_hdf5(model, optimizer, epochIDX, new_h5_path)
 
     #############################################
-    ## Continue if Necessary
+    # Continue if Necessary
     #############################################
-    FINISHED_TRAINING = epochIDX+1 > total_epochs
+    FINISHED_TRAINING = epochIDX + 1 > total_epochs
     if not FINISHED_TRAINING:
         new_slurm_file = tr.continuation_setup(new_h5_path,
                                                studyIDX,
@@ -416,7 +416,7 @@ if __name__ == '__main__':
         os.system(f'sbatch {new_slurm_file}')
 
     #############################################
-    ## Run Test Set When Training is Complete
+    # Run Test Set When Training is Complete
     #############################################
     if FINISHED_TRAINING:
         print("Testing Model . . .")
@@ -444,7 +444,7 @@ if __name__ == '__main__':
                                                  pred,
                                                  loss)
 
-        ## Save Testing Info
+        # Save Testing Info
         del testing_dict["epoch"]
         testingdf = pd.DataFrame.from_dict(testing_dict, orient='columns')
         test_csv_filename = 'study{0:03d}_test_results.csv'

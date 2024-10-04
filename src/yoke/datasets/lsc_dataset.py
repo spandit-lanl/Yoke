@@ -4,7 +4,7 @@ Charge data, *lsc240420*.
 """
 
 ####################################
-## Packages
+# Packages
 ####################################
 import typing
 import numpy as np
@@ -16,8 +16,8 @@ NoneStr = typing.Union[None, str]
 
 
 ################################################
-## Functions for returning the run *key* from
-## the npz-file name
+# Functions for returning the run *key* from
+# the npz-file name
 ################################################
 def LSCnpz2key(npz_file: str):
     """Function to extract simulation *key* from the name of an .npz file.
@@ -78,7 +78,7 @@ def LSCread_npz(npz: np.lib.npyio.NpzFile, field: str):
 
 
 ####################################
-## DataSet Classes
+# DataSet Classes
 ####################################
 class LSC_cntr2rho_DataSet(Dataset):
     def __init__(self,
@@ -95,12 +95,12 @@ class LSC_cntr2rho_DataSet(Dataset):
             design_file (str): .csv file with master design study parameters
 
         """
-        ## Model Arguments
+        # Model Arguments
         self.LSC_NPZ_DIR = LSC_NPZ_DIR
         self.filelist = filelist
         self.design_file = design_file
 
-        ## Create filelist
+        # Create filelist
         with open(filelist) as f:
             self.filelist = [line.rstrip() for line in f]
 
@@ -117,9 +117,9 @@ class LSC_cntr2rho_DataSet(Dataset):
         index.
 
         """
-        ## Get the input image
+        # Get the input image
         filepath = self.filelist[index]
-        npz = np.load(self.LSC_NPZ_DIR+filepath)
+        npz = np.load(self.LSC_NPZ_DIR + filepath)
 
         true_image = LSCread_npz(npz, 'av_density')
         true_image = np.concatenate((np.fliplr(true_image), true_image), axis=1)
@@ -127,8 +127,8 @@ class LSC_cntr2rho_DataSet(Dataset):
         true_image = true_image.reshape((1, nY, nX))
         true_image = torch.tensor(true_image).to(torch.float32)
 
-        ## Get the contours and sim_time
-        sim_key = LSCnpz2key(self.LSC_NPZ_DIR+filepath)
+        # Get the contours and sim_time
+        sim_key = LSCnpz2key(self.LSC_NPZ_DIR + filepath)
         Bspline_nodes = LSCcsv2bspline_pts(self.design_file, sim_key)
         sim_time = npz['sim_time']
         npz.close()
@@ -161,7 +161,7 @@ class LSCnorm_cntr2rho_DataSet(Dataset):
                                 normalization quantities.
 
         """
-        ## Model Arguments
+        # Model Arguments
         self.LSC_NPZ_DIR = LSC_NPZ_DIR
         self.filelist = filelist
         self.design_file = design_file
@@ -194,7 +194,7 @@ class LSCnorm_cntr2rho_DataSet(Dataset):
         self.Bspline_min = norm_npz['Bspline_min']
         self.Bspline_max = norm_npz['Bspline_max']
 
-        ## Create filelist
+        # Create filelist
         with open(filelist) as f:
             self.filelist = [line.rstrip() for line in f]
 
@@ -211,13 +211,13 @@ class LSCnorm_cntr2rho_DataSet(Dataset):
         index.
 
         """
-        ## Get the input image
+        # Get the input image
         filepath = self.filelist[index]
-        npz = np.load(self.LSC_NPZ_DIR+filepath)
+        npz = np.load(self.LSC_NPZ_DIR + filepath)
 
         # Get time associated with image
         sim_time = npz['sim_time']
-        round_sim_time = round(4.0*sim_time)/4.0
+        round_sim_time = round(4.0 * sim_time) / 4.0
 
         # Load image
         true_image = LSCread_npz(npz, 'av_density')
@@ -226,22 +226,22 @@ class LSCnorm_cntr2rho_DataSet(Dataset):
                                     axis=1)
         # unbias image
         unbias_true_image = true_image - self.avg_rho_by_time[str(round_sim_time)]
-        #unbias_true_image = self.avg_rho_by_time[str(round_sim_time)]
+        # unbias_true_image = self.avg_rho_by_time[str(round_sim_time)]
         nY, nX = unbias_true_image.shape
         unbias_true_image = unbias_true_image.reshape((1, nY, nX))
         unbias_true_image = torch.tensor(unbias_true_image).to(torch.float32)
 
-        ## Get the contours and sim_time
-        sim_key = LSCnpz2key(self.LSC_NPZ_DIR+filepath)
+        # Get the contours and sim_time
+        sim_key = LSCnpz2key(self.LSC_NPZ_DIR + filepath)
         Bspline_nodes = LSCcsv2bspline_pts(self.design_file, sim_key)
 
         npz.close()
 
         # Scale round_sim_time
-        norm_time = round_sim_time/25.0
+        norm_time = round_sim_time / 25.0
 
         # Normalize Bspline nodes
-        norm_Bspline_nodes = (Bspline_nodes - self.Bspline_min)/(self.Bspline_max - self.Bspline_min)
+        norm_Bspline_nodes = (Bspline_nodes - self.Bspline_min) / (self.Bspline_max - self.Bspline_min)
         norm_sim_params = np.append(norm_Bspline_nodes, norm_time)
         norm_sim_params = torch.from_numpy(norm_sim_params).to(torch.float32)
 
@@ -269,13 +269,13 @@ class LSC_rho2rho_temporal_DataSet(Dataset):
                                      timeframe at random.
         
         """
-        ## Model Arguments
+        # Model Arguments
         self.LSC_NPZ_DIR = LSC_NPZ_DIR
         self.filelist = filelist
         self.design_file = design_file
         self.max_time_offset = max_time_offset
 
-        ## Create filelist
+        # Create filelist
         with open(filelist) as f:
             self.filelist = [line.rstrip() for line in f]
 
@@ -292,9 +292,9 @@ class LSC_rho2rho_temporal_DataSet(Dataset):
         index.
 
         """
-        ## Get the input image
+        # Get the input image
         filepath = self.filelist[index]
-        npz = np.load(self.LSC_NPZ_DIR+filepath)
+        npz = np.load(self.LSC_NPZ_DIR + filepath)
 
         true_image = LSCread_npz(npz, 'av_density')
         true_image = np.concatenate((np.fliplr(true_image), true_image), axis=1)
@@ -302,8 +302,8 @@ class LSC_rho2rho_temporal_DataSet(Dataset):
         true_image = true_image.reshape((1, nY, nX))
         true_image = torch.tensor(true_image).to(torch.float32)
 
-        ## Get the contours and sim_time
-        sim_key = LSCnpz2key(self.LSC_NPZ_DIR+filepath)
+        # Get the contours and sim_time
+        sim_key = LSCnpz2key(self.LSC_NPZ_DIR + filepath)
         Bspline_nodes = LSCcsv2bspline_pts(self.design_file, sim_key)
         sim_time = npz['sim_time']
         npz.close()
@@ -390,4 +390,3 @@ class LSC_rho2rho_temporal_DataSet(Dataset):
 #                                       fontsize=14)
 
 #     plt.show()
-

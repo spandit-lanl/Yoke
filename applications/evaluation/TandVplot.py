@@ -20,8 +20,8 @@ import pandas as pd
 # >>> print(bklist)
 import matplotlib
 import matplotlib.pyplot as plt
-#matplotlib.use('MacOSX')
-#matplotlib.use('pdf')
+# matplotlib.use('MacOSX')
+# matplotlib.use('pdf')
 # Get rid of type 3 fonts in figures
 matplotlib.rcParams['pdf.fonttype'] = 42
 matplotlib.rcParams['ps.fonttype'] = 42
@@ -132,24 +132,24 @@ for tIDX, Tcsv in enumerate(trn_csv_list):
                                 'Batch',
                                 'Loss'],
                          engine='python')
-    #print('Train IDX:', trn_file_epochs[tIDX])
+    # print('Train IDX:', trn_file_epochs[tIDX])
 
     trn_epoch_loss = trn_DF.loc[:, 'Loss'].values.reshape((Nsamps_per_trn_pt, -1))
-    #print('Loss array shape:', trn_epoch_loss.shape)
+    # print('Loss array shape:', trn_epoch_loss.shape)
     trn_positions = np.arange(trn_epoch_loss.shape[1])
     trn_qnts = np.quantile(trn_epoch_loss,
                            [0.025, 0.5, 0.975],
                            axis=0)
-    #print('Quantiles shape:', trn_qnts.shape)
+    # print('Quantiles shape:', trn_qnts.shape)
 
     if tIDX == 0:
-        plt.plot(startIDX+trn_positions, trn_qnts[0,:], ':b')
-        plt.plot(startIDX+trn_positions, trn_qnts[1,:], '-b', label='Training')
-        plt.plot(startIDX+trn_positions, trn_qnts[2,:], ':b')
+        plt.plot(startIDX + trn_positions, trn_qnts[0, :], ':b')
+        plt.plot(startIDX + trn_positions, trn_qnts[1, :], '-b', label='Training')
+        plt.plot(startIDX + trn_positions, trn_qnts[2, :], ':b')
     else:
-        plt.plot(startIDX+trn_positions, trn_qnts[0,:], ':b')
-        plt.plot(startIDX+trn_positions, trn_qnts[1,:], '-b')
-        plt.plot(startIDX+trn_positions, trn_qnts[2,:], ':b')
+        plt.plot(startIDX + trn_positions, trn_qnts[0, :], ':b')
+        plt.plot(startIDX + trn_positions, trn_qnts[1, :], '-b')
+        plt.plot(startIDX + trn_positions, trn_qnts[2, :], ':b')
 
     startIDX += trn_positions[-1]
 
@@ -166,24 +166,24 @@ for tIDX, Tcsv in enumerate(trn_csv_list):
                                         'Batch',
                                         'Loss'],
                                  engine='python')
-            #print('Validation IDX:', val_file_epochs[vIDX])
+            # print('Validation IDX:', val_file_epochs[vIDX])
 
             val_epoch_loss = val_DF.loc[:, 'Loss'].values.reshape((Nsamps_per_val_pt, -1))
-            #print('Loss array shape:', val_epoch_loss.shape)
+            # print('Loss array shape:', val_epoch_loss.shape)
             val_positions = np.arange(val_epoch_loss.shape[1])
             val_qnts = np.quantile(val_epoch_loss,
                                    [0.025, 0.5, 0.975],
                                    axis=0)
-            #print('Quantiles shape:', val_qnts.shape)
+            # print('Quantiles shape:', val_qnts.shape)
 
             if vIDX == 0:
-                plt.plot(startIDX+val_positions, val_qnts[0,:], ':r')
-                plt.plot(startIDX+val_positions, val_qnts[1,:], '-r', label='Validation')
-                plt.plot(startIDX+val_positions, val_qnts[2,:], ':r')
+                plt.plot(startIDX + val_positions, val_qnts[0, :], ':r')
+                plt.plot(startIDX + val_positions, val_qnts[1, :], '-r', label='Validation')
+                plt.plot(startIDX + val_positions, val_qnts[2, :], ':r')
             else:
-                plt.plot(startIDX+val_positions, val_qnts[0,:], ':r')
-                plt.plot(startIDX+val_positions, val_qnts[1,:], '-r')
-                plt.plot(startIDX+val_positions, val_qnts[2,:], ':r')
+                plt.plot(startIDX + val_positions, val_qnts[0, :], ':r')
+                plt.plot(startIDX + val_positions, val_qnts[1, :], '-r')
+                plt.plot(startIDX + val_positions, val_qnts[2, :], ':r')
 
             vIDX += 1
             startIDX += val_positions[-1]

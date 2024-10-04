@@ -15,7 +15,7 @@ import numpy as np
 # >>> bklist = matplotlib.rcsetup.interactive_bk
 # >>> print(bklist)
 import matplotlib
-#matplotlib.use('MacOSX')
+# matplotlib.use('MacOSX')
 matplotlib.use('pdf')
 # Get rid of type 3 fonts in figures
 matplotlib.rcParams['pdf.fonttype'] = 42
@@ -108,10 +108,10 @@ def singlePVIarray(indir='./',
     data = np.load(filename)
     if FIELD == 'volhr_sum':
         # Look at sum of vol-avg density for parts
-        volhr_outerWall =  data['volhr_outerWall']
-        volhr_bottomWall =  data['volhr_bottomWall']
-        volhr_mcSide =  data['volhr_mcSide']
-        volhr_mcBottom =  data['volhr_mcBottom']
+        volhr_outerWall = data['volhr_outerWall']
+        volhr_bottomWall = data['volhr_bottomWall']
+        volhr_mcSide = data['volhr_mcSide']
+        volhr_mcBottom = data['volhr_mcBottom']
         volhr_MOI = data['volhr_MOI']
         volhr_innerCylSide = data['volhr_innerCylSide']
         volhr_innerCylBottom = data['volhr_innerCylBottom']
@@ -160,7 +160,7 @@ if __name__ == '__main__':
 
     Hfield = np.concatenate((np.fliplr(Hfield), Hfield), axis=1)
     print('Shape of Hfield: ', Hfield.shape)
-    #Hfield = Hfield[0:300, 100:1100]
+    # Hfield = Hfield[0:300, 100:1100]
     print(Hfield.shape)
 
     # Plot normalized radiograph and density field for diagnostics.
@@ -172,7 +172,7 @@ if __name__ == '__main__':
                               Zcoord.min(),
                               Zcoord.max()],
                       origin='lower',
-                      cmap='cividis' if FIELD=='pRad' else 'jet')
+                      cmap='cividis' if FIELD == 'pRad' else 'jet')
     ax1.set_ylabel("Z-axis (um)", fontsize=16)
     ax1.set_xlabel("R-axis (um)", fontsize=16)
     ax1.set_title(f'T={float(simtime):.2f}us', fontsize=18)
@@ -192,4 +192,3 @@ if __name__ == '__main__':
         #              bbox_inches='tight')
     else:
         plt.show()
-

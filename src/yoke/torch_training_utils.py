@@ -4,7 +4,7 @@
 """
 
 ####################################
-## Packages
+# Packages
 ####################################
 import os
 import time
@@ -38,7 +38,7 @@ def count_torch_params(model, trainable=True):
 
 
 ######################################################
-## Helper function for model/optimizer saving/loading
+# Helper function for model/optimizer saving/loading
 ######################################################
 def save_model_and_optimizer_hdf5(model, optimizer, epoch, filepath, compiled=False):
     """Saves the state of a model and optimizer in portable hdf5 format. Model and
@@ -84,7 +84,7 @@ def save_model_and_optimizer_hdf5(model, optimizer, epoch, filepath, compiled=Fa
         for idx, group in enumerate(optimizer_state['param_groups']):
             group_name = f'optimizer/group{idx}'
             for k, v in group.items():
-                #print('group_name:', group_name, k)
+                # print('group_name:', group_name, k)
                 if isinstance(v, (int, float)):
                     h5f.attrs[group_name + '/' + k] = v
                 elif isinstance(v, list):
@@ -94,7 +94,7 @@ def save_model_and_optimizer_hdf5(model, optimizer, epoch, filepath, compiled=Fa
         for idx, state in enumerate(optimizer_state['state'].items()):
             state_name = f'optimizer/state{idx}'
             for k, v in state[1].items():
-                #print('state_name:', state_name, k)
+                # print('state_name:', state_name, k)
                 if isinstance(v, torch.Tensor):
                     h5f.create_dataset(state_name + '/' + k,
                                        data=v.detach().cpu().numpy())
@@ -146,7 +146,7 @@ def load_model_and_optimizer_hdf5(model, optimizer, filepath):
         # Load optimizer parameter groups
         for k in h5f.attrs:
             if 'optimizer/group' in k:
-                #print('k-string:', k)
+                # print('k-string:', k)
                 idx, param = k.split('/')[1:]
                 optimizer_state['param_groups'][int(idx.lstrip('group'))][param] = h5f.attrs[k]
 
@@ -165,12 +165,12 @@ def load_model_and_optimizer_hdf5(model, optimizer, filepath):
 
 
 ####################################
-## Make Dataloader form DataSet
+# Make Dataloader form DataSet
 ####################################
 def make_dataloader(dataset: torch.utils.data.Dataset,
-                    batch_size: int=8,
-                    num_batches: int=100,
-                    num_workers: int=4):
+                    batch_size: int = 8,
+                    num_batches: int = 100,
+                    num_workers: int = 4):
     """Function to create a pytorch dataloader from a pytorch dataset
     **https://pytorch.org/docs/stable/data.html#torch.utils.data.DataLoader** 
     Each dataloader has batch_size*num_batches samples randomly selected 
@@ -199,7 +199,7 @@ def make_dataloader(dataset: torch.utils.data.Dataset,
     """
     # Use randomsampler instead of just shuffle=True so we can specify the
     # number of batchs during an epoch.
-    randomsampler = RandomSampler(dataset, num_samples=batch_size*num_batches)
+    randomsampler = RandomSampler(dataset, num_samples=batch_size * num_batches)
     dataloader = DataLoader(dataset,
                             batch_size=batch_size,
                             sampler=randomsampler,
@@ -212,7 +212,7 @@ def make_dataloader(dataset: torch.utils.data.Dataset,
 
 
 ####################################
-## Saving Results
+# Saving Results
 ####################################
 def save_append_df(path: str, df: pd.DataFrame, START: bool):
     """Function to save/append dataframe contents to a csv file
@@ -227,10 +227,10 @@ def save_append_df(path: str, df: pd.DataFrame, START: bool):
 
     """
     if START:
-        assert not os.path.isfile(path), 'If starting training, '+path+' should not exist.'
+        assert not os.path.isfile(path), 'If starting training, ' + path + ' should not exist.'
         df.to_csv(path, header=True, index=True, mode='x')
     else:
-        assert os.path.isfile(path), 'If continuing training, '+path+' should exist.'
+        assert os.path.isfile(path), 'If continuing training, ' + path + ' should exist.'
         df.to_csv(path, header=False, index=True, mode='a')
 
 
@@ -262,7 +262,7 @@ def append_to_dict(dictt: dict, batch_ID: int, truth, pred, loss):
 
 
 ####################################
-## Continue Slurm Study
+# Continue Slurm Study
 ####################################
 def continuation_setup(checkpointpath, studyIDX, last_epoch):
     """Function to generate the training.input and training.slurm files for
@@ -278,11 +278,11 @@ def continuation_setup(checkpointpath, studyIDX, last_epoch):
                                             continued training
 
     """
-    ## Identify Template Files
+    # Identify Template Files
     training_input_tmpl = "./training_input.tmpl"
     training_slurm_tmpl = "./training_slurm.tmpl"
 
-    ## Make new training.input file
+    # Make new training.input file
     with open(training_input_tmpl) as f:
         training_input_data = f.read()
 
@@ -290,7 +290,7 @@ def continuation_setup(checkpointpath, studyIDX, last_epoch):
                                                           checkpointpath)
 
     input_str = 'study{0:03d}_restart_training_epoch{1:04d}.input'
-    new_training_input_filepath = input_str.format(studyIDX, last_epoch+1)
+    new_training_input_filepath = input_str.format(studyIDX, last_epoch + 1)
 
     with open(os.path.join('./', new_training_input_filepath), 'w') as f:
         f.write(new_training_input_data)
@@ -299,13 +299,13 @@ def continuation_setup(checkpointpath, studyIDX, last_epoch):
         training_slurm_data = f.read()
 
     slurm_str = 'study{0:03d}_restart_training_epoch{1:04d}.slurm'
-    new_training_slurm_filepath = slurm_str.format(studyIDX, last_epoch+1)
+    new_training_slurm_filepath = slurm_str.format(studyIDX, last_epoch + 1)
 
     new_training_slurm_data = training_slurm_data.replace('<INPUTFILE>',
                                                           new_training_input_filepath)
 
     new_training_slurm_data = new_training_slurm_data.replace('<epochIDX>',
-                                                              f'{last_epoch+1:04d}')
+                                                              f'{last_epoch + 1:04d}')
 
     with open(os.path.join('./', new_training_slurm_filepath), 'w') as f:
         f.write(new_training_slurm_data)
@@ -314,7 +314,7 @@ def continuation_setup(checkpointpath, studyIDX, last_epoch):
 
 
 ####################################
-## Training on a Datastep
+# Training on a Datastep
 ####################################
 def train_scalar_datastep(data: tuple,
                           model,
@@ -335,22 +335,22 @@ def train_scalar_datastep(data: tuple,
         loss (): evaluated loss for the data sample
 
     """
-    ## Set model to train
+    # Set model to train
     model.train()
 
-    ## Extract data
+    # Extract data
     (inpt, truth) = data
     inpt = inpt.to(device, non_blocking=True)
     # Unsqueeze is necessary for scalar ground-truth output
     truth = truth.to(torch.float32).unsqueeze(-1).to(device, non_blocking=True)
 
-    ## Perform a forward pass
+    # Perform a forward pass
     # NOTE: If training on GPU model should have already been moved to GPU
     # prior to initalizing optimizer.
     pred = model(inpt)
     loss = loss_fn(pred, truth)
 
-    ## Perform backpropagation and update the weights
+    # Perform backpropagation and update the weights
     optimizer.zero_grad(set_to_none=True)
     loss.mean().backward()
     optimizer.step()
@@ -377,22 +377,22 @@ def train_array_datastep(data: tuple,
         loss (): evaluated loss for the data sample
 
     """
-    ## Set model to train
+    # Set model to train
     model.train()
 
-    ## Extract data
+    # Extract data
     (inpt, truth) = data
     inpt = inpt.to(device, non_blocking=True)
     truth = truth.to(device, non_blocking=True)
 
-    ## Perform a forward pass
+    # Perform a forward pass
     # NOTE: If training on GPU model should have already been moved to GPU
     # prior to initalizing optimizer.
     pred = model(inpt)
     loss = loss_fn(pred, truth)
 
-    ## Perform backpropagation and update the weights
-    #optimizer.zero_grad()
+    # Perform backpropagation and update the weights
+    # optimizer.zero_grad()
     optimizer.zero_grad(set_to_none=True)  # Possible speed-up
     loss.mean().backward()
     optimizer.step()
@@ -401,7 +401,7 @@ def train_array_datastep(data: tuple,
 
 
 ####################################
-## Evaluating on a Datastep
+# Evaluating on a Datastep
 ####################################
 def eval_scalar_datastep(data: tuple,
                          model,
@@ -420,15 +420,15 @@ def eval_scalar_datastep(data: tuple,
         loss (): evaluated loss for the data sample
 
     """
-    ## Set model to eval
+    # Set model to eval
     model.eval()
 
-    ## Extract data
+    # Extract data
     (inpt, truth) = data
     inpt = inpt.to(device, non_blocking=True)
     truth = truth.to(torch.float32).unsqueeze(-1).to(device, non_blocking=True)
 
-    ## Perform a forward pass
+    # Perform a forward pass
     pred = model(inpt)
     loss = loss_fn(pred, truth)
 
@@ -452,15 +452,15 @@ def eval_array_datastep(data: tuple,
         loss (): evaluated loss for the data sample
 
     """
-    ## Set model to eval
+    # Set model to eval
     model.eval()
 
-    ## Extract data
+    # Extract data
     (inpt, truth) = data
     inpt = inpt.to(device, non_blocking=True)
     truth = truth.to(device, non_blocking=True)
 
-    ## Perform a forward pass
+    # Perform a forward pass
     pred = model(inpt)
     loss = loss_fn(pred, truth)
 
@@ -468,7 +468,7 @@ def eval_array_datastep(data: tuple,
 
 
 ######################################
-## Training & Validation for an Epoch
+# Training & Validation for an Epoch
 ######################################
 def train_scalar_dict_epoch(training_data,
                             validation_data,
@@ -500,14 +500,14 @@ def train_scalar_dict_epoch(training_data,
         val_sample_dict (dict): dictionary with validation sample stats
 
     """
-    ## Initialize things to save
+    # Initialize things to save
     startTime = time.time()
     trainbatches = len(training_data)
     valbatches = len(validation_data)
     trainbatch_ID = 0
     valbatch_ID = 0
 
-    ## Train on all training samples
+    # Train on all training samples
     for traindata in training_data:
         trainbatch_ID += 1
         truth, pred, train_loss = train_scalar_datastep(traindata,
@@ -524,12 +524,12 @@ def train_scalar_dict_epoch(training_data,
 
     train_batchsize = np.shape(truth.cpu().detach().numpy().flatten())[0]
 
-    ## Calcuate the Epoch Average Loss
+    # Calcuate the Epoch Average Loss
     train_samples = train_batchsize * trainbatches
     avgTrainLoss = np.sum(train_sample_dict["loss"][-train_samples:]) / train_samples
     summary_dict["train_loss"].append(avgTrainLoss)
 
-    ## Evaluate on all validation samples
+    # Evaluate on all validation samples
     with torch.no_grad():
         for valdata in validation_data:
             valbatch_ID += 1
@@ -546,13 +546,13 @@ def train_scalar_dict_epoch(training_data,
 
     val_batchsize = np.shape(truth.cpu().detach().numpy().flatten())[0]
 
-    ## Calcuate the Epoch Average Loss
+    # Calcuate the Epoch Average Loss
     val_samples = val_batchsize * valbatches
     avgValLoss = np.sum(val_sample_dict["loss"][-val_samples:]) / val_samples
 
     summary_dict["val_loss"].append(avgValLoss)
 
-    ## Calculate Time
+    # Calculate Time
     endTime = time.time()
     epoch_time = (endTime - startTime) / 60
     summary_dict["epoch_time"].append(epoch_time)
@@ -586,7 +586,7 @@ def train_scalar_csv_epoch(training_data,
         device (torch.device): device index to select
 
     """
-    ## Initialize things to save
+    # Initialize things to save
     trainbatches = len(training_data)
     valbatches = len(validation_data)
     trainbatch_ID = 0
@@ -595,10 +595,9 @@ def train_scalar_csv_epoch(training_data,
     train_batchsize = training_data.batch_size
     val_batchsize = validation_data.batch_size
 
-
     train_rcrd_filename = train_rcrd_filename.replace('<epochIDX>',
                                                       f'{epochIDX:04d}')
-    ## Train on all training samples
+    # Train on all training samples
     with open(train_rcrd_filename, 'a') as train_rcrd_file:
         for traindata in training_data:
             trainbatch_ID += 1
@@ -615,7 +614,7 @@ def train_scalar_csv_epoch(training_data,
                                       train_loss.cpu().detach().numpy().flatten()[i]),
                       file=train_rcrd_file)
 
-    ## Evaluate on all validation samples
+    # Evaluate on all validation samples
     if epochIDX % train_per_val == 0:
         print('Validating...', epochIDX)
         val_rcrd_filename = val_rcrd_filename.replace('<epochIDX>',
@@ -666,7 +665,7 @@ def train_array_csv_epoch(training_data,
         device (torch.device): device index to select
 
     """
-    ## Initialize things to save
+    # Initialize things to save
     trainbatches = len(training_data)
     valbatches = len(validation_data)
     trainbatch_ID = 0
@@ -677,7 +676,7 @@ def train_array_csv_epoch(training_data,
 
     train_rcrd_filename = train_rcrd_filename.replace('<epochIDX>',
                                                       f'{epochIDX:04d}')
-    ## Train on all training samples
+    # Train on all training samples
     with open(train_rcrd_filename, 'a') as train_rcrd_file:
         for traindata in training_data:
             trainbatch_ID += 1
@@ -694,7 +693,7 @@ def train_array_csv_epoch(training_data,
                                       train_loss.cpu().detach().numpy().flatten()[i]),
                       file=train_rcrd_file)
 
-    ## Evaluate on all validation samples
+    # Evaluate on all validation samples
     if epochIDX % train_per_val == 0:
         print('Validating...', epochIDX)
         val_rcrd_filename = val_rcrd_filename.replace('<epochIDX>',

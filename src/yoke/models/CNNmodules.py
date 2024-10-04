@@ -3,7 +3,7 @@ built from these.
 
 """
 ####################################
-## Packages
+# Packages
 ####################################
 import torch
 import torch.nn as nn
@@ -12,16 +12,16 @@ from yoke.models.cnn_utils import conv2d_shape
 
 
 ####################################
-## Interpretability Module
+# Interpretability Module
 ####################################
 class CNN_Interpretability_Module(nn.Module):
     def __init__(self,
-                 img_size: tuple[int, int, int]=(1, 1700, 500),
-                 kernel: int=5,
-                 features: int=12,
-                 depth: int=12,
-                 conv_onlyweights: bool=True,
-                 batchnorm_onlybias: bool=True,
+                 img_size: tuple[int, int, int] = (1, 1700, 500),
+                 kernel: int = 5,
+                 features: int = 12,
+                 depth: int = 12,
+                 conv_onlyweights: bool = True,
+                 batchnorm_onlybias: bool = True,
                  act_layer=nn.GELU):
         """Convolutional Neural Network Module that creates the "interpretability
         layers" Sequence of Conv2D, Batch Normalization, and Activation
@@ -51,7 +51,7 @@ class CNN_Interpretability_Module(nn.Module):
         self.batchnorm_weights = not batchnorm_onlybias
         self.batchnorm_bias = True
 
-        ## Input Layers
+        # Input Layers
         self.inConv = nn.Conv2d(in_channels=C,
                                 out_channels=self.features,
                                 kernel_size=self.kernel,
@@ -70,7 +70,7 @@ class CNN_Interpretability_Module(nn.Module):
         self.inNorm = normLayer
         self.inActivation = act_layer()
 
-        ## Interpretability Layers
+        # Interpretability Layers
         self.interpConv = nn.ModuleList()
         self.interpNorms = nn.ModuleList()
         self.interpActivations = nn.ModuleList()
@@ -98,12 +98,12 @@ class CNN_Interpretability_Module(nn.Module):
             self.interpActivations.append(act_layer())
 
     def forward(self, x):
-        ## Input Layers
+        # Input Layers
         x = self.inConv(x)
         x = self.inNorm(x)
         x = self.inActivation(x)
 
-        ## Interpretability Layers
+        # Interpretability Layers
         for i in range(self.depth - 1):
             x = self.interpConv[i](x)
             x = self.interpNorms[i](x)
@@ -113,17 +113,17 @@ class CNN_Interpretability_Module(nn.Module):
 
 
 ####################################
-## Reduction Module
+# Reduction Module
 ####################################
 class CNN_Reduction_Module(nn.Module):
     def __init__(self,
-                 img_size: tuple[int, int, int]=(1, 1700, 500),
-                 size_threshold: tuple[int, int]=(8, 8),
-                 kernel: int=5,
-                 stride: int=2,
-                 features: int=12,
-                 conv_onlyweights: bool=True,
-                 batchnorm_onlybias: bool=True,
+                 img_size: tuple[int, int, int] = (1, 1700, 500),
+                 size_threshold: tuple[int, int] = (8, 8),
+                 kernel: int = 5,
+                 stride: int = 2,
+                 features: int = 12,
+                 conv_onlyweights: bool = True,
+                 batchnorm_onlybias: bool = True,
                  act_layer=nn.GELU):
         """Convolutional Neural Network Module that creates the "reduction layers"
         Sequence of Conv2D, Batch Normalization, and Activation
@@ -159,7 +159,7 @@ class CNN_Reduction_Module(nn.Module):
         self.batchnorm_weights = not batchnorm_onlybias
         self.batchnorm_bias = True
 
-        ## Input Layers
+        # Input Layers
         self.inConv = nn.Conv2d(in_channels=C,
                                 out_channels=self.features,
                                 kernel_size=self.kernel,
@@ -188,14 +188,14 @@ class CNN_Reduction_Module(nn.Module):
 
         self.depth += 1
 
-        ## Setup Reduction Layers
+        # Setup Reduction Layers
         self.reductionConv = nn.ModuleList()
         self.reductionNorms = nn.ModuleList()
         self.reductionActivations = nn.ModuleList()
 
-        ## Reduction Layers
+        # Reduction Layers
         while (W > W_lim or H > H_lim):
-            ## Set Stride & Padding
+            # Set Stride & Padding
             if W > W_lim:
                 w_stride = self.stride
             else:
@@ -208,7 +208,7 @@ class CNN_Reduction_Module(nn.Module):
             w_pad = 2 * w_stride
             h_pad = 2 * h_stride
 
-            ## Define Layers
+            # Define Layers
             reduceLayer = nn.Conv2d(in_channels=self.features,
                                     out_channels=self.features,
                                     kernel_size=self.kernel,
@@ -227,7 +227,7 @@ class CNN_Reduction_Module(nn.Module):
             self.reductionNorms.append(normLayer)
             self.reductionActivations.append(act_layer())
 
-            ## Recalculate Size
+            # Recalculate Size
             W, H, _ = conv2d_shape(w=W,
                                    h=H,
                                    k=self.kernel,
@@ -238,17 +238,17 @@ class CNN_Reduction_Module(nn.Module):
 
             self.depth += 1
 
-        ## Define final size
+        # Define final size
         self.finalW = W
         self.finalH = H
 
     def forward(self, x):
-        ## Input Layers
+        # Input Layers
         x = self.inConv(x)
         x = self.inNorm(x)
         x = self.inActivation(x)
 
-        ## Interpretability Layers
+        # Interpretability Layers
         for i in range(self.depth - 1):
             x = self.reductionConv[i](x)
             x = self.reductionNorms[i](x)
@@ -259,15 +259,15 @@ class CNN_Reduction_Module(nn.Module):
 
 class PVI_SingleField_CNN(nn.Module):
     def __init__(self,
-                 img_size: tuple[int, int, int]=(1, 1700, 500),
-                 size_threshold: tuple[int, int]=(8, 8),
-                 kernel: int=5,
-                 features: int=12,
-                 interp_depth: int=12,
-                 conv_onlyweights: bool=True,
-                 batchnorm_onlybias: bool=True,
-                 act_layer = nn.GELU,
-                 hidden_features: int=20):
+                 img_size: tuple[int, int, int] = (1, 1700, 500),
+                 size_threshold: tuple[int, int] = (8, 8),
+                 kernel: int = 5,
+                 features: int = 12,
+                 interp_depth: int = 12,
+                 conv_onlyweights: bool = True,
+                 batchnorm_onlybias: bool = True,
+                 act_layer=nn.GELU,
+                 hidden_features: int = 20):
         """Convolutional Neural Network Model that uses a single PVI field to predict
         one scalar value. Constructed using both an interpretability block,
         defined above, and a reduction block.
@@ -346,20 +346,20 @@ class PVI_SingleField_CNN(nn.Module):
         x = self.interp_module(x)
         x = self.reduction_module(x)
 
-        ## Final Convolution
+        # Final Convolution
         x = self.endConv(x)
         x = self.endConvActivation(x)
         x = torch.flatten(x, start_dim=1)
 
-        ## Hidden Layer
+        # Hidden Layer
         x = self.hidden(x)
         x = self.hiddenActivation(x)
 
-        ## Linear Output Layer
+        # Linear Output Layer
         x = self.linOut(x)
         x = torch.flatten(x, start_dim=1)
 
-        return(x)
+        return (x)
 
 
 if __name__ == '__main__':
@@ -382,5 +382,3 @@ if __name__ == '__main__':
 
     pvi_CNN.eval()
     pvi_pred = pvi_CNN(pvi_input)
-
-

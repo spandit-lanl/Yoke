@@ -9,7 +9,7 @@ When run as a script an NPZ of calculated parameters is generated.
 """
 
 ####################################
-## Packages
+# Packages
 ####################################
 import os
 import argparse
@@ -72,11 +72,11 @@ parser.add_argument('--fileout',
 # Main script
 args = parser.parse_args()
 
-## Data Paths
-design_file = os.path.abspath(args.LSC_DESIGN_DIR+args.design_file)
+# Data Paths
+design_file = os.path.abspath(args.LSC_DESIGN_DIR + args.design_file)
 eval_files = args.FILELIST_DIR + args.eval_filelist
 
-## Create filelist
+# Create filelist
 with open(eval_files) as f:
     eval_filelist = [line.rstrip() for line in f]
 
@@ -88,23 +88,23 @@ nsamp_time_dict = {}
 
 # Build arrays to normalize with
 for k, filepath in enumerate(eval_filelist):
-    ## Get the input image
-    npz = np.load(args.LSC_NPZ_DIR+filepath)
+    # Get the input image
+    npz = np.load(args.LSC_NPZ_DIR + filepath)
 
     true_image = LSCread_npz(npz, 'av_density')
     true_image = np.concatenate((np.fliplr(true_image), true_image), axis=1)
     nY, nX = true_image.shape
-    #print('True image shape:', nY, nX)
+    # print('True image shape:', nY, nX)
 
-    ## Get the contours and sim_time
-    sim_key = LSCnpz2key(args.LSC_NPZ_DIR+filepath)
+    # Get the contours and sim_time
+    sim_key = LSCnpz2key(args.LSC_NPZ_DIR + filepath)
     Bspline_nodes = LSCcsv2bspline_pts(design_file, sim_key)
-    #print('Shape of Bspline node array:', Bspline_nodes.shape)
+    # print('Shape of Bspline node array:', Bspline_nodes.shape)
 
     sim_time = npz['sim_time']
-    #print('Sim. Time:', sim_time)
-    round_sim_time = str(round(4.0*sim_time)/4.0)
-    #print('Nearest 0.25us Sim. Time:', round_sim_time)
+    # print('Sim. Time:', sim_time)
+    round_sim_time = str(round(4.0 * sim_time) / 4.0)
+    # print('Nearest 0.25us Sim. Time:', round_sim_time)
 
     npz.close()
 
@@ -123,8 +123,8 @@ for k, filepath in enumerate(eval_filelist):
         Bspline_avg = Bspline_nodes
         Bspline_min = Bspline_nodes
         Bspline_max = Bspline_nodes
-        #print('Image_min:', image_min)
-        #print('Image_max:', image_max)
+        # print('Image_min:', image_min)
+        # print('Image_max:', image_max)
     else:
         image_avg += true_image
         image_min = min(image_min, np.min(true_image))
@@ -132,19 +132,19 @@ for k, filepath in enumerate(eval_filelist):
         Bspline_avg += Bspline_nodes
         Bspline_min = np.minimum(Bspline_nodes, Bspline_min)
         Bspline_max = np.maximum(Bspline_nodes, Bspline_max)
-        #print('Bspline min array:', Bspline_min)
-        #print('Bspline max array:', Bspline_max)
-        #print('Image_min:', image_min)
-        #print('Image_max:', image_max)
+        # print('Bspline min array:', Bspline_min)
+        # print('Bspline max array:', Bspline_max)
+        # print('Image_min:', image_min)
+        # print('Image_max:', image_max)
 
-    #print('============')
+    # print('============')
 
 # Calculate averages
-image_avg = image_avg/Nsamp
-Bspline_avg = Bspline_avg/Nsamp
+image_avg = image_avg / Nsamp
+Bspline_avg = Bspline_avg / Nsamp
 
 for k, v in avg_time_dict.items():
-    avg_time_dict[k] = v/nsamp_time_dict[k]
+    avg_time_dict[k] = v / nsamp_time_dict[k]
 
 # Save normalization information
 np.savez(args.fileout,
@@ -155,6 +155,3 @@ np.savez(args.fileout,
          Bspline_min=Bspline_min,
          Bspline_max=Bspline_max,
          **avg_time_dict)
-
-
-

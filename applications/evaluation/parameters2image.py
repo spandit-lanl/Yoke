@@ -19,8 +19,8 @@ import yoke.torch_training_utils as tr
 # >>> bklist = matplotlib.rcsetup.interactive_bk
 # >>> print(bklist)
 import matplotlib
-#matplotlib.use('MacOSX')
-#matplotlib.use('pdf')
+# matplotlib.use('MacOSX')
+# matplotlib.use('pdf')
 # Get rid of type 3 fonts in figures
 matplotlib.rcParams['pdf.fonttype'] = 42
 matplotlib.rcParams['ps.fonttype'] = 42
@@ -91,7 +91,7 @@ model = jekelCNNsurrogate(input_size=29,
                           act_layer=nn.GELU)
 
 #############################################
-## Initialize Optimizer
+# Initialize Optimizer
 #############################################
 optimizer = torch.optim.AdamW(model.parameters(),
                               lr=initial_learningrate,
@@ -100,14 +100,14 @@ optimizer = torch.optim.AdamW(model.parameters(),
                               weight_decay=0.01)
 
 ##############
-## Load Model
+# Load Model
 ##############
 checkpoint_epoch = tr.load_model_and_optimizer_hdf5(model,
                                                     optimizer,
                                                     checkpoint)
 
 ###################################
-## Input parameters and evaluation
+# Input parameters and evaluation
 ###################################
 input_params = np.array([[4.5, 5.0, 5.5, 7.0, 8.5, 10.0, 10.5,
                           0.5, 0.25, 0.25, 0.25, 0.25, 0.3, 0.3,
@@ -120,8 +120,8 @@ input_params = torch.from_numpy(input_params)
 model.eval()
 pred_image = model(input_params)
 
-#print('Shape of inputs:', input_params.shape)
-#print('Prediction shape:', pred_image.shape)
+# print('Shape of inputs:', input_params.shape)
+# print('Prediction shape:', pred_image.shape)
 
 # Reshape for plotting
 input_params = np.squeeze(input_params.numpy())
@@ -131,7 +131,7 @@ pred_image = np.squeeze(pred_image.detach().numpy())
 
 
 ###################################
-## Plotting Section
+# Plotting Section
 ###################################
 # Plot normalized radiograph and density field for diagnostics.
 fig1, ax1 = plt.subplots(1, 1, figsize=(12, 12))

@@ -13,9 +13,9 @@ import numpy as np
 # >>> bklist = matplotlib.rcsetup.interactive_bk
 # >>> print(bklist)
 import matplotlib
-#matplotlib.use('MacOSX')
-#matplotlib.use('pdf')
-#matplotlib.use('QtAgg')
+# matplotlib.use('MacOSX')
+# matplotlib.use('pdf')
+# matplotlib.use('QtAgg')
 # Get rid of type 3 fonts in figures
 matplotlib.rcParams['pdf.fonttype'] = 42
 matplotlib.rcParams['ps.fonttype'] = 42
@@ -129,7 +129,7 @@ if __name__ == '__main__':
 
     # Assemble filename
     # Example: lsc_nonconvex_pvi_idx00115.npz
-    npzfile = os.path.join(indir, runID+'_idx%05d.npz' % pviIDX)
+    npzfile = os.path.join(indir, runID + '_idx%05d.npz' % pviIDX)
     print('filename:', npzfile)
 
     if KEYS:
@@ -159,7 +159,7 @@ if __name__ == '__main__':
                                   Zcoord.min(),
                                   Zcoord.max()],
                           origin='lower',
-                          cmap='cividis' if FIELD=='pRad' else 'jet')
+                          cmap='cividis' if FIELD == 'pRad' else 'jet')
         ax1.set_ylabel("Z-axis (um)", fontsize=16)
         ax1.set_xlabel("R-axis (um)", fontsize=16)
         ax1.set_title(f'T={float(simtime):.2f}us', fontsize=18)
@@ -176,4 +176,3 @@ if __name__ == '__main__':
                          bbox_inches='tight')
         else:
             plt.show()
-

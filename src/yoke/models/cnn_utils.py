@@ -6,7 +6,7 @@ import math
 
 
 ####################################
-## Get Conv2D Shape
+# Get Conv2D Shape
 ####################################
 def conv2d_shape(w, h, k, s_w, s_h, p_w, p_h):
     """Function to calculate the new dimension of an image after a nn.Conv2d
@@ -31,8 +31,8 @@ def conv2d_shape(w, h, k, s_w, s_h, p_w, p_h):
     Assuming a 2D input and dilation = 1
 
     """
-    new_w = int(math.floor(((w + 2*p_w - (k-1) -1)/s_w)+1))
-    new_h = int(math.floor(((h + 2*p_h - (k-1) -1)/s_h)+1))
+    new_w = int(math.floor(((w + 2 * p_w - (k - 1) - 1) / s_w) + 1))
+    new_h = int(math.floor(((h + 2 * p_h - (k - 1) - 1) / s_h) + 1))
     total = new_w * new_h
 
     return new_w, new_h, total
@@ -67,8 +67,8 @@ def convtranspose2d_shape(w, h, k_w, k_h, s_w, s_h, p_w, p_h, op_w, op_h, d_w, d
     https://pytorch.org/docs/stable/generated/torch.nn.ConvTranspose2d.html
 
     """
-    new_w = (w - 1)*s_w - 2*p_w + d_w*(k_w - 1) + op_w + 1
-    new_h = (h - 1)*s_h - 2*p_h + d_h*(k_h - 1) + op_h + 1
+    new_w = (w - 1) * s_w - 2 * p_w + d_w * (k_w - 1) + op_w + 1
+    new_h = (h - 1) * s_h - 2 * p_h + d_h * (k_h - 1) + op_h + 1
     total = new_w * new_h
 
     return new_w, new_h, total

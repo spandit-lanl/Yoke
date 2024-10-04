@@ -59,7 +59,10 @@ select = [
     "F",
     "D",
     "UP",
-    "W"]
+    "W",
+    "ANN"]
+
+ignore = ["ANN101"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

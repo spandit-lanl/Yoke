@@ -32,10 +32,10 @@ class WindowMSA(nn.Module):
     """
 
     def __init__(self,
-                 emb_size: int=64,
-                 num_heads: int=10,
-                 patch_grid_size: (int, int)=(16, 32),
-                 window_size: (int, int)=(8, 4)):
+                 emb_size: int = 64,
+                 num_heads: int = 10,
+                 patch_grid_size: (int, int) = (16, 32),
+                 window_size: (int, int) = (8, 4)):
 
         super().__init__()
         # Check size compatibilities
@@ -78,7 +78,7 @@ class WindowMSA(nn.Module):
         self.window_size = window_size
 
         # QKV embedding
-        self.linear1 = nn.Linear(emb_size, 3*emb_size)
+        self.linear1 = nn.Linear(emb_size, 3 * emb_size)
 
         # Linear output embedding.
         self.linear2 = nn.Linear(emb_size, emb_size)
@@ -92,7 +92,7 @@ class WindowMSA(nn.Module):
         # C: token length or embedding dimension, i.e. emb_size
         B, L, C = x.shape
 
-        assert self.patch_grid_size[0]*self.patch_grid_size[1] == L
+        assert self.patch_grid_size[0] * self.patch_grid_size[1] == L
 
         # Map C to the Q,K,V matrices with linear embedding
         x = self.linear1(x)
@@ -173,10 +173,10 @@ class ShiftedWindowMSA(nn.Module):
     """
 
     def __init__(self,
-                 emb_size: int=64,
-                 num_heads: int=10,
-                 patch_grid_size: (int, int)=(16, 32),
-                 window_size: (int, int)=(8, 4)):
+                 emb_size: int = 64,
+                 num_heads: int = 10,
+                 patch_grid_size: (int, int) = (16, 32),
+                 window_size: (int, int) = (8, 4)):
 
         super().__init__()
         # Check size compatibilities
@@ -235,7 +235,7 @@ class ShiftedWindowMSA(nn.Module):
         self.window_size = window_size
 
         # QKV embedding
-        self.linear1 = nn.Linear(emb_size, 3*emb_size)
+        self.linear1 = nn.Linear(emb_size, 3 * emb_size)
 
         # Linear output embedding.
         self.linear2 = nn.Linear(emb_size, emb_size)
@@ -249,7 +249,7 @@ class ShiftedWindowMSA(nn.Module):
         # C: token length or embedding dimension, i.e. emb_size
         B, L, C = x.shape
 
-        assert self.patch_grid_size[0]*self.patch_grid_size[1] == L
+        assert self.patch_grid_size[0] * self.patch_grid_size[1] == L
 
         # Map C to the Q,K,V matrices with linear embedding
         x = self.linear1(x)
@@ -303,11 +303,11 @@ class ShiftedWindowMSA(nn.Module):
         #
         # NOTE: The size of the attention weights is (B, H, Wh, Ww, wh*ww,
         # wh*ww) and row_mask and column_mask are size (wh*ww, wh*ww).
-        row_mask = torch.zeros((self.window_size[0]*self.window_size[1],
-                                self.window_size[0]*self.window_size[1]))  #.cuda() only if cuda enabled
+        row_mask = torch.zeros((self.window_size[0] * self.window_size[1],
+                                self.window_size[0] * self.window_size[1]))  # .cuda() only if cuda enabled
 
         # Set bottom left quarter of mask to *-inf*
-        halfIDX = self.window_size[0] * (self.window_size[1]//2)
+        halfIDX = self.window_size[0] * (self.window_size[1] // 2)
         row_mask[-halfIDX:, 0:-halfIDX] = float('-inf')
         # Set top right quarter of mask to *-inf*
         row_mask[0:-halfIDX, -halfIDX:] = float('-inf')
@@ -374,10 +374,10 @@ class WindowCosMSA(nn.Module):
     """
 
     def __init__(self,
-                 emb_size: int=64,
-                 num_heads: int=10,
-                 patch_grid_size: (int, int)=(16, 32),
-                 window_size: (int, int)=(8, 4)):
+                 emb_size: int = 64,
+                 num_heads: int = 10,
+                 patch_grid_size: (int, int) = (16, 32),
+                 window_size: (int, int) = (8, 4)):
 
         super().__init__()
         # Check size compatibilities
@@ -421,11 +421,11 @@ class WindowCosMSA(nn.Module):
 
         # Learnable per-head attention scaling
         # Multiplies attn.shape=(B, num_heads, Hw, Ww, wh*ww, wh*ww)
-        self.logit_scale = nn.Parameter(torch.log(10*torch.ones((1, num_heads, 1, 1, 1, 1))),
+        self.logit_scale = nn.Parameter(torch.log(10 * torch.ones((1, num_heads, 1, 1, 1, 1))),
                                         requires_grad=True)
 
         # QKV embedding
-        self.linear1 = nn.Linear(emb_size, 3*emb_size)
+        self.linear1 = nn.Linear(emb_size, 3 * emb_size)
 
         # Linear output embedding.
         self.linear2 = nn.Linear(emb_size, emb_size)
@@ -439,7 +439,7 @@ class WindowCosMSA(nn.Module):
         # C: token length or embedding dimension, i.e. emb_size
         B, L, C = x.shape
 
-        assert self.patch_grid_size[0]*self.patch_grid_size[1] == L
+        assert self.patch_grid_size[0] * self.patch_grid_size[1] == L
 
         # Map C to the Q,K,V matrices with linear embedding
         x = self.linear1(x)
@@ -480,7 +480,7 @@ class WindowCosMSA(nn.Module):
         # dot-product attention.
         wei = (F.normalize(Q, dim=-1) @ F.normalize(K, dim=-1).transpose(-2, -1))
         logit_scale = torch.clamp(self.logit_scale,
-                                  max=torch.log(torch.tensor(1./0.01))).exp()
+                                  max=torch.log(torch.tensor(1. / 0.01))).exp()
         wei = wei * logit_scale
 
         # Relative position embedding.
@@ -520,10 +520,10 @@ class ShiftedWindowCosMSA(nn.Module):
     """
 
     def __init__(self,
-                 emb_size: int=64,
-                 num_heads: int=10,
-                 patch_grid_size: (int, int)=(16, 32),
-                 window_size: (int, int)=(8, 4)):
+                 emb_size: int = 64,
+                 num_heads: int = 10,
+                 patch_grid_size: (int, int) = (16, 32),
+                 window_size: (int, int) = (8, 4)):
 
         super().__init__()
         # Check size compatibilities
@@ -583,11 +583,11 @@ class ShiftedWindowCosMSA(nn.Module):
 
         # Learnable per-head attention scaling
         # Multiplies attn.shape=(B, num_heads, Hw, Ww, wh*ww, wh*ww)
-        self.logit_scale = nn.Parameter(torch.log(10*torch.ones((1, num_heads, 1, 1, 1, 1))),
+        self.logit_scale = nn.Parameter(torch.log(10 * torch.ones((1, num_heads, 1, 1, 1, 1))),
                                         requires_grad=True)
 
         # QKV embedding
-        self.linear1 = nn.Linear(emb_size, 3*emb_size)
+        self.linear1 = nn.Linear(emb_size, 3 * emb_size)
 
         # Linear output embedding.
         self.linear2 = nn.Linear(emb_size, emb_size)
@@ -601,7 +601,7 @@ class ShiftedWindowCosMSA(nn.Module):
         # C: token length or embedding dimension, i.e. emb_size
         B, L, C = x.shape
 
-        assert self.patch_grid_size[0]*self.patch_grid_size[1] == L
+        assert self.patch_grid_size[0] * self.patch_grid_size[1] == L
 
         # Map C to the Q,K,V matrices with linear embedding
         x = self.linear1(x)
@@ -649,7 +649,7 @@ class ShiftedWindowCosMSA(nn.Module):
         # dot-product attention.
         wei = (F.normalize(Q, dim=-1) @ F.normalize(K, dim=-1).transpose(-2, -1))
         logit_scale = torch.clamp(self.logit_scale,
-                                  max=torch.log(torch.tensor(1./0.01))).exp()
+                                  max=torch.log(torch.tensor(1. / 0.01))).exp()
         wei = wei * logit_scale
 
         # Relative position embedding.
@@ -660,11 +660,11 @@ class ShiftedWindowCosMSA(nn.Module):
         #
         # NOTE: The size of the attention weights is (B, H, Wh, Ww, wh*ww,
         # wh*ww) and row_mask and column_mask are size (wh*ww, wh*ww).
-        row_mask = torch.zeros((self.window_size[0]*self.window_size[1],
-                                self.window_size[0]*self.window_size[1]))  #.cuda() only if cuda enabled
+        row_mask = torch.zeros((self.window_size[0] * self.window_size[1],
+                                self.window_size[0] * self.window_size[1]))  # .cuda() only if cuda enabled
 
         # Set bottom left quarter of mask to *-inf*
-        halfIDX = self.window_size[0] * (self.window_size[1]//2)
+        halfIDX = self.window_size[0] * (self.window_size[1] // 2)
         row_mask[-halfIDX:, 0:-halfIDX] = float('-inf')
         # Set top right quarter of mask to *-inf*
         row_mask[0:-halfIDX, -halfIDX:] = float('-inf')
@@ -726,7 +726,7 @@ if __name__ == '__main__':
     # patch-size (20, 20).
     #
     # (B, token_number, E) = (3, 1024, 64)
-    x = torch.rand(3, 56*40, 64)
+    x = torch.rand(3, 56 * 40, 64)
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     x = x.type(torch.FloatTensor).to(device)

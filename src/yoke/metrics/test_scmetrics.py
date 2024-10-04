@@ -22,7 +22,7 @@ if __name__ == '__main__':
   # CHANGE THIS BASED ON LOCATION OF DATA!
   data_dir = "../../../npz/lsc240420/"
   # file_name_format used with this extension ... % (runID,time_index)
-  file_name_format =  "lsc240420_id%05d_pvi_idx%05d.npz"
+  file_name_format = "lsc240420_id%05d_pvi_idx%05d.npz"
   # set output file name, it will be csv format
   outfile = "sc_metrics.csv"
 
@@ -50,37 +50,37 @@ if __name__ == '__main__':
   # initialize arrays holding metrics
   # this is not necessary if only writing results to file
   # this will change, naturally, based on desired metrics
-  eff_jet_mass = np.zeros((nruns,ntimes))
-  jet_mass = np.zeros((nruns,ntimes))
-  HE_mass = np.zeros((nruns,ntimes))
-  jet_width_avg = np.zeros((nruns,ntimes))
-  jet_width_std = np.zeros((nruns,ntimes))
-  jet_width_max = np.zeros((nruns,ntimes))
-  KE = np.zeros((nruns,ntimes))
-  sqrt_KE = np.zeros((nruns,ntimes))
+  eff_jet_mass = np.zeros((nruns, ntimes))
+  jet_mass = np.zeros((nruns, ntimes))
+  HE_mass = np.zeros((nruns, ntimes))
+  jet_width_avg = np.zeros((nruns, ntimes))
+  jet_width_std = np.zeros((nruns, ntimes))
+  jet_width_max = np.zeros((nruns, ntimes))
+  KE = np.zeros((nruns, ntimes))
+  sqrt_KE = np.zeros((nruns, ntimes))
 
   # write header line for csf file
-  fid = open(outfile,"w")
+  fid = open(outfile, "w")
   fid.write("key, time_index, eff_jet_mass_percent, jet_mass, HE_mass, avg_width_1, std_width_1, max_width_1, KE_2D, sqrt_KE_2D\n")
 
   # loop through the runIDs and time indeces
   # and compute the metrics
-  for irun,runID in enumerate(runID_list):
+  for irun, runID in enumerate(runID_list):
     for itime, time_index in enumerate(time_list):
-      npzfile = data_dir + file_name_format % (runID,time_index)
+      npzfile = data_dir + file_name_format % (runID, time_index)
       metrics = SCmetrics(npzfile)
-      eff_jet_mass[irun,itime] = metrics.get_eff_jet_mass(asPercent=True)
-      jet_mass[irun,itime] = metrics.get_jet_mass()
-      HE_mass[irun,itime] = metrics.get_HE_mass()
+      eff_jet_mass[irun, itime] = metrics.get_eff_jet_mass(asPercent=True)
+      jet_mass[irun, itime] = metrics.get_jet_mass()
+      HE_mass[irun, itime] = metrics.get_HE_mass()
       avg, stdj, maxj = metrics.get_jet_width_stats(vel_thres=0.1)
-      jet_width_avg[irun,itime] = avg
-      jet_width_std[irun,itime] = stdj
-      jet_width_max[irun,itime] = maxj
-      KE[irun,itime] = metrics.get_jet_rho_velsq_2D()
-      sqrt_KE[irun,itime] = metrics.get_jet_sqrt_rho_vel_2D()
+      jet_width_avg[irun, itime] = avg
+      jet_width_std[irun, itime] = stdj
+      jet_width_max[irun, itime] = maxj
+      KE[irun, itime] = metrics.get_jet_rho_velsq_2D()
+      sqrt_KE[irun, itime] = metrics.get_jet_sqrt_rho_vel_2D()
       ifile = os.path.basename(npzfile)
-      fid.write("%s, %i, %f, %f, %f, %f, %f, %f, %f, %f\n" % (ifile,time_index,eff_jet_mass[irun,itime],jet_mass[irun,itime],HE_mass[irun,itime],
-                                                              jet_width_avg[irun,itime],jet_width_std[irun,itime],jet_width_max[irun,itime],
-                                                              KE[irun,itime],sqrt_KE[irun,itime]))
+      fid.write("%s, %i, %f, %f, %f, %f, %f, %f, %f, %f\n" % (ifile, time_index, eff_jet_mass[irun, itime], jet_mass[irun, itime], HE_mass[irun, itime],
+                                                              jet_width_avg[irun, itime], jet_width_std[irun, itime], jet_width_max[irun, itime],
+                                                              KE[irun, itime], sqrt_KE[irun, itime]))
 
   fid.close()

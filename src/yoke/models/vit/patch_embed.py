@@ -13,7 +13,6 @@ from einops import rearrange
 from einops.layers.torch import Rearrange
 
 
-
 def _get_conv2d_weights(in_channels,
                         out_channels,
                         kernel_size):
@@ -51,10 +50,10 @@ class ClimaX_ParallelVarPatchEmbed(nn.Module):
     """
 
     def __init__(self,
-                 max_vars: int=5,
-                 img_size: (int, int)=(128, 128),
-                 patch_size: (int, int)=(16, 16),
-                 embed_dim: int=64,
+                 max_vars: int = 5,
+                 img_size: (int, int) = (128, 128),
+                 patch_size: (int, int) = (16, 16),
+                 embed_dim: int = 64,
                  norm_layer=None):
 
         super().__init__()
@@ -171,10 +170,10 @@ class SwinEmbedding(nn.Module):
     """
 
     def __init__(self,
-                 num_vars: int=5,
-                 img_size: (int, int)=(128, 128),
-                 patch_size: (int, int)=(16, 16),
-                 embed_dim: int=64,
+                 num_vars: int = 5,
+                 img_size: (int, int) = (128, 128),
+                 patch_size: (int, int) = (16, 16),
+                 embed_dim: int = 64,
                  norm_layer=None):
         super().__init__()
         # Check size compatibilities

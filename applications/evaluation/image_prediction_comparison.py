@@ -19,8 +19,8 @@ import yoke.torch_training_utils as tr
 # >>> bklist = matplotlib.rcsetup.interactive_bk
 # >>> print(bklist)
 import matplotlib
-#matplotlib.use('MacOSX')
-#matplotlib.use('pdf')
+# matplotlib.use('MacOSX')
+# matplotlib.use('pdf')
 # Get rid of type 3 fonts in figures
 matplotlib.rcParams['pdf.fonttype'] = 42
 matplotlib.rcParams['ps.fonttype'] = 42
@@ -104,8 +104,8 @@ args = parser.parse_args()
 
 checkpoint = args.checkpoint
 
-## Data Paths
-design_file = os.path.abspath(args.LSC_DESIGN_DIR+args.design_file)
+# Data Paths
+design_file = os.path.abspath(args.LSC_DESIGN_DIR + args.design_file)
 eval_filelist = args.FILELIST_DIR + args.eval_filelist
 
 # Additional inpu variables
@@ -137,7 +137,7 @@ initial_learningrate = 0.0007
 #                           act_layer=nn.GELU)
 
 model = tCNNsurrogate(input_size=29,
-                      #linear_features=(7, 5, 256),
+                      # linear_features=(7, 5, 256),
                       linear_features=(7, 5, 512),
                       initial_tconv_kernel=(5, 5),
                       initial_tconv_stride=(5, 5),
@@ -145,14 +145,14 @@ model = tCNNsurrogate(input_size=29,
                       initial_tconv_outpadding=(0, 0),
                       initial_tconv_dilation=(1, 1),
                       kernel=(3, 3),
-                      #nfeature_list=[256, 128, 64, 32, 16],
+                      # nfeature_list=[256, 128, 64, 32, 16],
                       nfeature_list=[512, 512, 256, 128, 64],
                       output_image_size=(1120, 800),
                       act_layer=nn.GELU)
 
 
 #############################################
-## Initialize Optimizer
+# Initialize Optimizer
 #############################################
 optimizer = torch.optim.AdamW(model.parameters(),
                               lr=initial_learningrate,
@@ -161,14 +161,14 @@ optimizer = torch.optim.AdamW(model.parameters(),
                               weight_decay=0.01)
 
 ##############
-## Load Model
+# Load Model
 ##############
 checkpoint_epoch = tr.load_model_and_optimizer_hdf5(model,
                                                     optimizer,
                                                     checkpoint)
 
 ################
-## Load dataset
+# Load dataset
 ################
 eval_dataset = LSC_cntr2rho_DataSet(args.LSC_NPZ_DIR,
                                     eval_filelist,
@@ -177,15 +177,15 @@ eval_dataset = LSC_cntr2rho_DataSet(args.LSC_NPZ_DIR,
 # Load single image and parameters pair
 sim_params, true_image = eval_dataset.__getitem__(sampIDX)
 
-## Read filelist
+# Read filelist
 with open(eval_filelist) as f:
     eval_filenames = [line.rstrip() for line in f]
 
-## Get the input filename evaluated
+# Get the input filename evaluated
 eval_filename = eval_filenames[sampIDX]
 
-## Get the simulation key associated with evaluation
-eval_key = LSCnpz2key(args.LSC_NPZ_DIR+eval_filename)
+# Get the simulation key associated with evaluation
+eval_key = LSCnpz2key(args.LSC_NPZ_DIR + eval_filename)
 print('Evaluation file key:', eval_key)
 
 # Evaluate model
@@ -198,7 +198,7 @@ true_image = np.squeeze(true_image.numpy())
 # Predictions from network must be detached from gradients in order to be
 # written to numpy arrays.
 pred_image = np.squeeze(pred_image.detach().numpy())
-#print('Shape of image prediction:', pred_image.shape)
+# print('Shape of image prediction:', pred_image.shape)
 
 # Plot normalized radiograph and density field for diagnostics.
 fig1, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(16, 6))
@@ -213,8 +213,8 @@ ax1.set_ylabel("Z-axis", fontsize=16)
 ax1.set_xlabel("R-axis", fontsize=16)
 ax1.set_title('True', fontsize=18)
 
-#divider1 = make_axes_locatable(ax1)
-#cax1 = divider1.append_axes('right', size='10%', pad=0.1)
+# divider1 = make_axes_locatable(ax1)
+# cax1 = divider1.append_axes('right', size='10%', pad=0.1)
 # fig1.colorbar(img1,
 #               cax=cax1).set_label('Density',
 #                                   fontsize=14)
@@ -243,7 +243,7 @@ img3 = ax3.imshow(discrepancy,
                   origin='lower',
                   cmap='hot',
                   vmin=discrepancy.min(),
-                  vmax=dscale*discrepancy.max())
+                  vmax=dscale * discrepancy.max())
 ax3.set_title('Discrepancy', fontsize=18)
 ax3.tick_params(axis='y',
                 which='both',
@@ -266,4 +266,3 @@ if SAVEFIG:
     plt.savefig(filenameA, bbox_inches='tight')
 else:
     plt.show()
-

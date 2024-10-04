@@ -41,11 +41,11 @@ class PatchMerge(nn.Module):
     """
 
     def __init__(self,
-                 emb_size: int=64,
-                 emb_factor: int=2,
-                 patch_grid_size: (int, int)=(64, 64),
-                 s1: int=2,
-                 s2: int=2):
+                 emb_size: int = 64,
+                 emb_factor: int = 2,
+                 patch_grid_size: (int, int) = (64, 64),
+                 s1: int = 2,
+                 s2: int = 2):
         super().__init__()
         # Check size compatibilities
         try:
@@ -81,15 +81,15 @@ class PatchMerge(nn.Module):
         self.s2 = s2
 
         # New patch grid
-        self.out_patch_grid_size = (int(self.H/self.s1),
-                                    int(self.W/self.s2))
+        self.out_patch_grid_size = (int(self.H / self.s1),
+                                    int(self.W / self.s2))
 
         # Embedding dimension factor
         self.emb_factor = emb_factor
-        self.out_emb_size = self.emb_factor*self.in_emb_size
+        self.out_emb_size = self.emb_factor * self.in_emb_size
 
         # Linear re-embedding
-        self.linear = nn.Linear(self.s1*self.s2*self.in_emb_size,
+        self.linear = nn.Linear(self.s1 * self.s2 * self.in_emb_size,
                                 self.out_emb_size)
 
     def forward(self, x):
@@ -97,7 +97,7 @@ class PatchMerge(nn.Module):
         B, L, C = x.shape
 
         # NOTE: The number of tokens is assumed to be L=H*W
-        assert L == self.H*self.W
+        assert L == self.H * self.W
 
         x = rearrange(x,
                       'b (h s1 w s2) c -> b (h w) (s1 s2 c)',
@@ -141,17 +141,17 @@ class PatchExpand(nn.Module):
     """
 
     def __init__(self,
-                 emb_size: int=64,
-                 emb_factor: int=2,
-                 patch_grid_size: (int, int)=(64, 64),
-                 s1: int=2,
-                 s2: int=2):
+                 emb_size: int = 64,
+                 emb_factor: int = 2,
+                 patch_grid_size: (int, int) = (64, 64),
+                 s1: int = 2,
+                 s2: int = 2):
         super().__init__()
 
         # Check size compatibilities
         try:
             msg = 'New embedding dimension not divisible by patch-expansion factors!!!'
-            assert (emb_size*emb_factor) % (s1*s2) == 0, msg
+            assert (emb_size * emb_factor) % (s1 * s2) == 0, msg
         except AssertionError as e:
             msg_tuple = ('Input embedding size:', emb_size,
                          'Embedding factor:', emb_factor,
@@ -175,21 +175,21 @@ class PatchExpand(nn.Module):
         self.emb_factor = emb_factor
 
         # New patch grid
-        self.out_patch_grid_size = (int(self.H*self.s1),
-                                    int(self.W*self.s2))
+        self.out_patch_grid_size = (int(self.H * self.s1),
+                                    int(self.W * self.s2))
 
         # Add output embedding size for model building
-        self.out_emb_size = int(self.emb_factor*self.emb_size/(self.s1*self.s2))
+        self.out_emb_size = int(self.emb_factor * self.emb_size / (self.s1 * self.s2))
 
         # Linear re-embedding
-        self.linear = nn.Linear(self.emb_size, self.emb_factor*self.emb_size)
+        self.linear = nn.Linear(self.emb_size, self.emb_factor * self.emb_size)
 
     def forward(self, x):
         # The input tensor is shape (B, num_tokens, embedding_dim)
         B, L, C = x.shape
 
         # NOTE: The number of tokens is assumed to be L=H*W
-        assert L == self.H*self.W
+        assert L == self.H * self.W
 
         # Linear embedding
         x = self.linear(x)
@@ -222,9 +222,9 @@ class Unpatchify(nn.Module):
     """
 
     def __init__(self,
-                 total_num_vars: int=5,
-                 patch_grid_size: (int, int)=(64, 64),
-                 patch_size: (int, int)=(8, 8)):
+                 total_num_vars: int = 5,
+                 patch_grid_size: (int, int) = (64, 64),
+                 patch_size: (int, int) = (8, 8)):
 
         super().__init__()
 
@@ -244,9 +244,9 @@ class Unpatchify(nn.Module):
         B, L, C = x.shape
 
         # Make sure shape requirements are met
-        assert L == self.H*self.W
+        assert L == self.H * self.W
 
-        assert C == self.V*self.p_h*self.p_w
+        assert C == self.V * self.p_h * self.p_w
 
         x = rearrange(x,
                       'b (h w) (v ph pw) -> b v (h ph) (w pw)',
@@ -270,9 +270,9 @@ if __name__ == '__main__':
     batch_size = 3
     emb_dim = 64
     patch_size = (16, 8)
-    patch_grid_size = (int(img_size[0]/patch_size[0]),
-                       int(img_size[1]/patch_size[1]))
-    num_tokens = patch_grid_size[0]*patch_grid_size[1]
+    patch_grid_size = (int(img_size[0] / patch_size[0]),
+                       int(img_size[1] / patch_size[1]))
+    num_tokens = patch_grid_size[0] * patch_grid_size[1]
 
     # Input
     x = torch.rand(batch_size, num_tokens, emb_dim)
@@ -294,10 +294,10 @@ if __name__ == '__main__':
     print('Patch merge shape:', x.shape)
 
     # Grid size has been reduced through merge
-    merged_patch_grid_size = (int(patch_grid_size[0]/s1),
-                              int(patch_grid_size[1]/s2))
+    merged_patch_grid_size = (int(patch_grid_size[0] / s1),
+                              int(patch_grid_size[1] / s2))
     expand_model = PatchExpand(x.shape[2],
-                               emb_factor=int(s1*s2/emb_factor),
+                               emb_factor=int(s1 * s2 / emb_factor),
                                patch_grid_size=merged_patch_grid_size,
                                s1=s1,
                                s2=s2).to(device)
@@ -306,7 +306,7 @@ if __name__ == '__main__':
 
     # Linear embed the last dimension into V*p_h*p_w
     linear = nn.Linear(emb_dim,
-                       num_vars*patch_size[0]*patch_size[1]).to(device)
+                       num_vars * patch_size[0] * patch_size[1]).to(device)
     x = linear(x)
     print('Embed to variable dimension shape:', x.shape)
 

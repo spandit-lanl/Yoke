@@ -42,15 +42,15 @@ class LodeRunner(nn.Module):
 
     def __init__(self,
                  default_vars,
-                 image_size: (int, int)=(1120, 800),
-                 patch_size: (int, int)=(10, 10),
-                 embed_dim: int=128,
-                 emb_factor: int=2,
-                 num_heads: int=8,
-                 block_structure: (int, int, int, int)=(1, 1, 3, 1),
-                 window_sizes: [(int, int), (int, int), (int, int), (int, int)]=[(8, 8), (8, 8), (4, 4), (2, 2)],
-                 patch_merge_scales: [(int, int), (int, int), (int, int)]=[(2, 2), (2, 2), (2, 2)],
-                 verbose: bool=False):
+                 image_size: (int, int) = (1120, 800),
+                 patch_size: (int, int) = (10, 10),
+                 embed_dim: int = 128,
+                 emb_factor: int = 2,
+                 num_heads: int = 8,
+                 block_structure: (int, int, int, int) = (1, 1, 3, 1),
+                 window_sizes: [(int, int), (int, int), (int, int), (int, int)] = [(8, 8), (8, 8), (4, 4), (2, 2)],
+                 patch_merge_scales: [(int, int), (int, int), (int, int)] = [(2, 2), (2, 2), (2, 2)],
+                 verbose: bool = False):
         super().__init__()
 
         self.default_vars = default_vars
@@ -58,7 +58,7 @@ class LodeRunner(nn.Module):
         self.image_size = image_size
         self.patch_size = patch_size
         self.embed_dim = embed_dim
-        self.emb_factor =  emb_factor
+        self.emb_factor = emb_factor
         self.num_heads = num_heads
         self.block_structure = block_structure
         self.window_sizes = window_sizes
@@ -101,7 +101,7 @@ class LodeRunner(nn.Module):
 
         # Linear embed the last dimension into V*p_h*p_w
         self.linear4unpatch = nn.Linear(self.embed_dim,
-                                        self.max_vars*self.patch_size[0]*self.patch_size[1])
+                                        self.max_vars * self.patch_size[0] * self.patch_size[1])
 
         # Unmap the tokenized embeddings to variables and images.
         self.unpatch = Unpatchify(total_num_vars=self.max_vars,
@@ -172,12 +172,12 @@ if __name__ == '__main__':
     x = x.type(torch.FloatTensor).to(device)
 
     lead_times = torch.rand(5)  # Lead time for each entry in batch
-    x_vars=['cu_density',
+    x_vars = ['cu_density',
             'ss_density',
             'ply_density',
             'air_density']
 
-    out_vars=['cu_density',
+    out_vars = ['cu_density',
               'ss_density',
               'ply_density',
               'air_density']

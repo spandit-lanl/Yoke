@@ -5,7 +5,7 @@ If run, will make file lists to that specification
 """
 
 ####################################
-## Packages
+# Packages
 ####################################
 import os
 import glob
@@ -16,8 +16,9 @@ import numpy as np
 
 NoneStr = typing.Union[None, str]
 
+
 ####################################
-## Make File List Functions
+# Make File List Functions
 ####################################
 def findcorruptedfiles(input_dir: str, samplelist: list[str]):
     """Function to identify which npz files in a list have been corrupted
@@ -50,7 +51,7 @@ def findcorruptedfiles(input_dir: str, samplelist: list[str]):
 
 def maketvtlists(search_dir: str,
                  sample_split: tuple[float, float, float],
-                 save_path: NoneStr=None, save: bool=True):
+                 save_path: NoneStr = None, save: bool = True):
     """Function to make training, validation, and testing samples lists and save
     them to files
 
@@ -77,12 +78,12 @@ def maketvtlists(search_dir: str,
                                   saved to .txt file
 
     """
-    ## Test Sample Split
+    # Test Sample Split
     assert_str = ('Sum of training, validation, and testing split must be less '
                   'than or equal to 1.0')
     assert sum(sample_split) <= 1, assert_str
 
-    ## Gather Samples
+    # Gather Samples
     sample_list = glob.glob(search_dir)
     sample_list = np.unique(sample_list).tolist()
     corrupted = findcorruptedfiles(input_dir=os.path.dirname(search_dir),
@@ -95,35 +96,35 @@ def maketvtlists(search_dir: str,
     random.shuffle(sample_list)
     total_samples = len(sample_list)
 
-    ## Find Split Points
+    # Find Split Points
     train, val, test = sample_split
-    trainIDX = int(np.floor(train*total_samples))
-    valIDX = int(trainIDX + np.floor(val*total_samples))
-    testIDX = int(valIDX + np.floor(test*total_samples))
+    trainIDX = int(np.floor(train * total_samples))
+    valIDX = int(trainIDX + np.floor(val * total_samples))
+    testIDX = int(valIDX + np.floor(test * total_samples))
 
-    ## Split Sample List
+    # Split Sample List
     train_samples = sample_list[:trainIDX]
     val_samples = sample_list[trainIDX:valIDX]
     test_samples = sample_list[valIDX:testIDX]
 
-    ## Save to File
+    # Save to File
     if save:
         if save_path == None:
             raise ValueError('None is not a valid save path for makefilelist. '
                               'Either provide a valid save path or use save=False.')
         else:
             if train > 0:
-                sample_file = open(save_path+'_train_samples.txt', 'w')
+                sample_file = open(save_path + '_train_samples.txt', 'w')
                 np.savetxt(sample_file, train_samples, fmt='%s')
                 sample_file.close()
 
             if val > 0:
-                sample_file = open(save_path+'_val_samples.txt', 'w')
+                sample_file = open(save_path + '_val_samples.txt', 'w')
                 np.savetxt(sample_file, val_samples, fmt='%s')
                 sample_file.close()
 
             if test > 0:
-                sample_file = open(save_path+'_test_samples.txt', 'w')
+                sample_file = open(save_path + '_test_samples.txt', 'w')
                 np.savetxt(sample_file, test_samples, fmt='%s')
                 sample_file.close()
 
@@ -137,7 +138,7 @@ parser = argparse.ArgumentParser(prog='Make file lists',
                                  description=descr_str,
                                  fromfile_prefix_chars='@')
 ########################
-## File Paths
+# File Paths
 ########################
 parser.add_argument('--save_dir',
                     action='store',
@@ -158,7 +159,7 @@ parser.add_argument('--data_tag',
                     default='nc*pvi*.npz',
                     help='Naming convention for the data files')
 ########################
-## Data Split
+# Data Split
 ########################
 parser.add_argument('--train_split',
                     action='store',
@@ -183,22 +184,22 @@ parser.add_argument('--test_split',
 if __name__ == '__main__':
 
     ########################
-    ## Process Inputs
+    # Process Inputs
     ########################
     args = parser.parse_args()
 
-    ## File Paths
+    # File Paths
     save_dir = args.save_dir
     input_dir = args.input_dir
     data_tag = args.data_tag
 
-    ## Data Split
+    # Data Split
     train = args.train_split
     val = args.validation_split
     test = args.test_split
 
     ########################
-    ## Make File Lists
+    # Make File Lists
     ########################
     TVTsplit = maketvtlists(search_dir=os.path.join(input_dir, data_tag),
                             sample_split=(train, val, test),
@@ -207,15 +208,15 @@ if __name__ == '__main__':
     train_samples, val_samples, test_samples = TVTsplit
 
     ########################
-    ## Print Information
+    # Print Information
     ########################
     train_filelist = os.path.join(save_dir, 'datalist') + '_train_samples.txt'
     val_filelist = os.path.join(save_dir, 'datalist') + '_val_samples.txt'
     test_filelist = os.path.join(save_dir, 'datalist') + '_test_samples.txt'
 
-    print('Training filelist created at '+train_filelist+'\n\tcontaining '+ \
-          str(len(train_samples))+' samples,\n\t'+str(train*100)+'% of total samples.')
-    print('Validation filelist created at '+ val_filelist+'\n\tcontaining '+ \
-          str(len(val_samples))+' samples,\n\t'+str(val*100)+'% of total samples.')
-    print('Testing filelist created at '+ test_filelist+'\n\tcontaining '+ \
-          str(len(test_samples))+' samples,\n\t'+str(test*100)+'% of total samples.')
+    print('Training filelist created at ' + train_filelist + '\n\tcontaining ' +
+          str(len(train_samples)) + ' samples,\n\t' + str(train * 100) + '% of total samples.')
+    print('Validation filelist created at ' + val_filelist + '\n\tcontaining ' +
+          str(len(val_samples)) + ' samples,\n\t' + str(val * 100) + '% of total samples.')
+    print('Testing filelist created at ' + test_filelist + '\n\tcontaining ' +
+          str(len(test_samples)) + ' samples,\n\t' + str(test * 100) + '% of total samples.')

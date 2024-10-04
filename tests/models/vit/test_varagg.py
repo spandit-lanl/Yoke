@@ -43,5 +43,6 @@ class TestClimaX_AggVars(unittest.TestCase):
         output = self.model(x)
         self.assertIsInstance(output, torch.Tensor)
 
+
 if __name__ == "__main__":
     unittest.main(argv=[''], exit=False)

@@ -11,7 +11,7 @@ doppler velocimetry traces
 """
 
 ####################################
-## Packages
+# Packages
 ####################################
 import typing
 import numpy as np
@@ -23,7 +23,7 @@ NoneStr = typing.Union[None, str]
 
 
 ################################################
-## Functions for processing nested cylinder data
+# Functions for processing nested cylinder data
 ################################################
 def npz2key(npz_file: str):
     """Function to extract study information from the name of an .npz file
@@ -42,7 +42,7 @@ def npz2key(npz_file: str):
     return key
 
 
-def csv2scalar(csv_file: str, key:str, scalar:str):
+def csv2scalar(csv_file: str, key: str, scalar: str):
     """Function to extract the scalar value from the design .csv file given the
     study key.
         
@@ -62,7 +62,7 @@ def csv2scalar(csv_file: str, key:str, scalar:str):
                             index_col=0,
                             engine='python')
 
-    #removed spaces from headers
+    # removed spaces from headers
     for col in design_df.columns:
         design_df.rename(columns={col: col.strip()}, inplace=True)
 
@@ -92,15 +92,15 @@ def npz_pvi2field(npz: np.lib.npyio.NpzFile, field: str):
 
 
 ####################################
-## DataSet Class
+# DataSet Class
 ####################################
 class PVI_SingleField_DataSet(Dataset):
     def __init__(self,
                  NC_NPZ_DIR: str,
                  filelist: str,
-                 input_field: str='rho',
-                 predicted: str='ptw_scale',
-                 design_file: str='/data2/design_nc231213_Sn_MASTER.csv'):
+                 input_field: str = 'rho',
+                 predicted: str = 'ptw_scale',
+                 design_file: str = '/data2/design_nc231213_Sn_MASTER.csv'):
         """The definition of a dataset object for the simple nested cylinder
         problem: Nested Cylinder MOI density -> PTW scale value
 
@@ -113,14 +113,14 @@ class PVI_SingleField_DataSet(Dataset):
             design_file (str): .csv file with master design study parameters
 
         """
-        ## Model Arguments
+        # Model Arguments
         self.NC_NPZ_DIR = NC_NPZ_DIR
         self.input_field = input_field
         self.predicted = predicted
         self.filelist = filelist
         self.design_file = design_file
 
-        ## Create filelist
+        # Create filelist
         with open(filelist) as f:
             self.filelist = [line.rstrip() for line in f]
 
@@ -136,15 +136,15 @@ class PVI_SingleField_DataSet(Dataset):
         """Return a tuple of a batch's input and output data for training at a given index.
 
         """
-        ## Get the input image
+        # Get the input image
         filepath = self.filelist[index]
-        npz = np.load(self.NC_NPZ_DIR+filepath)
+        npz = np.load(self.NC_NPZ_DIR + filepath)
         img_input = npz_pvi2field(npz, self.input_field)
         in_y, in_x = img_input.shape
         img_input = img_input.reshape((1, in_y, in_x))
         img_input = torch.tensor(img_input).to(torch.float32)
 
-        ## Get the ground truth.
+        # Get the ground truth.
         # NOTE: This will not work with Dcj being predicted.
         key = npz2key(filepath)
         truth = csv2scalar(self.design_file, key, self.predicted)
@@ -216,4 +216,3 @@ class PVI_SingleField_DataSet(Dataset):
 #                                       fontsize=14)
 
 #     plt.show()
-

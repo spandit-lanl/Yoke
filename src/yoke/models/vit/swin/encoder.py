@@ -19,11 +19,11 @@ class MLP(nn.Module):
     
     """
 
-    def __init__(self, emb_size: int=64):
+    def __init__(self, emb_size: int = 64):
         super().__init__()
-        self.ff = nn.Sequential(nn.Linear(emb_size, 4*emb_size),
+        self.ff = nn.Sequential(nn.Linear(emb_size, 4 * emb_size),
                                 nn.GELU(),
-                                nn.Linear(4*emb_size, emb_size))
+                                nn.Linear(4 * emb_size, emb_size))
 
     def forward(self, x):
         return self.ff(x)
@@ -50,10 +50,10 @@ class SwinEncoder(nn.Module):
     """
 
     def __init__(self,
-                 emb_size: int=64,
-                 num_heads: int=10,
-                 patch_grid_size: (int, int)=(16, 32),
-                 window_size: (int, int)=(8, 4)):
+                 emb_size: int = 64,
+                 num_heads: int = 10,
+                 patch_grid_size: (int, int) = (16, 32),
+                 window_size: (int, int) = (8, 4)):
         super().__init__()
 
         self.emb_size = emb_size
@@ -99,10 +99,10 @@ class SwinEncoder2(nn.Module):
     """
 
     def __init__(self,
-                 emb_size: int=64,
-                 num_heads: int=10,
-                 patch_grid_size: (int, int)=(16, 32),
-                 window_size: (int, int)=(8, 4)):
+                 emb_size: int = 64,
+                 num_heads: int = 10,
+                 patch_grid_size: (int, int) = (16, 32),
+                 window_size: (int, int) = (8, 4)):
         super().__init__()
 
         self.emb_size = emb_size
@@ -146,10 +146,10 @@ class SwinConnectEncoder(SwinEncoder2):
     """
 
     def __init__(self,
-                 emb_size: int=64,
-                 num_heads: int=10,
-                 patch_grid_size: (int, int)=(16, 32),
-                 window_size: (int, int)=(8, 4)):
+                 emb_size: int = 64,
+                 num_heads: int = 10,
+                 patch_grid_size: (int, int) = (16, 32),
+                 window_size: (int, int) = (8, 4)):
         super().__init__(emb_size=emb_size,
                          num_heads=num_heads,
                          patch_grid_size=patch_grid_size,
@@ -175,17 +175,16 @@ class SwinConnectDecoder(SwinEncoder2):
     """
 
     def __init__(self,
-                 emb_size: int=64,
-                 num_heads: int=10,
-                 patch_grid_size: (int, int)=(16, 32),
-                 window_size: (int, int)=(8, 4)):
+                 emb_size: int = 64,
+                 num_heads: int = 10,
+                 patch_grid_size: (int, int) = (16, 32),
+                 window_size: (int, int) = (8, 4)):
         super().__init__(emb_size=emb_size,
                          num_heads=num_heads,
                          patch_grid_size=patch_grid_size,
                          window_size=window_size)
 
-        self.linear_remap = nn.Linear(2*emb_size, emb_size)
-
+        self.linear_remap = nn.Linear(2 * emb_size, emb_size)
 
     def forward(self, x, y):
         # Concatenate with the skip connection input
@@ -209,7 +208,7 @@ if __name__ == '__main__':
     # patch-size (20, 20).
     #
     # (B, token_number, E) = (3, 1024, 64)
-    x = torch.rand(3, 56*40, 64)
+    x = torch.rand(3, 56 * 40, 64)
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     x = x.type(torch.FloatTensor).to(device)
@@ -241,5 +240,3 @@ if __name__ == '__main__':
     x, y = model_swin_connect(x)
     print('SWIN connect encoder shape:', x.shape, y.shape)
     print('SWIN connect decoder shape:', model_swin_decoder(x, y).shape)
-
-

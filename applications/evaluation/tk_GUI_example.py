@@ -16,7 +16,7 @@ def run_neural_network(param1, param2, param3):
     # Generate a 200x200 numpy array based on the parameters
     array = np.random.rand(200, 200) * param1 / 255  # Simple variation based on parameter
     if np.max(array) == 0.0:
-        norm_array = 0.0*np.random.rand(200, 200)
+        norm_array = 0.0 * np.random.rand(200, 200)
     else:
         norm_array = array * 255 / np.max(array)
     return norm_array.astype(np.uint8)  # Normalize and convert to 8-bit grayscale
@@ -36,7 +36,7 @@ def update_image(*args):
     # Anti-aliased resizing...
     current_width = max(image_label.winfo_width(), 400)
     current_height = max(image_label.winfo_height(), 400)
-    img_resized = img.resize((int(0.7*current_width), int(0.7*current_height)),
+    img_resized = img.resize((int(0.7 * current_width), int(0.7 * current_height)),
                              Image.Resampling.LANCZOS)
 
     # Convert PIL Image to Tkinter PhotoImage
@@ -48,9 +48,10 @@ def update_image(*args):
 def update_sliders():
     current_width = image_label.winfo_width()
     current_height = image_label.winfo_height()
-    slider1.configure(length=0.5*current_height)
-    slider2.configure(length=0.5*current_height)
-    #slider3.configure(length=0.3*current_width)
+    slider1.configure(length=0.5 * current_height)
+    slider2.configure(length=0.5 * current_height)
+    # slider3.configure(length=0.3*current_width)
+
 
 root = tk.Tk()
 root.title("Neural Network GUI")

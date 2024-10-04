@@ -255,11 +255,11 @@ if __name__ == '__main__':
     for channel in range(time.shape[0]):
         plt.plot(time[channel],
                  velocity[channel],
-                 #'-k',
+                 # '-k',
                  linewidth=1.7,
                  label=f'r={origin[channel][0]}, z={origin[channel][2]}')
 
-    plt.xlim([time[0,0], time[0, -1]])
+    plt.xlim([time[0, 0], time[0, -1]])
     plt.xlabel(r'Time ($\mu$s)', fontsize=18)
     plt.ylabel(r'Velocity ($\frac{cm}{\mu s}$)', fontsize=18)
     plt.tick_params(axis='both', labelsize=18)
@@ -271,4 +271,3 @@ if __name__ == '__main__':
                      bbox_inches='tight')
     else:
         plt.show()
-
