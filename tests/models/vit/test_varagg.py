@@ -1,6 +1,4 @@
-"""Test for `models/vit/variable_aggregation.py`
-
-"""
+"""Test for `models/vit/variable_aggregation.py`"""
 
 import unittest
 import torch
@@ -9,13 +7,12 @@ from yoke.models.vit.aggregate_variables import ClimaX_AggVars
 
 
 class TestClimaX_AggVars(unittest.TestCase):
-
     def setUp(self):
         """Set up common variables for the tests."""
         self.embed_dim = 32
         self.num_heads = 4
         self.model = ClimaX_AggVars(embed_dim=self.embed_dim, num_heads=self.num_heads)
-        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.model.to(self.device)
 
     def test_initialization(self):
@@ -45,4 +42,4 @@ class TestClimaX_AggVars(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main(argv=[''], exit=False)
+    unittest.main(argv=[""], exit=False)

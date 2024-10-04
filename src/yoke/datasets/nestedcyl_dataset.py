@@ -30,14 +30,14 @@ def npz2key(npz_file: str):
 
     Args:
         npz_file (str): file path from working directory to .npz file
-        
+
     Returns:
         key (str): The study information for the simulation that
                    generated the .npz file; of the form "nc231213_Sn_id####"
 
     """
-    key = npz_file.split('/')[-1].split('_')
-    key = '_'.join(key[0:3])
+    key = npz_file.split("/")[-1].split("_")
+    key = "_".join(key[0:3])
 
     return key
 
@@ -45,28 +45,26 @@ def npz2key(npz_file: str):
 def csv2scalar(csv_file: str, key: str, scalar: str):
     """Function to extract the scalar value from the design .csv file given the
     study key.
-        
+
     Args:
         csv_file (str): file path from working directory to the .csv design file
-        key (str): The study information for a given simulation; of the 
+        key (str): The study information for a given simulation; of the
                    form "nc231213_Sn_id####"
         scalar (str): column name of scalar to extract from the design file
-        
+
     Returns:
         value (float): the value of the scalar for the specified key
 
     """
-    design_df = pd.read_csv(csv_file,
-                            sep=',',
-                            header=0,
-                            index_col=0,
-                            engine='python')
+    design_df = pd.read_csv(csv_file, sep=",", header=0, index_col=0, engine="python")
 
     # removed spaces from headers
     for col in design_df.columns:
         design_df.rename(columns={col: col.strip()}, inplace=True)
 
-    assert scalar in design_df.columns, "csv2scalar: selected scalar is not in the design file"
+    assert (
+        scalar in design_df.columns
+    ), "csv2scalar: selected scalar is not in the design file"
 
     value = design_df.at[key, scalar]
 
@@ -81,7 +79,7 @@ def npz_pvi2field(npz: np.lib.npyio.NpzFile, field: str):
         field (str): name of field to extract
 
     Returns:
-        pic (np.ndarray[(1700, 500), float]): field 
+        pic (np.ndarray[(1700, 500), float]): field
 
     """
     pic = npz[field]
@@ -95,19 +93,21 @@ def npz_pvi2field(npz: np.lib.npyio.NpzFile, field: str):
 # DataSet Class
 ####################################
 class PVI_SingleField_DataSet(Dataset):
-    def __init__(self,
-                 NC_NPZ_DIR: str,
-                 filelist: str,
-                 input_field: str = 'rho',
-                 predicted: str = 'ptw_scale',
-                 design_file: str = '/data2/design_nc231213_Sn_MASTER.csv'):
+    def __init__(
+        self,
+        NC_NPZ_DIR: str,
+        filelist: str,
+        input_field: str = "rho",
+        predicted: str = "ptw_scale",
+        design_file: str = "/data2/design_nc231213_Sn_MASTER.csv",
+    ):
         """The definition of a dataset object for the simple nested cylinder
         problem: Nested Cylinder MOI density -> PTW scale value
 
         Args:
             NC_NPZ_DIR (str): Location of NC NPZ files. A yoke environment variable.
             filelist (str): Text file listing file names to read
-            input_field (str): The radiographic/hydrodynamic field the model 
+            input_field (str): The radiographic/hydrodynamic field the model
                                is trained on
             predicted (str): The scalar value that a model predicts
             design_file (str): .csv file with master design study parameters
@@ -127,15 +127,11 @@ class PVI_SingleField_DataSet(Dataset):
         self.Nsamples = len(self.filelist)
 
     def __len__(self):
-        """Return number of samples in dataset.
-
-        """
+        """Return number of samples in dataset."""
         return self.Nsamples
 
     def __getitem__(self, index):
-        """Return a tuple of a batch's input and output data for training at a given index.
-
-        """
+        """Return a tuple of a batch's input and output data for training at a given index."""
         # Get the input image
         filepath = self.filelist[index]
         npz = np.load(self.NC_NPZ_DIR + filepath)

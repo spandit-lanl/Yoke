@@ -13,13 +13,15 @@ from yoke.models.cnn_utils import count_parameters
 
 
 class jekelCNNsurrogate(nn.Module):
-    def __init__(self,
-                 input_size: int = 29,
-                 linear_features: tuple[int, int] = (4, 4),
-                 kernel: tuple[int, int] = (3, 3),
-                 nfeature_list: List[int] = [512, 512, 512, 512, 256, 128, 64, 32],
-                 output_image_size: tuple[int, int] = (1120, 800),
-                 act_layer=nn.GELU):
+    def __init__(
+        self,
+        input_size: int = 29,
+        linear_features: tuple[int, int] = (4, 4),
+        kernel: tuple[int, int] = (3, 3),
+        nfeature_list: List[int] = [512, 512, 512, 512, 256, 128, 64, 32],
+        output_image_size: tuple[int, int] = (1120, 800),
+        act_layer=nn.GELU,
+    ):
         """Convolutional Neural Network Module that creates a scalar-to-image
         surrogate using a sequence of ConvTranspose2D, Batch Normalization, and
         Activation layers.
@@ -30,14 +32,14 @@ class jekelCNNsurrogate(nn.Module):
 
         Args:
             input_size (int): Size of input
-            linear_features (tuple[int, int]): Window size scalar parameters are 
+            linear_features (tuple[int, int]): Window size scalar parameters are
                                                originally mapped into
             kernel (tuple[int, int]): Size of transpose-convolutional kernel
-            nfeature_list (List[int]): List of number of features in each 
+            nfeature_list (List[int]): List of number of features in each
                                        T-convolutional layer
-            output_image_size (tuple[int, int]): Image size to output, (H, W). 
+            output_image_size (tuple[int, int]): Image size to output, (H, W).
                                                  Channels are automatically inherited.
-            act_layer(nn.modules.activation): torch neural network layer class 
+            act_layer(nn.modules.activation): torch neural network layer class
                                               to use as activation
 
         """
@@ -51,10 +53,12 @@ class jekelCNNsurrogate(nn.Module):
         self.nConvT = len(self.nfeature_list)
 
         # First linear remap
-        out_features = self.linear_features[0] * self.linear_features[1] * self.nfeature_list[0]
-        self.dense_expand = nn.Linear(in_features=self.input_size,
-                                      out_features=out_features,
-                                      bias=False)
+        out_features = (
+            self.linear_features[0] * self.linear_features[1] * self.nfeature_list[0]
+        )
+        self.dense_expand = nn.Linear(
+            in_features=self.input_size, out_features=out_features, bias=False
+        )
 
         normLayer = nn.BatchNorm2d(self.nfeature_list[0])
         nn.init.constant_(normLayer.weight, 1)
@@ -70,13 +74,15 @@ class jekelCNNsurrogate(nn.Module):
 
         # Create transpose convolutional layer for each entry in feature list.
         for i in range(self.nConvT - 1):
-            tconv = nn.ConvTranspose2d(in_channels=self.nfeature_list[i],
-                                       out_channels=self.nfeature_list[i + 1],
-                                       kernel_size=self.kernel,
-                                       stride=2,
-                                       padding=1,
-                                       output_padding=1,
-                                       bias=False)
+            tconv = nn.ConvTranspose2d(
+                in_channels=self.nfeature_list[i],
+                out_channels=self.nfeature_list[i + 1],
+                kernel_size=self.kernel,
+                stride=2,
+                padding=1,
+                output_padding=1,
+                bias=False,
+            )
 
             self.TConvList.append(tconv)
 
@@ -88,13 +94,15 @@ class jekelCNNsurrogate(nn.Module):
             self.ActList.append(act_layer())
 
         # Final Transpose Conv layer followed by hyperbolic tanh activation
-        self.final_tconv = nn.ConvTranspose2d(in_channels=self.nfeature_list[-1],
-                                              out_channels=1,
-                                              kernel_size=self.kernel,
-                                              stride=2,
-                                              padding=1,
-                                              output_padding=1,
-                                              bias=True)
+        self.final_tconv = nn.ConvTranspose2d(
+            in_channels=self.nfeature_list[-1],
+            out_channels=1,
+            kernel_size=self.kernel,
+            stride=2,
+            padding=1,
+            output_padding=1,
+            bias=True,
+        )
 
         # If normalizing to [-1, 1]
         # self.final_act = nn.Tanh()
@@ -115,10 +123,9 @@ class jekelCNNsurrogate(nn.Module):
         x = self.dense_expand(x)
         # Reshape to a 2D block with channels
         # NOTE: -1 infers batch size
-        x = x.view(-1,
-                   self.nfeature_list[0],
-                   self.linear_features[0],
-                   self.linear_features[1])
+        x = x.view(
+            -1, self.nfeature_list[0], self.linear_features[0], self.linear_features[1]
+        )
 
         x = self.inNorm(x)
         x = self.inActivation(x)
@@ -141,28 +148,29 @@ class jekelCNNsurrogate(nn.Module):
         # x = self.upsample(x)
 
         # Alternate resize
-        x = nn.functional.interpolate(x,
-                                      size=self.output_image_size,
-                                      mode='bilinear',
-                                      antialias=True)
+        x = nn.functional.interpolate(
+            x, size=self.output_image_size, mode="bilinear", antialias=True
+        )
         # print('Post-Upsample shape:', x.shape)
 
         return x
 
 
 class tCNNsurrogate(nn.Module):
-    def __init__(self,
-                 input_size: int = 29,
-                 linear_features: tuple[int, int] = (7, 5, 256),
-                 initial_tconv_kernel: tuple[int, int] = (5, 5),
-                 initial_tconv_stride: tuple[int, int] = (5, 5),
-                 initial_tconv_padding: tuple[int, int] = (0, 0),
-                 initial_tconv_outpadding: tuple[int, int] = (0, 0),
-                 initial_tconv_dilation: tuple[int, int] = (1, 1),
-                 kernel: tuple[int, int] = (3, 3),
-                 nfeature_list: List[int] = [256, 256, 256, 128, 64, 64, 32],
-                 output_image_size: tuple[int, int] = (1120, 800),
-                 act_layer=nn.GELU):
+    def __init__(
+        self,
+        input_size: int = 29,
+        linear_features: tuple[int, int] = (7, 5, 256),
+        initial_tconv_kernel: tuple[int, int] = (5, 5),
+        initial_tconv_stride: tuple[int, int] = (5, 5),
+        initial_tconv_padding: tuple[int, int] = (0, 0),
+        initial_tconv_outpadding: tuple[int, int] = (0, 0),
+        initial_tconv_dilation: tuple[int, int] = (1, 1),
+        kernel: tuple[int, int] = (3, 3),
+        nfeature_list: List[int] = [256, 256, 256, 128, 64, 64, 32],
+        output_image_size: tuple[int, int] = (1120, 800),
+        act_layer=nn.GELU,
+    ):
         """Convolutional Neural Network Module that creates a scalar-to-image
         surrogate using a sequence of ConvTranspose2D, Batch Normalization, and
         Activation layers.
@@ -180,8 +188,8 @@ class tCNNsurrogate(nn.Module):
 
         Args:
             input_size (int): Size of input
-            linear_features (tuple[int, int, int]): Window size and number of features 
-                                                    scalar parameters are originally 
+            linear_features (tuple[int, int, int]): Window size and number of features
+                                                    scalar parameters are originally
                                                     mapped into
             initial_tconv_kernel (tuple[int, int]): Kernel size of initial tconv2d
             initial_tconv_stride (tuple[int, int]): Stride size of initial tconv2d
@@ -189,11 +197,11 @@ class tCNNsurrogate(nn.Module):
             initial_tconv_outpadding (tuple[int, int]): Outout padding size of initial tconv2d
             initial_tconv_dilation (tuple[int, int]): Dilation size of initial tconv2d
             kernel (tuple[int, int]): Size of transpose-convolutional kernel
-            nfeature_list (List[int]): List of number of features in each 
+            nfeature_list (List[int]): List of number of features in each
                                        T-convolutional layer
-            output_image_size (tuple[int, int]): Image size to output, (H, W). 
+            output_image_size (tuple[int, int]): Image size to output, (H, W).
                                                  Channels are automatically inherited.
-            act_layer(nn.modules.activation): torch neural network layer class 
+            act_layer(nn.modules.activation): torch neural network layer class
                                               to use as activation
 
         """
@@ -212,10 +220,12 @@ class tCNNsurrogate(nn.Module):
         self.nConvT = len(self.nfeature_list)
 
         # First linear remap
-        out_features = self.linear_features[0] * self.linear_features[1] * self.linear_features[2]
-        self.dense_expand = nn.Linear(in_features=self.input_size,
-                                      out_features=out_features,
-                                      bias=False)
+        out_features = (
+            self.linear_features[0] * self.linear_features[1] * self.linear_features[2]
+        )
+        self.dense_expand = nn.Linear(
+            in_features=self.input_size, out_features=out_features, bias=False
+        )
 
         normLayer = nn.BatchNorm2d(self.linear_features[2])
         nn.init.constant_(normLayer.weight, 1)
@@ -225,14 +235,16 @@ class tCNNsurrogate(nn.Module):
         self.inActivation = act_layer()
 
         # Initial tconv2d layer to prepare for doubling layers
-        self.initTConv = nn.ConvTranspose2d(in_channels=self.linear_features[2],
-                                            out_channels=self.nfeature_list[0],
-                                            kernel_size=self.initial_tconv_kernel,
-                                            stride=self.initial_tconv_stride,
-                                            padding=self.initial_tconv_padding,
-                                            output_padding=self.initial_tconv_outpadding,
-                                            dilation=self.initial_tconv_dilation,
-                                            bias=False)
+        self.initTConv = nn.ConvTranspose2d(
+            in_channels=self.linear_features[2],
+            out_channels=self.nfeature_list[0],
+            kernel_size=self.initial_tconv_kernel,
+            stride=self.initial_tconv_stride,
+            padding=self.initial_tconv_padding,
+            output_padding=self.initial_tconv_outpadding,
+            dilation=self.initial_tconv_dilation,
+            bias=False,
+        )
 
         normLayer = nn.BatchNorm2d(self.linear_features[2])
         nn.init.constant_(normLayer.weight, 1)
@@ -248,13 +260,15 @@ class tCNNsurrogate(nn.Module):
         self.CompoundConvTList = nn.ModuleList()
         # Create transpose convolutional layer for each entry in feature list.
         for i in range(self.nConvT - 1):
-            tconv = nn.ConvTranspose2d(in_channels=self.nfeature_list[i],
-                                       out_channels=self.nfeature_list[i + 1],
-                                       kernel_size=self.kernel,
-                                       stride=2,
-                                       padding=1,
-                                       output_padding=1,
-                                       bias=False)
+            tconv = nn.ConvTranspose2d(
+                in_channels=self.nfeature_list[i],
+                out_channels=self.nfeature_list[i + 1],
+                kernel_size=self.kernel,
+                stride=2,
+                padding=1,
+                output_padding=1,
+                bias=False,
+            )
 
             # self.TConvList.append(tconv)
 
@@ -267,19 +281,25 @@ class tCNNsurrogate(nn.Module):
 
             # Make list of small sequential modules. Then we'll use enumerate
             # in forward method.
-            cmpd_dict = OrderedDict([(f'tconv{i}', tconv),
-                                     (f'bnorm{i}', normLayer),
-                                     (f'act{i}', act_layer())])
+            cmpd_dict = OrderedDict(
+                [
+                    (f"tconv{i}", tconv),
+                    (f"bnorm{i}", normLayer),
+                    (f"act{i}", act_layer()),
+                ]
+            )
             self.CompoundConvTList.append(nn.Sequential(cmpd_dict))
 
         # Final Transpose Conv layer followed by hyperbolic tanh activation
-        self.final_tconv = nn.ConvTranspose2d(in_channels=self.nfeature_list[-1],
-                                              out_channels=1,
-                                              kernel_size=self.kernel,
-                                              stride=2,
-                                              padding=1,
-                                              output_padding=1,
-                                              bias=True)
+        self.final_tconv = nn.ConvTranspose2d(
+            in_channels=self.nfeature_list[-1],
+            out_channels=1,
+            kernel_size=self.kernel,
+            stride=2,
+            padding=1,
+            output_padding=1,
+            bias=True,
+        )
 
         # If normalizing to [-1, 1]
         # self.final_act = nn.Tanh()
@@ -292,10 +312,9 @@ class tCNNsurrogate(nn.Module):
         x = self.dense_expand(x)
         # Reshape to a 2D block with channels
         # NOTE: -1 infers batch size
-        x = x.view(-1,
-                   self.linear_features[2],
-                   self.linear_features[0],
-                   self.linear_features[1])
+        x = x.view(
+            -1, self.linear_features[2], self.linear_features[0], self.linear_features[1]
+        )
 
         x = self.inNorm(x)
         x = self.inActivation(x)
@@ -327,7 +346,7 @@ class tCNNsurrogate(nn.Module):
         return x
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     """For testing and debugging.
 
     """
@@ -342,24 +361,26 @@ if __name__ == '__main__':
     #                          output_image_size=(1120, 800),
     #                          act_layer=nn.GELU)
 
-    jCNN = tCNNsurrogate(input_size=29,
-                         # linear_features=(7, 5, 256),
-                         linear_features=(7, 5, 512),
-                         initial_tconv_kernel=(5, 5),
-                         initial_tconv_stride=(5, 5),
-                         initial_tconv_padding=(0, 0),
-                         initial_tconv_outpadding=(0, 0),
-                         initial_tconv_dilation=(1, 1),
-                         kernel=(3, 3),
-                         # nfeature_list=[256, 128, 64, 32, 16],
-                         nfeature_list=[512, 512, 256, 128, 64],
-                         output_image_size=(1120, 800),
-                         act_layer=nn.GELU)
+    jCNN = tCNNsurrogate(
+        input_size=29,
+        # linear_features=(7, 5, 256),
+        linear_features=(7, 5, 512),
+        initial_tconv_kernel=(5, 5),
+        initial_tconv_stride=(5, 5),
+        initial_tconv_padding=(0, 0),
+        initial_tconv_outpadding=(0, 0),
+        initial_tconv_dilation=(1, 1),
+        kernel=(3, 3),
+        # nfeature_list=[256, 128, 64, 32, 16],
+        nfeature_list=[512, 512, 256, 128, 64],
+        output_image_size=(1120, 800),
+        act_layer=nn.GELU,
+    )
     jCNN.eval()
     jCNN_pred = jCNN(scalar_input)
 
-    print('Input shape:', scalar_input.shape)
-    print('Output shape:', jCNN_pred.shape)
+    print("Input shape:", scalar_input.shape)
+    print("Output shape:", jCNN_pred.shape)
 
     N_jCNN_param = count_parameters(jCNN)
-    print('Number of parameters:', N_jCNN_param)
+    print("Number of parameters:", N_jCNN_param)

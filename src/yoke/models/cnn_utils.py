@@ -1,6 +1,4 @@
-"""Collection of helper functions to facilitate constructing CNN modules.
-
-"""
+"""Collection of helper functions to facilitate constructing CNN modules."""
 
 import math
 
@@ -26,7 +24,7 @@ def conv2d_shape(w, h, k, s_w, s_h, p_w, p_h):
         total (int): total number of pixels in new image
 
     See Also:
-    Formula taken from 
+    Formula taken from
     https://pytorch.org/docs/stable/generated/torch.nn.Conv2d.html
     Assuming a 2D input and dilation = 1
 
@@ -63,7 +61,7 @@ def convtranspose2d_shape(w, h, k_w, k_h, s_w, s_h, p_w, p_h, op_w, op_h, d_w, d
         total (int): total number of pixels in new image
 
     See Also:
-    Formula taken from 
+    Formula taken from
     https://pytorch.org/docs/stable/generated/torch.nn.ConvTranspose2d.html
 
     """
@@ -74,7 +72,7 @@ def convtranspose2d_shape(w, h, k_w, k_h, s_w, s_h, p_w, p_h, op_w, op_h, d_w, d
     return new_w, new_h, total
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     """For testing and debugging.
 
     """
@@ -87,23 +85,27 @@ if __name__ == '__main__':
     stride_height = 1
     padding_width = 2
     padding_height = 1
-    new_w, new_h, total_pixels = conv2d_shape(input_width,
-                                              input_height,
-                                              symmetric_kernel_size,
-                                              stride_width,
-                                              stride_height,
-                                              padding_width,
-                                              padding_height)
-    print('New conv-image size:', new_w, new_h, total_pixels)
+    new_w, new_h, total_pixels = conv2d_shape(
+        input_width,
+        input_height,
+        symmetric_kernel_size,
+        stride_width,
+        stride_height,
+        padding_width,
+        padding_height,
+    )
+    print("New conv-image size:", new_w, new_h, total_pixels)
 
     kernel_width = 2
     kernel_height = 3
-    new_w, new_h, total_pixels = convtranspose2d_shape(input_width,
-                                                       input_height,
-                                                       kernel_width,
-                                                       kernel_height,
-                                                       stride_width,
-                                                       stride_height,
-                                                       padding_width,
-                                                       padding_height)
-    print('New convtrans-image size:', new_w, new_h, total_pixels)
+    new_w, new_h, total_pixels = convtranspose2d_shape(
+        input_width,
+        input_height,
+        kernel_width,
+        kernel_height,
+        stride_width,
+        stride_height,
+        padding_width,
+        padding_height,
+    )
+    print("New convtrans-image size:", new_w, new_h, total_pixels)
