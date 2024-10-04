@@ -75,6 +75,32 @@ To run the tests use...
 >> pytest --cov --cov-report term-missing
 ```
 
+Linting:
+--------
+
+The `ruff` linter is used in `Yoke` to enforce coding and formatting
+standards. To run the linter do
+
+```
+>> ruff check
+>> ruff check --preview
+```
+
+You can make `ruff` fix automatic standards using
+
+```
+>> ruff check fix
+```
+
+Use `ruff` to then check your code formatting and show you what would
+be adjusted, then fix formatting
+
+```
+>> ruff format --check --diff
+>> ruff format
+```
+
+
 Create Environment Specification:
 ---------------------------------
 

@@ -10,8 +10,6 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from einops import rearrange
-
 
 def get_1d_sincos_pos_embed_from_grid(embed_dim, position):
     """1D Sine/Cosine embedding.
@@ -27,9 +25,8 @@ def get_1d_sincos_pos_embed_from_grid(embed_dim, position):
                         position-index values and a phase passed through sine
                         and cosine. The first D/2 columns are passed through
                         Sine, the second D/2 columns are passed through Cosine.
-    
+
     """
-    
     assert embed_dim % 2 == 0
 
     # omega = 10000^(-w) with w=(2/D)*[0, 1, 2, ..., (D/2) - 1]
@@ -44,7 +41,7 @@ def get_1d_sincos_pos_embed_from_grid(embed_dim, position):
     #
     # out = position(M, 1) x omega(1, D/2) or out(i, j) = position(i) x omega(j)
     out = np.einsum("m,d->md", position, omega)  # (M, D/2), outer product
-    
+
     emb_sin = np.sin(out)  # (M, D/2)
     emb_cos = np.cos(out)  # (M, D/2)
 
@@ -71,7 +68,6 @@ def get_2d_sincos_pos_embed_from_grid(embed_dim, grid):
                         Sine, the second D/2 columns are passed through Cosine.
 
     """
-    
     assert embed_dim % 2 == 0
 
     # use half of dimensions to encode grid_h
@@ -83,10 +79,7 @@ def get_2d_sincos_pos_embed_from_grid(embed_dim, grid):
     return emb
 
 
-def get_2d_sincos_pos_embed(embed_dim,
-                            grid_size_h,
-                            grid_size_w,
-                            cls_token=False):
+def get_2d_sincos_pos_embed(embed_dim, grid_size_h, grid_size_w, cls_token=False):
     """2D Sine/Cosine embedding on a index-grid of specified dimensions.
 
     Args:
@@ -101,7 +94,6 @@ def get_2d_sincos_pos_embed(embed_dim,
                               [1+grid_size*grid_size, embed_dim] with class token
 
     """
-
     assert embed_dim % 2 == 0
 
     W = grid_size_w
@@ -113,14 +105,13 @@ def get_2d_sincos_pos_embed(embed_dim,
     # grid[1] = repeat(col(0:grid_h))
     grid = np.meshgrid(grid_w, grid_h)  # grid[i].shape=(W, H), i=1,2
     grid = np.stack(grid, axis=0)  # (2, W, H)
-    
+
     grid = grid.reshape([2, 1, grid_size_h, grid_size_w])
     pos_embed = get_2d_sincos_pos_embed_from_grid(embed_dim, grid)
 
     if cls_token:
-        pos_embed = np.concatenate([np.zeros([1, embed_dim]), pos_embed],
-                                   axis=0)
-        
+        pos_embed = np.concatenate([np.zeros([1, embed_dim]), pos_embed], axis=0)
+
     return pos_embed
 
 
@@ -135,17 +126,14 @@ class ClimaX_VarEmbed(nn.Module):
 
     Based on the paper, **ClimaX: A foundation model for weather and
     climate.**
-    
+
     Args:
         default_vars (list): list of default variables to be used for training
         embed_dim (int): Embedding dimension
 
     """
 
-    def __init__(self,
-                 default_vars,
-                 embed_dim):
-        
+    def __init__(self, default_vars, embed_dim):
         super().__init__()
 
         self.default_vars = default_vars
@@ -160,21 +148,23 @@ class ClimaX_VarEmbed(nn.Module):
         self.initialize_weights()
 
     def create_var_embedding(self, dim):
-        var_embed = nn.Parameter(torch.zeros(1, len(self.default_vars), dim),
-                                 requires_grad=True)
+        var_embed = nn.Parameter(
+            torch.zeros(1, len(self.default_vars), dim), requires_grad=True
+        )
         # TODO: create a mapping from var --> idx
         var_map = {}
         idx = 0
-    
+
         for var in self.default_vars:
             var_map[var] = idx
             idx += 1
-        
+
         return var_embed, var_map
 
     def initialize_weights(self):
-        var_embed = get_1d_sincos_pos_embed_from_grid(self.var_embed.shape[-1],
-                                                      np.arange(len(self.default_vars)))
+        var_embed = get_1d_sincos_pos_embed_from_grid(
+            self.var_embed.shape[-1], np.arange(len(self.default_vars))
+        )
         self.var_embed.data.copy_(torch.from_numpy(var_embed).float().unsqueeze(0))
 
     @lru_cache(maxsize=None)
@@ -197,7 +187,7 @@ class ClimaX_VarEmbed(nn.Module):
         # Unsqueeze a dimension after variable dimension...
         #   var_embed -> (1, V, 1, D)
         x = x + var_embed.unsqueeze(2)  # B, V, L, D
-        
+
         return x
 
 
@@ -213,7 +203,7 @@ class ClimaX_PosEmbed(nn.Module):
 
     Based on the paper, **ClimaX: A foundation model for weather and
     climate.**
-    
+
     Args:
         embed_dim (int): Embedding dimension, must be divisible by 2.
         patch_size (tuple): Height and width of patches
@@ -222,23 +212,17 @@ class ClimaX_PosEmbed(nn.Module):
 
     """
 
-    def __init__(self,
-                 embed_dim,
-                 patch_size,
-                 image_size,
-                 num_patches):
-        
+    def __init__(self, embed_dim, patch_size, image_size, num_patches):
         super().__init__()
 
         self.embed_dim = embed_dim
         self.patch_size = patch_size
         self.image_size = image_size
         self.num_patches = num_patches
-        
-        self.pos_embed = nn.Parameter(torch.zeros(1,
-                                                  self.num_patches,
-                                                  self.embed_dim),
-                                      requires_grad=True)
+
+        self.pos_embed = nn.Parameter(
+            torch.zeros(1, self.num_patches, self.embed_dim), requires_grad=True
+        )
 
         self.initialize_weights()
 
@@ -252,13 +236,12 @@ class ClimaX_PosEmbed(nn.Module):
         )
         self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float().unsqueeze(0))
 
-
     def forward(self, x):
         # The input tensor is shape:
         #  (B, L, D)=(B, NumTokens[i.e. Patches], embed_dim)
 
         x = x + self.pos_embed
-        
+
         return x
 
 
@@ -267,27 +250,33 @@ class RelativePositionEmbed(nn.Module):
     multi-headed self-attention layers. In this specialized version we set up a
     relative position embedding for a rectangular image.
 
-    
+
     Args:
         window_size (int, int): Embedding dimension, must be divisible by 2.
 
     """
 
-    def __init__(self, window_size: (int, int)=(8, 4)):
-        
+    def __init__(self, window_size: (int, int) = (8, 4)):
         super().__init__()
 
         # Set window size
         self.window_size = window_size
-        
+
         # Since these weights are an nn.Parameter they will be updated during
         # training.
-        self.pos_embeddings = nn.Parameter(torch.randn(2*self.window_size[0] - 1,
-                                                       2*self.window_size[1] - 1))
+        self.pos_embeddings = nn.Parameter(
+            torch.randn(2 * self.window_size[0] - 1, 2 * self.window_size[1] - 1)
+        )
 
         # Create array of indices for each point in a window of size
         # (wh, ww), 'indices.shape = (wh*ww, 2)'
-        idx_array = np.array([[x, y] for x in range(self.window_size[0]) for y in range(self.window_size[1])])
+        idx_array = np.array(
+            [
+                [x, y]
+                for x in range(self.window_size[0])
+                for y in range(self.window_size[1])
+            ]
+        )
         self.indices = torch.tensor(idx_array)
 
         # Using 'None' creates an extra singleton dimension,
@@ -305,7 +294,7 @@ class RelativePositionEmbed(nn.Module):
         # can be used as indices in self.pos_embeddings
         self.relative_indices[:, :, 0] += self.window_size[0] - 1
         self.relative_indices[:, :, 1] += self.window_size[1] - 1
-        
+
     def forward(self, x):
         # The input tensor is shape:
         #  (B, H, Hw, Ww, wh*ww, wh*ww)
@@ -317,21 +306,22 @@ class RelativePositionEmbed(nn.Module):
         #    Ww = Width of window grid
         #    wh = window height
         #    ww = window_width
-        # 
+        #
         # In WindowedMSA, the input `x` represents the attention weights between
         # every pair of patches/tokens within each of the Hw x Ww
         # windows. There are wh*ww patches/tokens within each window so (wh*ww,
         # wh*ww) pairs so shape(x) = (B, H, Hw, Ww, wh*ww, wh*ww)
-        
+
         # Get embedding weights between each pair of window positions.
-        rel_pos_embedding = self.pos_embeddings[self.relative_indices[:, :, 0],
-                                                self.relative_indices[:, :, 1]]
+        rel_pos_embedding = self.pos_embeddings[
+            self.relative_indices[:, :, 0], self.relative_indices[:, :, 1]
+        ]
 
         # Using broadcasting the relative position embedding weights are added
         # to the last two dimensions of the attention weights for each batch,
         # head, and window.
         x = x + rel_pos_embedding
-        
+
         return x
 
 
@@ -347,7 +337,7 @@ class ClimaX_TimeEmbed(nn.Module):
 
     Based on the paper, **ClimaX: A foundation model for weather and
     climate.**
-    
+
     Args:
         embed_dim (int): Embedding dimension, must be divisible by 2.
 
@@ -358,11 +348,10 @@ class ClimaX_TimeEmbed(nn.Module):
     """
 
     def __init__(self, embed_dim):
-        
         super().__init__()
 
         self.lead_time_embed = nn.Linear(1, embed_dim)
-        
+
     def forward(self, x, lead_times: torch.Tensor):
         # The input tensor is shape:
         #  (B, L, D)=(B, NumTokens, embed_dim)
@@ -371,58 +360,62 @@ class ClimaX_TimeEmbed(nn.Module):
         lead_time_emb = self.lead_time_embed(lead_times.unsqueeze(-1))  # B, D
         lead_time_emb = lead_time_emb.unsqueeze(1)  # B, 1, D
         x = x + lead_time_emb  # B, L, D
-        
+
         return x
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     """Usage Example.
 
     """
-    
+
     # Original: (B, C, H, W) = (3, 5, 128, 128)
     # After parallel-patch embedding: (B, V, L, D)
     x = torch.rand(3, 4, 64, 72)
 
-    default_vars = ['cu_pressure',
-                    'cu_density',
-                    'cu_temperature',
-                    'ss_pressure',
-                    'ss_density',
-                    'ss_temperature',
-                    'r_vel',
-                    'z_vel']
+    default_vars = [
+        "cu_pressure",
+        "cu_density",
+        "cu_temperature",
+        "ss_pressure",
+        "ss_density",
+        "ss_temperature",
+        "r_vel",
+        "z_vel",
+    ]
 
     embed_dim = 72
     patch_size = (16, 16)
     image_size = (128, 128)
     num_patches = 64
-    
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+    device = "cuda" if torch.cuda.is_available() else "cpu"
     x = x.type(torch.FloatTensor).to(device)
 
     # Prior to variable aggregation: (B, V, L, D)
-    var_emb_model = ClimaX_VarEmbed(default_vars=default_vars,
-                                    embed_dim=embed_dim).to(device)
-    
-    print('Vaiable Encoding Input shape:', x.shape)
-    print('Variable Encoding shape:',
-          var_emb_model(x,
-                        vars=['cu_density',
-                              'ss_density',
-                              'ss_temperature',
-                              'r_vel']).shape)
+    var_emb_model = ClimaX_VarEmbed(default_vars=default_vars, embed_dim=embed_dim).to(
+        device
+    )
+
+    print("Vaiable Encoding Input shape:", x.shape)
+    print(
+        "Variable Encoding shape:",
+        var_emb_model(
+            x, vars=["cu_density", "ss_density", "ss_temperature", "r_vel"]
+        ).shape,
+    )
 
     # After variable aggregation: (B, L, D)
     x = torch.rand(3, 64, 72)
-    pos_emb_model = ClimaX_PosEmbed(embed_dim=embed_dim,
-                                    patch_size=patch_size,
-                                    image_size=image_size,
-                                    num_patches=num_patches).to(device)
+    pos_emb_model = ClimaX_PosEmbed(
+        embed_dim=embed_dim,
+        patch_size=patch_size,
+        image_size=image_size,
+        num_patches=num_patches,
+    ).to(device)
 
-    print('Position Encoding input shape:', x.shape)
-    print('Position Encoding shape:',
-          pos_emb_model(x).shape)
+    print("Position Encoding input shape:", x.shape)
+    print("Position Encoding shape:", pos_emb_model(x).shape)
 
     # After position encoding: (B, L, D)
     x = torch.rand(3, 64, 72)
@@ -430,23 +423,35 @@ if __name__ == '__main__':
     print(lead_times)
     time_emb_model = ClimaX_TimeEmbed(embed_dim=embed_dim).to(device)
 
-    print('Temporal Encoding input shape:', x.shape)
-    print('Temporal Encoding shape:',
-          time_emb_model(x, lead_times).shape)
+    print("Temporal Encoding input shape:", x.shape)
+    print("Temporal Encoding shape:", time_emb_model(x, lead_times).shape)
 
     # Relative window embedding
     wh = 8
     ww = 5
     rel_emb_model = RelativePositionEmbed(window_size=(wh, ww)).to(device)
-    print('Size of relative indices:', rel_emb_model.relative_indices.shape)
-    print('Minimum of x-coord relative indices:', rel_emb_model.relative_indices[:, :, 0].min())
-    print('Maximum of x-coord relative indices:', rel_emb_model.relative_indices[:, :, 0].max())
-    print('Minimum of y-coord relative indices:', rel_emb_model.relative_indices[:, :, 1].min())
-    print('Maximum of y-coord relative indices:', rel_emb_model.relative_indices[:, :, 1].max())
+    print("Size of relative indices:", rel_emb_model.relative_indices.shape)
+    print(
+        "Minimum of x-coord relative indices:",
+        rel_emb_model.relative_indices[:, :, 0].min(),
+    )
+    print(
+        "Maximum of x-coord relative indices:",
+        rel_emb_model.relative_indices[:, :, 0].max(),
+    )
+    print(
+        "Minimum of y-coord relative indices:",
+        rel_emb_model.relative_indices[:, :, 1].min(),
+    )
+    print(
+        "Maximum of y-coord relative indices:",
+        rel_emb_model.relative_indices[:, :, 1].max(),
+    )
 
     # The input tensor is shape:
     #  (B, H, Hw, Ww, wh*ww, wh*ww)
-    win_patches = torch.rand(3, 10, 8, 16, wh*ww, wh*ww)
-    print('Size of relative-position embedding input:', win_patches.shape)
-    print('Size of relative-position embedding output:',
-          rel_emb_model(win_patches).shape)
+    win_patches = torch.rand(3, 10, 8, 16, wh * ww, wh * ww)
+    print("Size of relative-position embedding input:", win_patches.shape)
+    print(
+        "Size of relative-position embedding output:", rel_emb_model(win_patches).shape
+    )

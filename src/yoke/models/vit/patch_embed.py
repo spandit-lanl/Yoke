@@ -12,20 +12,14 @@ from torch import nn
 from einops import rearrange
 from einops.layers.torch import Rearrange
 
-import numpy as np
 
-
-def _get_conv2d_weights(in_channels,
-                        out_channels,
-                        kernel_size):
-
+def _get_conv2d_weights(in_channels, out_channels, kernel_size):
     weight = torch.empty(out_channels, in_channels, *kernel_size)
-    
+
     return weight
 
 
 def _get_conv2d_biases(out_channels):
-
     bias = torch.empty(out_channels)
 
     return bias
@@ -41,7 +35,7 @@ class ClimaX_ParallelVarPatchEmbed(nn.Module):
 
     NOTE: The img_size entries should be divisible by the corresponding
     patch_size entries.
-    
+
     Args:
         max_vars (int): Maximum number of variables
         img_size ((int, int)): Image size
@@ -51,55 +45,56 @@ class ClimaX_ParallelVarPatchEmbed(nn.Module):
 
     """
 
-    def __init__(self,
-                 max_vars: int=5,
-                 img_size: (int, int)=(128, 128),
-                 patch_size: (int, int)=(16, 16),
-                 embed_dim: int=64,
-                 norm_layer=None):
-        
+    def __init__(
+        self,
+        max_vars: int = 5,
+        img_size: (int, int) = (128, 128),
+        patch_size: (int, int) = (16, 16),
+        embed_dim: int = 64,
+        norm_layer=None,
+    ):
         super().__init__()
         # Check size compatibilities
         try:
-            msg = 'Image height not divisible by patch height!!!'
+            msg = "Image height not divisible by patch height!!!"
             assert img_size[0] % patch_size[0] == 0, msg
         except AssertionError as e:
-            msg_tuple = ('Image height:',
-                         img_size[0],
-                         'Patch height:',
-                         patch_size[0])
+            msg_tuple = ("Image height:", img_size[0], "Patch height:", patch_size[0])
             e.args += msg_tuple
             raise
 
         try:
-            msg = 'Image width not divisible by patch widht!!!'
+            msg = "Image width not divisible by patch widht!!!"
             assert img_size[1] % patch_size[1] == 0, msg
         except AssertionError as e:
-            msg_tuple = ('Image width:',
-                         img_size[1],
-                         'Patch width:',
-                         patch_size[1])
+            msg_tuple = ("Image width:", img_size[1], "Patch width:", patch_size[1])
             e.args += msg_tuple
             raise
-        
+
         self.max_vars = max_vars
         self.img_size = img_size
         self.patch_size = patch_size
-        self.grid_size = (img_size[0] // self.patch_size[0],
-                          img_size[1] // self.patch_size[1])
+        self.grid_size = (
+            img_size[0] // self.patch_size[0],
+            img_size[1] // self.patch_size[1],
+        )
         self.num_patches = self.grid_size[0] * self.grid_size[1]
         self.embed_dim = embed_dim
 
         # Conv patch embedding weights and biases
         grouped_weights = torch.stack(
-            [_get_conv2d_weights(1, self.embed_dim, self.patch_size) for _ in range(max_vars)],
-            dim=0)
+            [
+                _get_conv2d_weights(1, self.embed_dim, self.patch_size)
+                for _ in range(max_vars)
+            ],
+            dim=0,
+        )
 
         self.proj_weights = nn.Parameter(grouped_weights)
 
         grouped_biases = torch.stack(
-            [_get_conv2d_biases(self.embed_dim) for _ in range(max_vars)],
-            dim=0)
+            [_get_conv2d_biases(self.embed_dim) for _ in range(max_vars)], dim=0
+        )
         self.proj_biases = nn.Parameter(grouped_biases)
 
         # Layer normalization
@@ -134,12 +129,11 @@ class ClimaX_ParallelVarPatchEmbed(nn.Module):
         # (B, V, H, W) -> (B, VxE, H', W') with H'=H/p1, W'=W/p2
         groups = len(vars)
         proj = F.conv2d(x, weights, biases, groups=groups, stride=self.patch_size)
-        
+
         # Flatten the patch arrays and separate the variables and embeddings.
-        proj = rearrange(proj,
-                         'b (v e) h1 h2 -> b v (h1 h2) e',
-                         v=groups,
-                         e=self.embed_dim)
+        proj = rearrange(
+            proj, "b (v e) h1 h2 -> b v (h1 h2) e", v=groups, e=self.embed_dim
+        )
 
         # Normalize the layer output
         proj = self.norm(proj)
@@ -161,7 +155,7 @@ class SwinEmbedding(nn.Module):
 
     NOTE: The img_size entries should be divisible by the corresponding
     patch_size entries.
-    
+
     Args:
         max_vars (int): Maximum number of variables
         img_size ((int, int)): Image size
@@ -170,34 +164,30 @@ class SwinEmbedding(nn.Module):
         norm_layer (nn.Module, optional): Normalization layer. Defaults to None.
 
     """
-    
-    def __init__(self,
-                 num_vars: int=5,
-                 img_size: (int, int)=(128, 128),
-                 patch_size: (int, int)=(16, 16),
-                 embed_dim: int=64,
-                 norm_layer=None):
+
+    def __init__(
+        self,
+        num_vars: int = 5,
+        img_size: (int, int) = (128, 128),
+        patch_size: (int, int) = (16, 16),
+        embed_dim: int = 64,
+        norm_layer=None,
+    ):
         super().__init__()
         # Check size compatibilities
         try:
-            msg = 'Image height not divisible by patch height!!!'
+            msg = "Image height not divisible by patch height!!!"
             assert img_size[0] % patch_size[0] == 0, msg
         except AssertionError as e:
-            msg_tuple = ('Image height:',
-                         img_size[0],
-                         'Patch height:',
-                         patch_size[0])
+            msg_tuple = ("Image height:", img_size[0], "Patch height:", patch_size[0])
             e.args += msg_tuple
             raise
 
         try:
-            msg = 'Image width not divisible by patch widht!!!'
+            msg = "Image width not divisible by patch widht!!!"
             assert img_size[1] % patch_size[1] == 0, msg
         except AssertionError as e:
-            msg_tuple = ('Image width:',
-                         img_size[1],
-                         'Patch width:',
-                         patch_size[1])
+            msg_tuple = ("Image width:", img_size[1], "Patch width:", patch_size[1])
             e.args += msg_tuple
             raise
 
@@ -205,52 +195,60 @@ class SwinEmbedding(nn.Module):
         self.img_size = img_size
         self.patch_size = patch_size
         self.embed_dim = embed_dim
-        self.grid_size = (self.img_size[0] // self.patch_size[0],
-                          self.img_size[1] // self.patch_size[1])
+        self.grid_size = (
+            self.img_size[0] // self.patch_size[0],
+            self.img_size[1] // self.patch_size[1],
+        )
         self.num_patches = self.grid_size[0] * self.grid_size[1]
-        
-        self.linear_embedding = nn.Conv2d(self.num_vars,
-                                          self.embed_dim,
-                                          kernel_size=self.patch_size,
-                                          stride=self.patch_size)
-        self.rearrange = Rearrange('b c h w -> b (h w) c')
+
+        self.linear_embedding = nn.Conv2d(
+            self.num_vars,
+            self.embed_dim,
+            kernel_size=self.patch_size,
+            stride=self.patch_size,
+        )
+        self.rearrange = Rearrange("b c h w -> b (h w) c")
 
         self.norm = norm_layer(self.embed_dim) if norm_layer else nn.Identity()
-        
+
     def forward(self, x):
         x = self.linear_embedding(x)
         x = self.rearrange(x)
 
         x = self.norm(x)
-        
+
         return x
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     """Usage Example.
 
     """
-    
+
     # (B, C, H, W) = (3, 5, 128, 128)
     x = torch.rand(3, 4, 128, 128)
 
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    device = "cuda" if torch.cuda.is_available() else "cpu"
     x = x.type(torch.FloatTensor).to(device)
 
-    PPembed_model = ClimaX_ParallelVarPatchEmbed(max_vars=5,
-                                                 img_size=(128, 128),
-                                                 patch_size=(16, 16),
-                                                 embed_dim=72,
-                                                 norm_layer=nn.LayerNorm).to(device)
-    
-    print('Input shape:', x.shape)
-    print('Parallel-patch embed shape:', PPembed_model(x, vars=[0, 1, 3, 4]).shape)
+    PPembed_model = ClimaX_ParallelVarPatchEmbed(
+        max_vars=5,
+        img_size=(128, 128),
+        patch_size=(16, 16),
+        embed_dim=72,
+        norm_layer=nn.LayerNorm,
+    ).to(device)
 
-    swin_embed_model = SwinEmbedding(num_vars=4,
-                                     img_size=(128, 128),
-                                     patch_size=(16, 16),
-                                     embed_dim=72,
-                                     norm_layer=nn.LayerNorm).to(device)
+    print("Input shape:", x.shape)
+    print("Parallel-patch embed shape:", PPembed_model(x, vars=[0, 1, 3, 4]).shape)
 
-    print('Input shape:', x.shape)
-    print('SWIN embed shape:', swin_embed_model(x).shape)
+    swin_embed_model = SwinEmbedding(
+        num_vars=4,
+        img_size=(128, 128),
+        patch_size=(16, 16),
+        embed_dim=72,
+        norm_layer=nn.LayerNorm,
+    ).to(device)
+
+    print("Input shape:", x.shape)
+    print("SWIN embed shape:", swin_embed_model(x).shape)
