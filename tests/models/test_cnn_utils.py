@@ -1,4 +1,1 @@
-"""Test for `models/cnn_utils`
-
-"""
-
+"""Test for `models/cnn_utils`"""
