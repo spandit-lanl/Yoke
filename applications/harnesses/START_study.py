@@ -1,4 +1,4 @@
-"""Script to start training a study"""
+"""Script to start training a study."""
 
 ####################################
 # Packages
@@ -12,8 +12,8 @@ import pandas as pd
 ####################################
 # Helper Function
 ####################################
-def replace_keys(study_dict: dict, data: str):
-    """Function to replace "key" values in a string with dictionary values
+def replace_keys(study_dict: dict, data: str) -> str:
+    """Function to replace "key" values in a string with dictionary values.
 
     Args:
         study_dict (dict): dictonary of keys and values to replace
@@ -26,13 +26,13 @@ def replace_keys(study_dict: dict, data: str):
     for key, value in study_dict.items():
         if key == "studyIDX":
             data = data.replace(f"<{key}>", f"{value:03d}")
-        elif type(value) == np.float64 or type(value) == float:
+        elif isinstance(value, np.float64) or isinstance(value, float):
             data = data.replace(f"<{key}>", f"{value:5.4f}")
-        elif type(value) == np.int64 or type(value) == int:
+        elif isinstance(value, np.int64) or isinstance(value, int):
             data = data.replace(f"<{key}>", f"{value:d}")
-        elif type(value) == str:
+        elif isinstance(value, str):
             data = data.replace(f"<{key}>", f"{value}")
-        elif type(value) == np.bool_ or type(value) == bool:
+        elif isinstance(value, np.bool_) or isinstance(value, bool):
             data = data.replace(f"<{key}>", f"{str(value)}")
         else:
             print("Key is", key, "with value of", value, "with type", type(value))

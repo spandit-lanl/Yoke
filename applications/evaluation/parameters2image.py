@@ -1,6 +1,8 @@
-"""Program to evaluate a trained neural network mapping a set of scalar
-parameters to an output image or set of images and plot the result. Eventually
-this will become a GUI interface to probe trained image generation models.
+"""Shows networks predicted image.
+
+Program to evaluate a trained neural network mapping a set of scalar parameters
+to an output image or set of images and plot the result. Eventually this will
+become a GUI interface to probe trained image generation models.
 
 """
 
@@ -19,19 +21,18 @@ import yoke.torch_training_utils as tr
 # >>> bklist = matplotlib.rcsetup.interactive_bk
 # >>> print(bklist)
 import matplotlib
+import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 # matplotlib.use('MacOSX')
 # matplotlib.use('pdf')
 # Get rid of type 3 fonts in figures
 matplotlib.rcParams["pdf.fonttype"] = 42
 matplotlib.rcParams["ps.fonttype"] = 42
-import matplotlib.pyplot as plt
-
 # Ensure LaTeX font
 font = {"family": "serif"}
 plt.rc("font", **font)
 plt.rcParams["figure.figsize"] = (6, 6)
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 
 ###################################################################

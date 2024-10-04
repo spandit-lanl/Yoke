@@ -1,4 +1,6 @@
-"""For networks which take in scalars and output images this script plots a
+"""Compares *true* and *predicted* images for a trained network.
+
+For networks which take in scalars and output images this script plots a
 comparison of the true and predicted image along with the inputs.
 
 """
@@ -19,19 +21,18 @@ import yoke.torch_training_utils as tr
 # >>> bklist = matplotlib.rcsetup.interactive_bk
 # >>> print(bklist)
 import matplotlib
+import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 # matplotlib.use('MacOSX')
 # matplotlib.use('pdf')
 # Get rid of type 3 fonts in figures
 matplotlib.rcParams["pdf.fonttype"] = 42
 matplotlib.rcParams["ps.fonttype"] = 42
-import matplotlib.pyplot as plt
-
 # Ensure LaTeX font
 font = {"family": "serif"}
 plt.rc("font", **font)
 plt.rcParams["figure.figsize"] = (6, 6)
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 
 ###################################################################

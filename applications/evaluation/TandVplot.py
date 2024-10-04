@@ -1,6 +1,8 @@
-"""This script reads the training and validation record files and plots the
-network learning curves. The data files are CSV files which are read with
-Pandas and only contain metric evaluation information.
+"""This script reads `Yoke` record files and plots the network learning curves.
+
+The data files created from `Yoke` training harnesses are CSV files which are
+read with Pandas and only contain metric evaluation information. This script
+associates plots with the *training* and *validation* sets of those files.
 
 NOTE: For each network evaluation this script should be submitted using a
 job-submission script.

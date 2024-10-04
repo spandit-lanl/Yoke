@@ -1,18 +1,22 @@
-"""Short example program to evaluate a dummy function representing a trained
+"""Example of how to use TK to build a GUI.
+
+Short example program to evaluate a dummy function representing a trained
 neural network mapping on a set of scalar parameters using a GUI interface to
 probe input parameter effects.
 
 """
 
 import numpy as np
+import numpy.typing as npt
 
 import tkinter as tk
-from tkinter import *
 from PIL import Image, ImageTk
 
 
-# Dummy function to simulate neural network output as a 2D numpy array
-def run_neural_network(param1, param2, param3):
+def run_neural_network(
+    param1: float, param2: float, param3: float
+) -> npt.NDArray[np.uint8]:
+    """Function to return random noise image given a set of inputs."""
     # Generate a 200x200 numpy array based on the parameters
     array = (
         np.random.rand(200, 200) * param1 / 255
@@ -21,10 +25,12 @@ def run_neural_network(param1, param2, param3):
         norm_array = 0.0 * np.random.rand(200, 200)
     else:
         norm_array = array * 255 / np.max(array)
+
     return norm_array.astype(np.uint8)  # Normalize and convert to 8-bit grayscale
 
 
-def update_image(*args):
+def update_image(*args) -> None:  # noqa
+    """Updates the image in the TK window as sliders are changed."""
     # Get the current slider values
     param1 = slider1.get()
     param2 = slider2.get()
@@ -48,8 +54,9 @@ def update_image(*args):
     image_label.image = photo  # Keep a reference!
 
 
-def update_sliders():
-    current_width = image_label.winfo_width()
+def update_sliders() -> None:
+    """Modifies TK sliders as window is adjusted."""
+    # current_width = image_label.winfo_width()
     current_height = image_label.winfo_height()
     slider1.configure(length=0.5 * current_height)
     slider2.configure(length=0.5 * current_height)
@@ -60,51 +67,51 @@ root = tk.Tk()
 root.title("Neural Network GUI")
 
 # Main frame
-control_frame = Frame(root)
-control_frame.pack(side=LEFT, fill="y", padx=10, pady=10)
+control_frame = tk.Frame(root)
+control_frame.pack(side=tk.LEFT, fill="y", padx=10, pady=10)
 
 # Create separate frame for vertical sliders.
-vertical_sliders_frame = Frame(control_frame)
+vertical_sliders_frame = tk.Frame(control_frame)
 vertical_sliders_frame.pack(fill="both", expand=True)
 
 # Create vertical sliders
-slider1 = Scale(
+slider1 = tk.Scale(
     vertical_sliders_frame,
     from_=0,
     to=255,
-    orient=VERTICAL,
+    orient=tk.VERTICAL,
     label="Parameter 1",
     command=lambda event: update_image(),
 )
-slider1.pack(side=LEFT, fill="y", expand=True)
+slider1.pack(side=tk.LEFT, fill="y", expand=True)
 
-slider2 = Scale(
+slider2 = tk.Scale(
     vertical_sliders_frame,
     from_=0,
     to=255,
-    orient=VERTICAL,
+    orient=tk.VERTICAL,
     label="Parameter 2",
     command=lambda event: update_image(),
 )
-slider2.pack(side=LEFT, fill="y", expand=True)
+slider2.pack(side=tk.LEFT, fill="y", expand=True)
 
 # Create separate frame for horizontal sliders.
-horizontal_sliders_frame = Frame(control_frame)
+horizontal_sliders_frame = tk.Frame(control_frame)
 horizontal_sliders_frame.pack(fill="x", expand=True)
 
-slider3 = Scale(
+slider3 = tk.Scale(
     horizontal_sliders_frame,
     from_=0,
     to=255,
-    orient=HORIZONTAL,
+    orient=tk.HORIZONTAL,
     label="Parameter 3",
     command=lambda event: update_image(),
 )
 slider3.pack(fill="x", expand=True)
 
 # Set up a label for displaying the image
-image_label = Label(root)
-image_label.pack(side=RIGHT, fill="both", expand=True, padx=10)
+image_label = tk.Label(root)
+image_label.pack(side=tk.RIGHT, fill="both", expand=True, padx=10)
 
 # Update sliders to match window size
 root.bind("<Configure>", lambda e: update_sliders())
