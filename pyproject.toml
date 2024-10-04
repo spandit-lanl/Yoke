@@ -63,8 +63,11 @@ Source = "https://gitlab.lanl.gov/multiphysmultimatapps/yoke"
 
 [tool.ruff]
 line-length = 89
+indent-width = 4
 
 [tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
 docstring-code-format = true
 docstring-code-line-length = 89
 
@@ -77,7 +80,7 @@ select = [
     "W",
     "ANN"]
 
-ignore = ["ANN101"]
+ignore = ["ANN101"]  # Wants a `type` defined for `self` argument!
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
