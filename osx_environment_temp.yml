@@ -58,7 +58,6 @@ dependencies:
   - libedit=3.1.20230828
   - libev=4.33
   - libffi=3.4.4
-  - libgfortran=5.0.0
   - libgfortran5=11.3.0
   - libjpeg-turbo=2.0.0
   - libnghttp2=1.57.0
@@ -94,12 +93,11 @@ dependencies:
   - python=3.12.4
   - python-dateutil=2.9.0post0
   - python-tzdata=2023.3
-  - pytorch=2.4.1
+  - pytorch
   - pytz=2024.1
   - pyyaml=6.0.1
   - readline=8.2
   - requests=2.32.2
-  - ruff=0.3.5
   - scikit-image=0.23.2
   - scikit-learn=1.4.2
   - scipy=1.13.1
@@ -113,8 +111,7 @@ dependencies:
   - tk=8.6.14
   - toml=0.10.2
   - tomli-w=1.0.0
-  - torchaudio=2.4.1=py312_cpu
-  - torchvision=0.19.1=py312_cpu
+  - torchvision
   - tornado=6.4.1
   - typing_extensions=4.11.0
   - tzdata=2024a
