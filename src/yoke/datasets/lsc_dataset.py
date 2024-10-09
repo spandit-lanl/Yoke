@@ -296,7 +296,6 @@ class LSC_rho2rho_temporal_DataSet(Dataset):
 
         return sim_params, true_image
 
-
 # if __name__ == '__main__':
 #     """For testing and debugging.
 
@@ -307,41 +306,44 @@ class LSC_rho2rho_temporal_DataSet(Dataset):
 #     # >>> import matplotlib
 #     # >>> bklist = matplotlib.rcsetup.interactive_bk
 #     # >>> print(bklist)
-#     import matplotlib
-#     #matplotlib.use('MacOSX')
-#     matplotlib.use('TkAgg')
-#     # Get rid of type 3 fonts in figures
-#     matplotlib.rcParams['pdf.fonttype'] = 42
-#     matplotlib.rcParams['ps.fonttype'] = 42
 #     import matplotlib.pyplot as plt
-#     # Ensure LaTeX font
-#     font = {'family': 'serif'}
-#     plt.rc('font', **font)
-#     plt.rcParams['figure.figsize'] = (6, 6)
-#     from mpl_toolkits.axes_grid1 import make_axes_locatable
+#     import matplotlib
+#     from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
+#     import os
+#     matplotlib.use('MacOSX')
+# #     matplotlib.use('TkAgg')
+# #     # Get rid of type 3 fonts in figures
+# #     matplotlib.rcParams['pdf.fonttype'] = 42
+# #     matplotlib.rcParams['ps.fonttype'] = 42
+# #     import matplotlib.pyplot as plt
+# #     # Ensure LaTeX font
+# #     font = {'family': 'serif'}
+# #     plt.rc('font', **font)
+# #     plt.rcParams['figure.figsize'] = (6, 6)
+# #     from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-#     # Get yoke environment variables
-#     YOKE_DIR = os.getenv('YOKE_DIR')
-#     LSC_NPZ_DIR = os.getenv('LSC_NPZ_DIR')
-#     LSC_DESIGN_DIR = os.getenv('LSC_DESIGN_DIR')
+# #     # Get yoke environment variables
+#     YOKE_DIR = '/Users/ahenrick/Downloads/OptJWLCylex_Example/regit/yoke/applications/' #os.getenv('YOKE_DIR')
+#     LSC_NPZ_DIR =  '/Users/ahenrick/Downloads/OptJWLCylex_Example/regit/yoke/data_examples/lsc240420/' #os.getenv('LSC_NPZ_DIR')
+#     LSC_DESIGN_DIR = '/Users/ahenrick/Downloads/OptJWLCylex_Example/regit/yoke/data_examples/' #os.getenv('LSC_DESIGN_DIR')
 
 #     # Test key
-#     npz_filename = LSC_NPZ_DIR + 'lsc240420_id00001_pvi_idx00000.npz'
+#     npz_filename = LSC_NPZ_DIR + 'lsc240420_id01001_pvi_idx00000.npz'
 #     print('LSC NPZ filename:', npz_filename)
 #     LSCkey = LSCnpz2key(npz_filename)
 #     print('LSC key:', LSCkey)
 
 #     # Test B-spline retrieval
-#     csv_filename = LSC_DESIGN_DIR + 'design_lsc240420_MASTER.csv'
+#     csv_filename = LSC_DESIGN_DIR + 'design_lsc240420_SAMPLE.csv'
 #     bspline_pts = LSCcsv2bspline_pts(csv_filename, LSCkey)
 #     print('Shape of B-spline points:', bspline_pts.shape)
-#     #print('B-spline points:', bspline_pts)
+#     print('B-spline points:', bspline_pts)
 
-#     filelist = YOKE_DIR + 'filelists/lsc240420_test_10pct.txt'
-#     # LSC_ds = LSC_cntr2rho_DataSet(LSC_NPZ_DIR,
-#     #                               filelist,
-#     #                               csv_filename)
-#     normalization_file = '/data2/yoke/normalization/lsc240420_norm.npz'
+#     filelist = YOKE_DIR + 'filelists/lsc240420_test_sample.txt'
+#     LSC_ds = LSC_cntr2rho_DataSet(LSC_NPZ_DIR,
+#                                   filelist,
+#                                   csv_filename)
+#     normalization_file = YOKE_DIR + 'normalization/lsc240420_norm.npz'
 #     LSC_ds  = LSCnorm_cntr2rho_DataSet(LSC_NPZ_DIR,
 #                                        filelist,
 #                                        csv_filename,
