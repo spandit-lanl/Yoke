@@ -9,7 +9,7 @@ from collections import OrderedDict
 import torch
 import torch.nn as nn
 
-from yoke.models.cnn_utils import count_parameters
+from yoke.torch_training_utils import count_torch_params
 
 
 class jekelCNNsurrogate(nn.Module):
@@ -382,5 +382,5 @@ if __name__ == "__main__":
     print("Input shape:", scalar_input.shape)
     print("Output shape:", jCNN_pred.shape)
 
-    N_jCNN_param = count_parameters(jCNN)
+    N_jCNN_param = count_torch_parameters(jCNN)
     print("Number of parameters:", N_jCNN_param)
