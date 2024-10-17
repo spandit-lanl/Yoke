@@ -55,7 +55,7 @@ parser.add_argument(
     action="store",
     type=str,
     default="lsc240420_train_sample.txt",
-    help="Name of filelist file to evaluate normalizations for.",
+    help="Name of filelist file to choose an evaluation sample from.",
 )
 
 parser.add_argument(
@@ -145,9 +145,10 @@ initial_learningrate = 0.0007
 #                           output_image_size=(1120, 800),
 #                           act_layer=nn.GELU)
 
+# Set up for study001 and study010 respectively...
 model = tCNNsurrogate(
     input_size=29,
-    # linear_features=(7, 5, 256),
+    #linear_features=(7, 5, 256),
     linear_features=(7, 5, 512),
     initial_tconv_kernel=(5, 5),
     initial_tconv_stride=(5, 5),
@@ -155,7 +156,7 @@ model = tCNNsurrogate(
     initial_tconv_outpadding=(0, 0),
     initial_tconv_dilation=(1, 1),
     kernel=(3, 3),
-    # nfeature_list=[256, 128, 64, 32, 16],
+    #nfeature_list=[256, 128, 64, 32, 16],
     nfeature_list=[512, 512, 256, 128, 64],
     output_image_size=(1120, 800),
     act_layer=nn.GELU,
@@ -209,7 +210,7 @@ true_image = np.squeeze(true_image.numpy())
 pred_image = np.squeeze(pred_image.detach().numpy())
 # print('Shape of image prediction:', pred_image.shape)
 
-# Plot normalized radiograph and density field for diagnostics.
+# Plot Truth/Prediction/Discrepancy panel.
 fig1, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(16, 6))
 fig1.suptitle(f"Time={sim_params[-1]:.3f}us", fontsize=18)
 img1 = ax1.imshow(
