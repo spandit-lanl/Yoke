@@ -382,5 +382,5 @@ if __name__ == "__main__":
     print("Input shape:", scalar_input.shape)
     print("Output shape:", jCNN_pred.shape)
 
-    N_jCNN_param = count_torch_parameters(jCNN)
+    N_jCNN_param = count_torch_params(jCNN)
     print("Number of parameters:", N_jCNN_param)
