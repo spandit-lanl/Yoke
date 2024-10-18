@@ -207,83 +207,83 @@ class CYLEXnorm_pdv2jwl_Dataset(Dataset):
         return input, output
 
 
-if __name__ == "__main__":
-    """For testing and debugging.
+# if __name__ == "__main__":
+#     """For testing and debugging.
 
-    """
+#     """
 
-    # Imports for plotting
-    # To view possible matplotlib backends use
-    # >>> import matplotlib
-    # >>> bklist = matplotlib.rcsetup.interactive_bk
-    # >>> print(bklist)
-    import matplotlib.pyplot as plt
-    import matplotlib
+#     # Imports for plotting
+#     # To view possible matplotlib backends use
+#     # >>> import matplotlib
+#     # >>> bklist = matplotlib.rcsetup.interactive_bk
+#     # >>> print(bklist)
+#     import matplotlib.pyplot as plt
+#     import matplotlib
 
-    matplotlib.use("MacOSX")
-    #     matplotlib.use('TkAgg')
-    #     # Get rid of type 3 fonts in figures
-    #     matplotlib.rcParams['pdf.fonttype'] = 42
-    #     matplotlib.rcParams['ps.fonttype'] = 42
-    #     import matplotlib.pyplot as plt
-    #     # Ensure LaTeX font
-    #     font = {'family': 'serif'}
-    #     plt.rc('font', **font)
-    #     plt.rcParams['figure.figsize'] = (6, 6)
-    #     from mpl_toolkits.axes_grid1 import make_axes_locatable
+#     matplotlib.use("MacOSX")
+#     #     matplotlib.use('TkAgg')
+#     #     # Get rid of type 3 fonts in figures
+#     #     matplotlib.rcParams['pdf.fonttype'] = 42
+#     #     matplotlib.rcParams['ps.fonttype'] = 42
+#     #     import matplotlib.pyplot as plt
+#     #     # Ensure LaTeX font
+#     #     font = {'family': 'serif'}
+#     #     plt.rc('font', **font)
+#     #     plt.rcParams['figure.figsize'] = (6, 6)
+#     #     from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-    # load data and get initial stats
-    data_df = pd.read_csv("samples_sand-diff.csv", sep=",", header=0, engine="python")
-    print(data_df.keys())
-    print(data_df.describe().loc[:, "dcj":"edet"])
-    print(data_df.describe().loc[:, "edet":"e7"])
+#     # load data and get initial stats
+#     data_df = pd.read_csv("samples_sand-diff.csv", sep=",", header=0, engine="python")
+#     print(data_df.keys())
+#     print(data_df.describe().loc[:, "dcj":"edet"])
+#     print(data_df.describe().loc[:, "edet":"e7"])
 
-    # create Dataset object and access for plotting
-    cylex = CYLEX_pdv2jwl_Dataset(slice(0, None), "samples_sand-diff.csv")
+#     # create Dataset object and access for plotting
+#     cylex = CYLEX_pdv2jwl_Dataset(slice(0, None), "samples_sand-diff.csv")
 
-    f, aax = plt.subplots(1, 2)
-    tstr = data_df.keys().to_series()["t0.1":"t4.5"].values
-    tt = np.array([float(s[1:]) for s in tstr])
-    tt = tt - tt[0]
-    jwlstr = data_df.keys().to_series()["a":"r2"].values
-    for i in range(0, len(cylex)):
-        aax[0].plot(tt, cylex[i][0], "x")
-        aax[1].semilogy(cylex[i][1], "x")
-    ax = aax[0]
+#     f, aax = plt.subplots(1, 2)
+#     tstr = data_df.keys().to_series()["t0.1":"t4.5"].values
+#     tt = np.array([float(s[1:]) for s in tstr])
+#     tt = tt - tt[0]
+#     jwlstr = data_df.keys().to_series()["a":"r2"].values
+#     for i in range(0, len(cylex)):
+#         aax[0].plot(tt, cylex[i][0], "x")
+#         aax[1].semilogy(cylex[i][1], "x")
+#     ax = aax[0]
 
-    # load Pemberton 2011 Cylinder test data for comparison
-    for sn in range(1, 9):
-        S_df = pd.read_csv(
-            "Shot0" + str(sn) + "velocities.txt",
-            sep=",",
-            header=7,
-            engine="python",
-            skipinitialspace=True,
-        )
-        S_df = S_df.T.drop_duplicates().T
-        i = 1
-        cols = {}
-        for k in S_df.keys():
-            nn = k
-            pp = k.split(" ")
-            if pp[0] == "Time":
-                nn = pp[0] + " " + str(i) + " " + pp[1].split(".")[0]
-            elif pp[0] == "Sigma_Y":
-                nn = pp[0] + " " + str(i) + " " + pp[1].split(".")[0]
-                i = i + 1
-            cols[k] = nn
-        S_df = S_df.rename(columns=cols)
+#     # load Pemberton 2011 Cylinder test data for comparison
+#     for sn in range(1, 9):
+#         S_df = pd.read_csv(
+#             "Shot0" + str(sn) + "velocities.txt",
+#             sep=",",
+#             header=7,
+#             engine="python",
+#             skipinitialspace=True,
+#         )
+#         S_df = S_df.T.drop_duplicates().T
+#         i = 1
+#         cols = {}
+#         for k in S_df.keys():
+#             nn = k
+#             pp = k.split(" ")
+#             if pp[0] == "Time":
+#                 nn = pp[0] + " " + str(i) + " " + pp[1].split(".")[0]
+#             elif pp[0] == "Sigma_Y":
+#                 nn = pp[0] + " " + str(i) + " " + pp[1].split(".")[0]
+#                 i = i + 1
+#             cols[k] = nn
+#         S_df = S_df.rename(columns=cols)
 
-        for i in range(1, 9):
-            tt = S_df.loc[:, "Time " + str(i) + " (seconds)"]
-            vv = S_df.loc[:, "Probe " + str(i) + " (m/s)"]
-        aax[0].plot((tt - tt[0]) * 1e6, vv.values / 1e3, ".", markersize=2)
+#         for i in range(1, 9):
+#             tt = S_df.loc[:, "Time " + str(i) + " (seconds)"]
+#             vv = S_df.loc[:, "Probe " + str(i) + " (m/s)"]
+#         aax[0].plot((tt - tt[0]) * 1e6, vv.values / 1e3, ".", markersize=2)
 
-    ax.set_xlabel(r"$t$ [$\mu$s]")
-    ax.set_ylabel(r"$v$ [km/s]")
-    ax.set_xlim([0, 6])
-    ax = aax[1]
-    ax.set_xticks(range(0, len(jwlstr)))
-    ax.set_xticklabels(jwlstr)
-    f.tight_layout()
-    plt.show()
+#     ax.set_xlabel(r"$t$ [$\mu$s]")
+#     ax.set_ylabel(r"$v$ [km/s]")
+#     ax.set_xlim([0, 6])
+#     ax = aax[1]
+#     ax.set_xticks(range(0, len(jwlstr)))
+#     ax.set_xticklabels(jwlstr)
+#     f.tight_layout()
+#     plt.show()
