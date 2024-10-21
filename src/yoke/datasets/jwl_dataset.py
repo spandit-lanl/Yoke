@@ -137,67 +137,19 @@ class CYLEX_pdv2jwl_Dataset(Dataset):
         return input, output
 
 
-class CYLEXnorm_pdv2jwl_Dataset(Dataset):
-    """PDV to JWL Dataset object for the *CYLEX/JWL*."""
+class CYLEXnorm_pdv2jwl_Dataset(CYLEX_pdv2jwl_Dataset):
+    """Normalized PDV to JWL Dataset object for the *CYLEX/JWL*."""
     def __init__(self, rng: slice, file: str) -> None:
-        """PDV to JWL Dataset object for the *CYLEX/JWL*.
-
-        The JWL reference isentrope is given by
-        ps(v/V0) = a e^{-r1 v/V0} + b e^{-r2 v/V0} + c (v/V0)^{-w-1}
-        The parameter units are: [a] = [b] = [c] = GPa
-                                 [w] = [r1] = [r2] = -
-                                 [V0] = cc/g
-        The unit system is {GPa, mm, mus} so that velocity is in km/s
-        and energy is in kJ/g
-
-        Args:
-            rng (slice): a slice object (start,stop,step) used
-                         to sample the data in *file*.
-            file (str): .csv file with recorderd data with header
-                         [a, b, c, w, r1, r2, V0,
-                         dcj, pcj, vcj, edet,
-                         e1, e2, e3, e4, e5, e6, e7,
-                         t0.1, t0.15, t0.25, t0.35, t0.5, t0.75,
-                         t1, t1.5, t2, t2.5, t3.5, t4.5]
-        """
+        """PDV to JWL Normalized-Dataset object for the *CYLEX/JWL*."""
         # Model Arguments
-        self.file = file
-
-        df = pd.read_csv(file, sep=",", header=0, engine="python")
-        self.df = df = df.iloc[rng]
-        self.stats = df.describe()
-
-        self.Nsamples = len(df)
-        # self.resetCJ()
-
+        super().__init__(rng,file)
+        self.stats = self.df.describe()
         self.tslice = slice("t0.1", "t4.5")
         self.pdvmin = self.stats.loc["min", self.tslice].min()
         self.pdvmax = self.stats.loc["max", self.tslice].max()
         self.jwlslice = slice("a", "r2")
         self.jwlmins = self.stats.loc["min", self.jwlslice]
         self.jwlmaxs = self.stats.loc["max", self.jwlslice]
-
-
-    def resetCJ(self) -> None:
-        """Reset CJ and expansion energy for given JWL parameter."""
-        for i, row in self.df.iterrows():
-            jwls = row["a":"V0"]
-            chks = row["dcj":"edet"]
-            es = row["e1":"e7"]
-
-            Dj, pj, vsj, edet = compute_CJ(*jwls.values)
-            chks["dcj"] = Dj
-            chks["pcj"] = pj
-            chks["vcj"] = vsj * row["V0"]
-            chks["edet"] = edet
-
-            for i in es.index:
-                vs = float(i[1:])
-                es[i] = compute_e_release(*jwls.values, edet, vs)
-
-    def __len__(self) -> int:
-        """Return number of samples in dataset."""
-        return self.Nsamples
 
     def __getitem__(self, index: int) -> ([float],[float]):
         """Return a tuple (input,output) data for training at a given index."""
