@@ -17,7 +17,7 @@ def compute_CJ(
     Args: A,B,C in units of pressure
         G, R1, R2 are unitless
         v0 is in units of specific volume
-    Returns: Dj = [velocity=sqrt(energy)], pj [pressure], vj/v0 [unitless], 
+    Returns: Dj = [velocity=sqrt(energy)], pj [pressure], vj/v0 [unitless],
              edet [specific energy=pressure x specific volume]
     """
     # ideal gas cp/cv constant descibing large expansion behavior
@@ -25,10 +25,13 @@ def compute_CJ(
     kp1 = k + 1
 
     # reference isentrope: ps(v/v0)
-    def ps(vs: float) -> float: return A * np.exp(-R1 * vs) + B * np.exp(-R2 * vs) + C / vs**k
+    def ps(vs: float) -> float:
+        return A * np.exp(-R1 * vs) + B * np.exp(-R2 * vs) + C / vs**k
     # adiabatic gamma on reference isentrope: gs(v/v0)
     def gs(vs: float) -> float:
-        return (vs * (A * R1 * np.exp(-R1 * vs) + B * R2 * np.exp(-R2 * vs) + C * k / vs**kp1)
+        return (vs * (A * R1 * np.exp(-R1 * vs) +
+                      B * R2 * np.exp(-R2 * vs) +
+                      C * k / vs**kp1)
          / ps(vs))
     # at CJ: vj/v0 = gj/(gj+1) assuming p0=0
     def fzero(vs: float) -> float: return gs(vs) * (vs - 1) + vs
@@ -42,7 +45,7 @@ def compute_CJ(
         + B * (G / R2 / vsj - 1) * np.exp(-R2 * vsj)
     ) + pj / 2 * v0 * (vsj - 1)
 
-    return Dj, pj, vsj, edet
+    return np.array((Dj, pj, vsj, edet))
 
 
 def compute_e_release( A: float, B: float, C: float, G: float,
@@ -167,6 +170,14 @@ class CYLEXnorm_pdv2jwl_Dataset(Dataset):
         self.Nsamples = len(df)
         # self.resetCJ()
 
+        self.tslice = slice("t0.1", "t4.5")
+        self.pdvmin = self.stats.loc["min", self.tslice].min()
+        self.pdvmax = self.stats.loc["max", self.tslice].max()
+        self.jwlslice = slice("a", "r2")
+        self.jwlmins = self.stats.loc["min", self.jwlslice]
+        self.jwlmaxs = self.stats.loc["max", self.jwlslice]
+
+
     def resetCJ(self) -> None:
         """Reset CJ and expansion energy for given JWL parameter."""
         for i, row in self.df.iterrows():
@@ -191,18 +202,12 @@ class CYLEXnorm_pdv2jwl_Dataset(Dataset):
     def __getitem__(self, index: int) -> ([float],[float]):
         """Return a tuple (input,output) data for training at a given index."""
         # Get the PDV input
-        tslice = slice("t0.1", "t4.5")
-        vs = self.df.iloc[index][tslice]
-        vmins = self.stats.loc["min", tslice].min()
-        vmaxs = self.stats.loc["max", tslice].max()
-        input = np.array((vs - vmins) / (vmaxs - vmins))
+        pdvs = self.df.iloc[index][self.tslice]
+        input = np.array((pdvs - self.pdvmin) / (self.pdvmax - self.pdvmin))
 
         # Get the JWL parameter output
-        jwlslice = slice("a", "r2")
-        jwls = self.df.iloc[index][jwlslice]
-        jwlmins = self.stats.loc["min", jwlslice]
-        jwlmaxs = self.stats.loc["max", jwlslice]
-        output = np.array((jwls - jwlmins) / (jwlmaxs - jwlmins))
+        jwls = self.df.iloc[index][self.jwlslice]
+        output = np.array((jwls - self.jwlmins) / (self.jwlmaxs - self.jwlmins))
 
         return input, output
 
@@ -239,7 +244,7 @@ if __name__ == "__main__":
     print(data_df.describe().loc[:, "edet":"e7"])
 
     # create Dataset object and access for plotting
-    cylex = CYLEX_pdv2jwl_Dataset(slice(0, None), "samples_sand-all.csv")
+    cylex = CYLEXnorm_pdv2jwl_Dataset(slice(0, None), "samples_sand-all.csv")
 
     f, aax = plt.subplots(1, 2)
     tstr = data_df.keys().to_series()["t0.1":"t4.5"].values
