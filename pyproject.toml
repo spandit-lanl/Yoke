@@ -11,7 +11,8 @@ authors = [
 ]
 dependencies = [
     "flit_core >=3.9.0",
-    "pytorch",
+    #"pytorch",
+    "torch",
     "pandas",
     "matplotlib",
     "scikit-learn",
@@ -44,8 +45,8 @@ classifiers = ["Private :: Do Not Upload",
 ]
 #dynamic = ['version']
 
-[project.optional-dependencies]
-test = ["pytorch-cuda"]
+#[project.optional-dependencies]
+#test = ["pytorch-cuda"]
 
 # doc = [
 # 	"sphinx",
