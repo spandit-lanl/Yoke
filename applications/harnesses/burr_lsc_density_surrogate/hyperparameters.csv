@@ -1,0 +1,15 @@
+studyIDX,YOKE_CONDA_BASE,YOKE_TORCH_ENV,LIST_DIR,DESIGN_DIR,NPZ_DIR,LINEAR_F,F0,F1,F2,F3,F4,BATCH_SIZE,NTRN_BATCH,NVAL_BATCH,LEARN_RATE,LR_EPOCH_PER_STEP,LR_DECAY_RATE,train_script
+#1,/data/anaconda3,torch_gpu_241017,/data2/yoke/applications/filelists/,/data2/,/data2/lsc240420/,256,256,128,64,32,16,8,10000,1200,1.00E-03,10,0.5,train_lsc_surrogate_LRsched.py
+#2,/data/anaconda3,torch_gpu_241017,/data2/yoke/applications/filelists/,/data2/,/data2/lsc240420/,256,256,128,64,32,16,8,10000,1200,1.00E-03,10,0.25,train_lsc_surrogate_LRsched.py
+#3,/data/anaconda3,torch_gpu_241017,/data2/yoke/applications/filelists/,/data2/,/data2/lsc240420/,256,256,128,64,32,16,8,10000,1200,1.00E-03,5,0.5,train_lsc_surrogate_LRsched.py
+#4,/data/anaconda3,torch_gpu_241017,/data2/yoke/applications/filelists/,/data2/,/data2/lsc240420/,256,256,128,64,32,16,8,10000,1200,1.00E-03,5,0.25,train_lsc_surrogate_LRsched.py
+#5,/data/anaconda3,torch_gpu_241017,/data2/yoke/applications/filelists/,/data2/,/data2/lsc240420/,512,512,512,256,128,64,8,10000,1200,1.00E-03,10,0.5,train_lsc_surrogate_LRsched.py
+#6,/data/anaconda3,torch_gpu_241017,/data2/yoke/applications/filelists/,/data2/,/data2/lsc240420/,512,512,512,256,128,64,8,10000,1200,1.00E-03,15,0.5,train_lsc_surrogate_LRsched.py
+#7,/data/anaconda3,torch_gpu_241017,/data2/yoke/applications/filelists/,/data2/,/data2/lsc240420/,512,512,512,256,128,64,8,10000,1200,1.00E-03,20,0.5,train_lsc_surrogate_LRsched.py
+#8,/data/anaconda3,torch_gpu_241017,/data2/yoke/applications/filelists/,/data2/,/data2/lsc240420/,512,512,512,256,128,64,8,10000,1200,5.00E-03,10,0.5,train_lsc_surrogate_LRsched.py
+#9,/data/anaconda3,torch_gpu_241017,/data2/yoke/applications/filelists/,/data2/,/data2/lsc240420/,512,512,512,256,128,64,8,10000,1200,5.00E-03,15,0.5,train_lsc_surrogate_LRsched.py
+#10,/data/anaconda3,torch_gpu_241017,/data2/yoke/applications/filelists/,/data2/,/data2/lsc240420/,512,512,512,256,128,64,8,10000,1200,5.00E-03,20,0.5,train_lsc_surrogate_LRsched.py
+#11,/data/anaconda3,torch_gpu_241017,/data2/yoke/applications/filelists/,/data2/,/data2/lsc240420/,768,768,512,256,128,64,8,10000,1200,5.00E-03,20,0.5,train_lsc_surrogate_LRsched.py
+
+
+

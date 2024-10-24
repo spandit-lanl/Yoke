@@ -1,0 +1,15 @@
+--FILELIST_DIR
+/data2/yoke/applications/filelists/
+--eval_filelist
+lsc240420_test_10pct.txt
+--LSC_DESIGN_DIR
+/data2/
+--design_file
+design_lsc240420_MASTER.csv
+--LSC_NPZ_DIR
+/data2/lsc240420/
+--checkpoint
+study011_modelState_epoch0090.hdf5
+--sampIDX
+3914
+-S
