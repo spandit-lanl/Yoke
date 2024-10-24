@@ -35,16 +35,10 @@ export date00=`date`
 # Start GPU monitoring
 nvidia-smi --loop 5 --query-gpu=timestamp,gpu_bus_id,memory.used,memory.free,memory.total --format=csv > nvidia_smi_epoch0001.out &
 nvpid=$!
-echo "nvpid"
-echo $nvpid
 
 # Start the Code
 python ../<train_script> @study<studyIDX>_START.input &
 pypid=$!
-echo "pypid"
-echo $pypid
-
-jobs
 
 # Kill GPU monitoring after python process finishes
 wait $pypid

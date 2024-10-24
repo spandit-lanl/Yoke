@@ -39,14 +39,17 @@ export MKL_SERVICE_FORCE_INTEL=TRUE
 # Get start time
 export date00=`date`
 
-# Start the Code
-python ../<train_script> @study<studyIDX>_START.input
+# Start GPU monitoring
+nvidia-smi --loop 5 --query-gpu=timestamp,gpu_bus_id,memory.used,memory.free,memory.total --format=csv > nvidia_smi_epoch0001.out &
+nvpid=$!
 
-# Monitor GPU usage
-#
-# NOTE: Currently, this will run until walltime is exhausted. We want
-# this to only run as long as the python script is running.
-##nvidia-smi --loop=15 
+# Start the Code
+python ../<train_script> @study<studyIDX>_START.input &
+pypid=$!
+
+# Kill GPU monitoring after python process finishes
+wait $pypid
+kill $nvpid
 
 # Get end time and print to stdout
 export date01=`date`
