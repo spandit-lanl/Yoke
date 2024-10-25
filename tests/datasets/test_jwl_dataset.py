@@ -1,4 +1,6 @@
 """Unit tests for `datasets/jwl_dataset.py`."""
+
+import os
 import unittest
 import torch
 import yoke.datasets.jwl_dataset as JWL
@@ -10,8 +12,13 @@ class TestJWL_Dataset(unittest.TestCase):
     """Testing JWL_CYLEX_pdv2jwl_Dataset."""
     def _loadDF(self) -> None:
         # load data frame for testing
-        self.data_df = pd.read_csv("samples_sand-all.csv",
-                                   sep=",", header=0, engine="python")
+        self.data_df = pd.read_csv(
+            os.path.join(
+                os.path.dirname(__file__),
+                "../../data_examples/samples_sand-all.csv"),
+            sep=",",
+            header=0,
+            engine="python")
         # select index of sample to use for testing
         self.itest = 3
         self.jwl = self.data_df.loc[self.itest,"a":"V0"].values
@@ -22,8 +29,11 @@ class TestJWL_Dataset(unittest.TestCase):
 
     def setUp(self) -> None:
         """Set up common variables for the tests."""
-        self.rng = slice(0,None)
-        self.file = "samples_sand-all.csv"
+        self.rng = slice(0, None)
+        self.file = os.path.join(
+            os.path.dirname(__file__),
+            "../../data_examples/samples_sand-all.csv")
+        
         # make object to test
         self.model = JWL.CYLEX_pdv2jwl_Dataset(rng=self.rng, file=self.file)
         self._loadDF()
@@ -65,8 +75,11 @@ class TestJWLnorm_Dataset(TestJWL_Dataset):
     """Normalized-testing CYCLEXnorm_pdv2jwlDataset."""
     def setUp(self) -> None:
         """Set up common variables for the tests."""
-        self.rng = slice(0,None)
-        self.file = "samples_sand-all.csv"
+        self.rng = slice(0, None)
+        self.file = os.path.join(
+            os.path.dirname(__file__),
+            "../../data_examples/samples_sand-all.csv")
+        
         # make object to test
         self.model = JWL.CYLEXnorm_pdv2jwl_Dataset(rng=self.rng, file=self.file)
         self._loadDF()

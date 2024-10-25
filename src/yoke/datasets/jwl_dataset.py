@@ -3,6 +3,7 @@
 ####################################
 # Packages
 ####################################
+import os
 import numpy as np
 from torch.utils.data import Dataset
 from scipy.optimize import root
@@ -177,7 +178,8 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
     import matplotlib
 
-    matplotlib.use("MacOSX")
+    # NOTE: There is no way this will be portable!!
+    # matplotlib.use("MacOSX")
     #     matplotlib.use('TkAgg')
     #     # Get rid of type 3 fonts in figures
     #     matplotlib.rcParams['pdf.fonttype'] = 42
@@ -190,13 +192,24 @@ if __name__ == "__main__":
     #     from mpl_toolkits.axes_grid1 import make_axes_locatable
 
     # load data and get initial stats
-    data_df = pd.read_csv("samples_sand-all.csv", sep=",", header=0, engine="python")
+    data_df = pd.read_csv(
+        os.path.join(
+            os.path.dirname(__file__),
+            "../../../data_examples/samples_sand-all.csv"),
+        sep=",",
+        header=0,
+        engine="python")
     print(data_df.keys())
     print(data_df.describe().loc[:, "dcj":"edet"])
     print(data_df.describe().loc[:, "edet":"e7"])
 
     # create Dataset object and access for plotting
-    cylex = CYLEXnorm_pdv2jwl_Dataset(slice(0, None), "samples_sand-all.csv")
+    cylex = CYLEXnorm_pdv2jwl_Dataset(
+        slice(0, None),
+        os.path.join(
+            os.path.dirname(__file__),
+            "../../../data_examples/samples_sand-all.csv")
+        )
 
     f, aax = plt.subplots(1, 2)
     tstr = data_df.keys().to_series()["t0.1":"t4.5"].values
