@@ -237,7 +237,7 @@ class LSCnorm_cntr2rho_DataSet(Dataset):
 
 class LSC_rho2rho_temporal_DataSet(Dataset):
     def __init__(
-        self, LSC_NPZ_DIR: str, filelist: str, design_file: str, max_time_offset: float
+        self, LSC_NPZ_DIR: str, file_prefix_list: str, max_time_offset: float
     ):
         """This dataset returns multi-channel images at two different times
         from the *Layered Shaped Charge* simulation. The *maximum time-offset*
@@ -246,25 +246,25 @@ class LSC_rho2rho_temporal_DataSet(Dataset):
         fields. The time-offset between the two images is also returned.
 
         Args:
-            LSC_NPZ_DIR (str): Location of LSC NPZ files. A YOKE env variable.
-            filelist (str): Text file listing file names to read
-            design_file (str): .csv file with master design study parameters
-            max_time_offset (float): Maximum time-ahead to attempt prediction for.
-                                     A prediction image will be chosen within this
-                                     timeframe at random.
+            LSC_NPZ_DIR (str): Location of LSC NPZ files.
+            file_prefix_list (str): Text file listing unique prefixes corresponding
+                                    to unique simulations.
+            max_time_offset (float): (microseconds) Maximum time-ahead to attempt
+                                     prediction for. A prediction image will be chosen
+                                     within this timeframe at random.
 
         """
+        
         # Model Arguments
         self.LSC_NPZ_DIR = LSC_NPZ_DIR
-        self.filelist = filelist
-        self.design_file = design_file
+        self.file_prefix_list = file_prefix_list
         self.max_time_offset = max_time_offset
 
         # Create filelist
         with open(filelist) as f:
-            self.filelist = [line.rstrip() for line in f]
+            self.file_prefix_list = [line.rstrip() for line in f]
 
-        self.Nsamples = len(self.filelist)
+        self.Nsamples = len(self.file_prefix_list)
 
     def __len__(self):
         """Return number of samples in dataset."""
@@ -276,7 +276,13 @@ class LSC_rho2rho_temporal_DataSet(Dataset):
 
         """
         # Get the input image
-        filepath = self.filelist[index]
+        file_prefix = self.file_prefix_list[index]
+
+        ## START HERE!!!!
+        ## Need to build the filepath based on the prefix and two randomly
+        ## chosen time indexes where the time-offset between them is less than
+        ## or equal to *max_time_offset*
+        
         npz = np.load(self.LSC_NPZ_DIR + filepath)
 
         true_image = LSCread_npz(npz, "av_density")
