@@ -6,6 +6,7 @@ Charge data, *lsc240420*.
 ####################################
 # Packages
 ####################################
+import os
 import typing
 import numpy as np
 import pandas as pd
@@ -237,7 +238,7 @@ class LSCnorm_cntr2rho_DataSet(Dataset):
 
 class LSC_rho2rho_temporal_DataSet(Dataset):
     def __init__(
-        self, LSC_NPZ_DIR: str, file_prefix_list: str, max_time_offset: float
+        self, LSC_NPZ_DIR: str, file_prefix_list: str, max_timeIDX_offset: int
     ):
         """This dataset returns multi-channel images at two different times
         from the *Layered Shaped Charge* simulation. The *maximum time-offset*
@@ -245,27 +246,42 @@ class LSC_rho2rho_temporal_DataSet(Dataset):
         for each material at a given time as well as the (R, Z)-velocity
         fields. The time-offset between the two images is also returned.
 
+        NOTE: The way time indices are chosen necessitates *max_timeIDX_offset*
+        being less than or equal to 3 in the lsc240420 data.
+        
         Args:
             LSC_NPZ_DIR (str): Location of LSC NPZ files.
             file_prefix_list (str): Text file listing unique prefixes corresponding
                                     to unique simulations.
-            max_time_offset (float): (microseconds) Maximum time-ahead to attempt
-                                     prediction for. A prediction image will be chosen
-                                     within this timeframe at random.
+            max_timeIDX_offset (int): Maximum time-ahead to attempt
+                                      prediction for. A prediction image will be chosen
+                                      within this timeframe at random.
 
         """
         
         # Model Arguments
         self.LSC_NPZ_DIR = LSC_NPZ_DIR
-        self.file_prefix_list = file_prefix_list
-        self.max_time_offset = max_time_offset
+        self.max_timeIDX_offset = max_timeIDX_offset
 
         # Create filelist
-        with open(filelist) as f:
+        with open(file_prefix_list) as f:
             self.file_prefix_list = [line.rstrip() for line in f]
 
         self.Nsamples = len(self.file_prefix_list)
 
+        # Lists of fields to return images for 
+        self.hydro_fields = ['density_case',
+                             'density_cushion',
+                             'density_maincharge',
+                             'density_outside_air',
+                             'density_striker',
+                             'density_throw',
+                             'Uvelocity',
+                             'Wvelocity']
+        
+        # Initialize random number generator for time index selection
+        self.rng = np.random.default_rng()
+        
     def __len__(self):
         """Return number of samples in dataset."""
         return self.Nsamples
@@ -278,29 +294,50 @@ class LSC_rho2rho_temporal_DataSet(Dataset):
         # Get the input image
         file_prefix = self.file_prefix_list[index]
 
-        ## START HERE!!!!
-        ## Need to build the filepath based on the prefix and two randomly
-        ## chosen time indexes where the time-offset between them is less than
-        ## or equal to *max_time_offset*
-        
-        npz = np.load(self.LSC_NPZ_DIR + filepath)
+        # Files have name format *lsc240420_id01001_pvi_idx00000.npz*. Choose
+        # random starting index 0-96 so the end index will be less than or
+        # equal to 99.
+        startIDX = self.rng.integers(0, 97)
+        endIDX = self.rng.integers(1, self.max_timeIDX_offset + 1) + startIDX
 
-        true_image = LSCread_npz(npz, "av_density")
-        true_image = np.concatenate((np.fliplr(true_image), true_image), axis=1)
-        nY, nX = true_image.shape
-        true_image = true_image.reshape((1, nY, nX))
-        true_image = torch.tensor(true_image).to(torch.float32)
+        # Construct file names
+        start_file = file_prefix + f'_pvi_idx{startIDX:05d}.npz'
+        end_file = file_prefix + f'_pvi_idx{endIDX:05d}.npz'
 
-        # Get the contours and sim_time
-        sim_key = LSCnpz2key(self.LSC_NPZ_DIR + filepath)
-        Bspline_nodes = LSCcsv2bspline_pts(self.design_file, sim_key)
-        sim_time = npz["sim_time"]
-        npz.close()
+        # Load NPZ files
+        start_npz = np.load(self.LSC_NPZ_DIR + start_file)
+        end_npz = np.load(self.LSC_NPZ_DIR + end_file)
 
-        sim_params = np.append(Bspline_nodes, sim_time)
-        sim_params = torch.from_numpy(sim_params).to(torch.float32)
+        start_img_list = []
+        for hfield in self.hydro_fields:
+            tmp_img = LSCread_npz(start_npz, hfield)
+            tmp_img = np.concatenate((np.fliplr(tmp_img), tmp_img), axis=1)
 
-        return sim_params, true_image
+            start_img_list.append(tmp_img)
+
+        # Concatenate images channel first.
+        start_img = np.stack(start_img_list, axis=0)
+        start_img = torch.tensor(start_img).to(torch.float32)
+
+        end_img_list = []
+        for hfield in self.hydro_fields:
+            tmp_img = LSCread_npz(end_npz, hfield)
+            tmp_img = np.concatenate((np.fliplr(tmp_img), tmp_img), axis=1)
+
+            end_img_list.append(tmp_img)
+
+        # Concatenate images channel first.
+        end_img = np.stack(end_img_list, axis=0)
+        end_img = torch.tensor(end_img).to(torch.float32)
+
+        # Get the time offset
+        Dt = 0.25*(endIDX - startIDX)
+
+        # Close the npzs
+        start_npz.close()
+        end_npz.close()
+
+        return start_img, end_img, Dt
 
 # if __name__ == '__main__':
 #     """For testing and debugging.
@@ -317,67 +354,99 @@ class LSC_rho2rho_temporal_DataSet(Dataset):
 #     from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
 #     import os
 #     matplotlib.use('MacOSX')
-# #     matplotlib.use('TkAgg')
-# #     # Get rid of type 3 fonts in figures
-# #     matplotlib.rcParams['pdf.fonttype'] = 42
-# #     matplotlib.rcParams['ps.fonttype'] = 42
-# #     import matplotlib.pyplot as plt
-# #     # Ensure LaTeX font
-# #     font = {'family': 'serif'}
-# #     plt.rc('font', **font)
-# #     plt.rcParams['figure.figsize'] = (6, 6)
-# #     from mpl_toolkits.axes_grid1 import make_axes_locatable
+#     #matplotlib.use('TkAgg')
+#     # Get rid of type 3 fonts in figures
+#     matplotlib.rcParams['pdf.fonttype'] = 42
+#     matplotlib.rcParams['ps.fonttype'] = 42
+#     import matplotlib.pyplot as plt
+#     # Ensure LaTeX font
+#     font = {'family': 'serif'}
+#     plt.rc('font', **font)
+#     plt.rcParams['figure.figsize'] = (6, 6)
+#     from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-# #     # Get yoke environment variables
-#     YOKE_DIR = '/Users/ahenrick/Downloads/OptJWLCylex_Example/regit/yoke/applications/' #os.getenv('YOKE_DIR')
-#     LSC_NPZ_DIR =  '/Users/ahenrick/Downloads/OptJWLCylex_Example/regit/yoke/data_examples/lsc240420/' #os.getenv('LSC_NPZ_DIR')
-#     LSC_DESIGN_DIR = '/Users/ahenrick/Downloads/OptJWLCylex_Example/regit/yoke/data_examples/' #os.getenv('LSC_DESIGN_DIR')
 
-#     # Test key
-#     npz_filename = LSC_NPZ_DIR + 'lsc240420_id01001_pvi_idx00000.npz'
-#     print('LSC NPZ filename:', npz_filename)
-#     LSCkey = LSCnpz2key(npz_filename)
-#     print('LSC key:', LSCkey)
+#     npz_dir = "/Users/l255541/LSC_DATA/lsc240420/"
+#     file_prefix_list = os.path.join(os.path.dirname(__file__),
+#                                     "../../../applications/prefixes_test_samples.txt")
+#     lsc_r2r_DS = LSC_rho2rho_temporal_DataSet(LSC_NPZ_DIR=npz_dir,
+#                                               file_prefix_list=file_prefix_list,
+#                                               max_timeIDX_offset=3)
+    
+#     # # Test key
+#     # npz_filename = LSC_NPZ_DIR + 'lsc240420_id01001_pvi_idx00000.npz'
+#     # print('LSC NPZ filename:', npz_filename)
+#     # LSCkey = LSCnpz2key(npz_filename)
+#     # print('LSC key:', LSCkey)
 
-#     # Test B-spline retrieval
-#     csv_filename = LSC_DESIGN_DIR + 'design_lsc240420_SAMPLE.csv'
-#     bspline_pts = LSCcsv2bspline_pts(csv_filename, LSCkey)
-#     print('Shape of B-spline points:', bspline_pts.shape)
-#     print('B-spline points:', bspline_pts)
+#     # # Test B-spline retrieval
+#     # csv_filename = LSC_DESIGN_DIR + 'design_lsc240420_SAMPLE.csv'
+#     # bspline_pts = LSCcsv2bspline_pts(csv_filename, LSCkey)
+#     # print('Shape of B-spline points:', bspline_pts.shape)
+#     # print('B-spline points:', bspline_pts)
 
-#     filelist = YOKE_DIR + 'filelists/lsc240420_test_sample.txt'
-#     LSC_ds = LSC_cntr2rho_DataSet(LSC_NPZ_DIR,
-#                                   filelist,
-#                                   csv_filename)
-#     normalization_file = YOKE_DIR + 'normalization/lsc240420_norm.npz'
-#     LSC_ds  = LSCnorm_cntr2rho_DataSet(LSC_NPZ_DIR,
-#                                        filelist,
-#                                        csv_filename,
-#                                        normalization_file)
+#     # filelist = YOKE_DIR + 'filelists/lsc240420_test_sample.txt'
+#     # LSC_ds = LSC_cntr2rho_DataSet(LSC_NPZ_DIR,
+#     #                               filelist,
+#     #                               csv_filename)
+#     # normalization_file = YOKE_DIR + 'normalization/lsc240420_norm.npz'
+#     # LSC_ds  = LSCnorm_cntr2rho_DataSet(LSC_NPZ_DIR,
+#     #                                    filelist,
+#     #                                    csv_filename,
+#     #                                    normalization_file)
+
 #     sampIDX = 1
 #     # Normalization dataset returns: norm_sim_params, unbias_true_image
-#     sim_params, true_image = LSC_ds.__getitem__(sampIDX)
+#     start_img, end_img, Dt = lsc_r2r_DS.__getitem__(sampIDX)
 
-#     print('Shape of true_image tensor: ', true_image.shape)
-#     print('Shape of sim_params tensor: ', sim_params.shape)
+#     print('Shape of start_img tensor: ', start_img.shape)
+#     print('Shape of end_img tensor: ', end_img.shape)
+#     print('Dt:', Dt)
 
-#     sim_params = sim_params.numpy()
-#     true_image = np.squeeze(true_image.numpy())
+#     # sim_params = sim_params.numpy()
+#     # true_image = np.squeeze(true_image.numpy())
 
-#     # Plot normalized radiograph and density field for diagnostics.
-#     fig1, ax1 = plt.subplots(1, 1, figsize=(12, 12))
-#     img1 = ax1.imshow(true_image,
-#                       aspect='equal',
-#                       origin='lower',
-#                       cmap='jet')
+#     # Possible fields to plot
+#     # self.hydro_fields = ['density_case',
+#     #                      'density_cushion',
+#     #                      'density_maincharge',
+#     #                      'density_outside_air',
+#     #                      'density_striker',
+#     #                      'density_throw',
+#     #                      'Uvelocity',
+#     #                      'Wvelocity']
+
+#     # Plot successive fields.
+#     hfield = 'density_throw'
+#     hIDX = lsc_r2r_DS.hydro_fields.index(hfield)
+
+#     fig1, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
+#     fig1.suptitle(f"{hfield}, Dt={Dt:.3f}us", fontsize=18)
+#     img1 = ax1.imshow(
+#         start_img[hIDX, :, :],
+#         aspect="equal",
+#         origin="lower",
+#         cmap="jet")
 #     ax1.set_ylabel("Z-axis", fontsize=16)
 #     ax1.set_xlabel("R-axis", fontsize=16)
-#     ax1.set_title('Time={:.3f}us'.format(sim_params[-1]), fontsize=18)
+#     ax1.set_title("Start", fontsize=18)
 
 #     divider1 = make_axes_locatable(ax1)
 #     cax1 = divider1.append_axes('right', size='10%', pad=0.1)
 #     fig1.colorbar(img1,
-#                   cax=cax1).set_label('Density',
+#                   cax=cax1).set_label(hfield,
 #                                       fontsize=14)
+
+#     img2 = ax2.imshow(
+#         end_img[hIDX, :, :],
+#         aspect="equal",
+#         origin="lower",
+#         cmap="jet")
+#     ax2.set_title("End", fontsize=18)
+#     ax2.tick_params(axis="y", which="both", left=False, labelleft=False)
+
+#     divider2 = make_axes_locatable(ax2)
+#     cax2 = divider2.append_axes("right", size="10%", pad=0.1)
+#     fig1.colorbar(img2, cax=cax2).set_label(hfield, fontsize=14)
 
 #     plt.show()
