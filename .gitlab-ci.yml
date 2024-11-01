@@ -1,5 +1,6 @@
 stages:
   - test
+  - lint_temp
 
 unit-test-job:
   stage: test
@@ -29,4 +30,67 @@ lint-test-job:   # This job also runs in the test stage.
     - ruff check --preview
     - ruff format --check --diff
   allow_failure: true
+  image: 're-registry.lanl.gov/artimis_mpmm/mpmmcicdrbot/bookworm-slim-amd64-conda-py3_12_5__2024_10_29'
+
+applications-evaluation:
+  stage: lint_temp
+  script:
+    - echo "starting bashrc"
+    - source /root/.bashrc
+    - echo "Running linting (through ruff)"
+    - ruff check applications/evaluation
+    - ruff check applications/evaluation --preview
+    - ruff format applications/evaluation --check --diff
+  allow_failure: false
+  image: 're-registry.lanl.gov/artimis_mpmm/mpmmcicdrbot/bookworm-slim-amd64-conda-py3_12_5__2024_10_29'
+
+applications-filelists:
+  stage: lint_temp
+  script:
+    - echo "starting bashrc"
+    - source /root/.bashrc
+    - echo "Running linting (through ruff)"
+    - ruff check applications/filelists
+    - ruff check applications/filelists --preview
+    - ruff format applications/filelists --check --diff
+  allow_failure: false
+  image: 're-registry.lanl.gov/artimis_mpmm/mpmmcicdrbot/bookworm-slim-amd64-conda-py3_12_5__2024_10_29'
+
+# cannot be enabled because normalization_file variable is undefined in:
+#   applications/harnesses/lsc_density_surrogate/train_lsc_surrogate_normLRsched.py
+
+# applications-harnesses:
+#   stage: lint_temp
+#   script:
+#     - echo "starting bashrc"
+#     - source /root/.bashrc
+#     - echo "Running linting (through ruff)"
+#     - ruff check applications/harnesses
+#     - ruff check applications/harnesses --preview
+#     - ruff format applications/harnesses --check --diff
+#   allow_failure: false
+#   image: 're-registry.lanl.gov/artimis_mpmm/mpmmcicdrbot/bookworm-slim-amd64-conda-py3_12_5__2024_10_29'
+
+applications-normalization:
+  stage: lint_temp
+  script:
+    - echo "starting bashrc"
+    - source /root/.bashrc
+    - echo "Running linting (through ruff)"
+    - ruff check applications/normalization
+    - ruff check applications/normalization --preview
+    - ruff format applications/normalization --check --diff
+  allow_failure: false
+  image: 're-registry.lanl.gov/artimis_mpmm/mpmmcicdrbot/bookworm-slim-amd64-conda-py3_12_5__2024_10_29'
+
+applications-viewers:
+  stage: lint_temp
+  script:
+    - echo "starting bashrc"
+    - source /root/.bashrc
+    - echo "Running linting (through ruff)"
+    - ruff check applications/viewers
+    - ruff check applications/viewers --preview
+    - ruff format applications/viewers --check --diff
+  allow_failure: false
   image: 're-registry.lanl.gov/artimis_mpmm/mpmmcicdrbot/bookworm-slim-amd64-conda-py3_12_5__2024_10_29'

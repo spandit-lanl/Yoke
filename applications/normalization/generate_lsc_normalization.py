@@ -1,4 +1,6 @@
-"""Functions and classes to calculate normalization values for the *lsc240420*
+"""Normalization for the *lsc240420* dataset.
+
+Functions and classes to calculate normalization values for the *lsc240420*
 dataset. For example, finding the average density for each *av_density* image.
 
 These quantities are saved in an NPZ file for use during training in a Torch
@@ -16,10 +18,10 @@ import argparse
 import typing
 import numpy as np
 
-NoneStr = typing.Union[None, str]
-
 from yoke.datasets.lsc_dataset import LSCnpz2key, LSCcsv2bspline_pts
 from yoke.datasets.lsc_dataset import LSCread_npz
+
+NoneStr = typing.Union[None, str]
 
 
 ###################################################################

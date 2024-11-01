@@ -1,4 +1,6 @@
-"""Program to read in an NPZ file and print the keys within. Can also create a
+"""Read and print keys within an NPZ file, and plots the output.
+
+Program to read in an NPZ file and print the keys within. Can also create a
 plot of one of the arrays stored within the file.
 
 """
@@ -18,15 +20,17 @@ import matplotlib
 # matplotlib.use('pdf')
 # matplotlib.use('QtAgg')
 # Get rid of type 3 fonts in figures
+import matplotlib.pyplot as plt
+
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+
 matplotlib.rcParams["pdf.fonttype"] = 42
 matplotlib.rcParams["ps.fonttype"] = 42
-import matplotlib.pyplot as plt
 
 # Ensure LaTeX font
 font = {"family": "serif"}
 plt.rc("font", **font)
 plt.rcParams["figure.figsize"] = (6, 6)
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 
 ###################################################################
@@ -92,7 +96,7 @@ parser.add_argument(
 parser.add_argument("--save", "-S", action="store_true", help="Flag to save image.")
 
 
-def print_NPZ_keys(npzfile="./lsc_nonconvex_pvi_idx00115.npz"):
+def print_NPZ_keys(npzfile: str = "./lsc_nonconvex_pvi_idx00115.npz") -> None:
     """Print keys of NPZ file."""
     NPZ = np.load(npzfile)
     print("NPZ file keys:")
@@ -104,11 +108,13 @@ def print_NPZ_keys(npzfile="./lsc_nonconvex_pvi_idx00115.npz"):
     return
 
 
-def singlePVIarray(npzfile="./lsc_nonconvex_pvi_idx00115.npz", FIELD="rho"):
+def singlePVIarray(
+    npzfile: str = "./lsc_nonconvex_pvi_idx00115.npz", FIELD: str = "rho"
+) -> np.array:
     """Function to grab single array from NPZ.
 
     Args:
-       indir (str): File name for NPZ.
+       npzfile (str): File name for NPZ.
        FIELD (str): Field to return array for.
 
     Returns:
@@ -140,7 +146,7 @@ if __name__ == "__main__":
 
     # Assemble filename
     # Example: lsc_nonconvex_pvi_idx00115.npz
-    npzfile = os.path.join(indir, runID + "_idx%05d.npz" % pviIDX)
+    npzfile = os.path.join(indir, f"{runID}_idx{pviIDX:05d}.npz")
     print("filename:", npzfile)
 
     if KEYS:
