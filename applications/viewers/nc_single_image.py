@@ -1,4 +1,6 @@
-"""Function to return single array from complete NPZ file generated from the
+"""Get array from NPZ file, and plot hydro-dynamic field.
+
+Function to return single array from complete NPZ file generated from the
 NestedCylinder PVI scipts. As a script this can plot a single image of a single
 hydro-dynamic field. The directory of NPZ files must be specified and the
 filenames are assumed to be of the form `{runID}_pvi_idx{pviIDX:05d}.npz`
@@ -16,18 +18,21 @@ import numpy as np
 # >>> print(bklist)
 import matplotlib
 
+import matplotlib.pyplot as plt
+
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+
 # matplotlib.use('MacOSX')
 matplotlib.use("pdf")
 # Get rid of type 3 fonts in figures
 matplotlib.rcParams["pdf.fonttype"] = 42
 matplotlib.rcParams["ps.fonttype"] = 42
-import matplotlib.pyplot as plt
+
 
 # Ensure LaTeX font
 font = {"family": "serif"}
 plt.rc("font", **font)
 plt.rcParams["figure.figsize"] = (6, 6)
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 
 ###################################################################
@@ -91,12 +96,14 @@ parser.add_argument(
 parser.add_argument("--save", "-S", action="store_true", help="Flag to save image.")
 
 
-def singlePVIarray(indir="./", runID="Sn00", pviIDX=41, FIELD="rho"):
+def singlePVIarray(
+    indir: str = "./", runID: str = "Sn00", pviIDX: int = 41, FIELD: str = "rho"
+) -> tuple[np.array, np.array, np.array, float]:
     """Function to grab single array from NPZ.
 
     Args:
        indir (str): Directory where all NPZ files live.
-       runIDX (int): Index of run
+       runID (int): Index of run
        pviIDX (int): Index of PVI output
        FIELD (str): Field to return array for, i.e. rho, pressure, temperature,
                     melt_state, porosity, eqps, eqps_rate, eff_stress, bulk_mod,

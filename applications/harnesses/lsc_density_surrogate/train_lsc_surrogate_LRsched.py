@@ -1,4 +1,6 @@
-"""Actual training workhorse for Transpose CNN network mapping layered shaped
+"""Training for TCNN mapping LSC geometry to density image.
+
+Actual training workhorse for Transpose CNN network mapping layered shaped
 charge geometry parameters to density image.
 
 In this version we pass in the directory where the LSC data is stored, so

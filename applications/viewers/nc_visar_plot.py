@@ -1,4 +1,6 @@
-"""Read visar file produced from Nested-Cylinder simulation and plot velocity
+"""Read visar file and plot velocity vs time.
+
+Read visar file produced from Nested-Cylinder simulation and plot velocity
 vs. time signal for all PDV positions.
 
 """
@@ -14,11 +16,12 @@ import numpy as np
 # >>> print(bklist)
 import matplotlib
 
+import matplotlib.pyplot as plt
+
 matplotlib.use("Agg")
 # Get rid of type 3 fonts in figures
 matplotlib.rcParams["pdf.fonttype"] = 42
 matplotlib.rcParams["ps.fonttype"] = 42
-import matplotlib.pyplot as plt
 
 # Ensure LaTeX font
 font = {"family": "serif"}
@@ -27,7 +30,7 @@ plt.rcParams["figure.figsize"] = (6, 6)
 
 
 class Visar:
-    """Visar data file class
+    """Visar data file class.
 
     Methods of this class allow quick reading, manipulating, and plotting from
     a 'Visar' file. The file is read line-by-line so multi-channel PDV is
@@ -48,7 +51,8 @@ class Visar:
 
     """
 
-    def __init__(self, visarfilename):
+    def __init__(self, visarfilename: str) -> None:
+        """Initializes a visar object."""
         # Define data dictionary
         self.data = {}
 
@@ -106,11 +110,11 @@ class Visar:
             self.data[idx]["distance"] = np.array(self.data[idx]["distance"])
             self.data[idx]["velocity"] = np.array(self.data[idx]["velocity"])
 
-    def channels(self):
+    def channels(self) -> list:
         """Get list of channel indices."""
         return list(self.data.keys())
 
-    def variables(self, channelIDX=1):
+    def variables(self, channelIDX: int = 1) -> list:
         """Get list of variable names on a channel.
 
         Args:
@@ -119,7 +123,7 @@ class Visar:
         """
         return list(self.data[channelIDX].keys())
 
-    def getarray(self, channelIDX, varname):
+    def getarray(self, channelIDX: int, varname: str) -> np.array:
         """Return array associated with channelIDX and variable, `varname`.
 
         Args:
@@ -129,7 +133,7 @@ class Visar:
         """
         return self.data[channelIDX][varname]
 
-    def plotVelTH(self, channels):
+    def plotVelTH(self, channels: list[int]) -> None:
         """Plot Visar-velocity time history for multiple channels.
 
         To use this function a Matplotlib figure object and axes must already
@@ -160,7 +164,7 @@ class Visar:
         plt.title(titlestr, fontsize=20)
         plt.legend(fontsize=16)
 
-    def plotDistTH(self, channels):
+    def plotDistTH(self, channels: list[int]) -> None:
         """Plot Visar-distance time history.
 
         Plot time history of Visar origin distance from surface. To use this

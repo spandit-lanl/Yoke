@@ -133,9 +133,9 @@ SAVEFIG = args.savefig
 # Hardcode model hyperparameters for now.
 #
 # NOTE: This should be handled in a MUCH more elegant manner!!!
-#kernel = [3, 3]
-#featureList = [512, 512, 512, 512, 256, 128, 64, 32]
-#linearFeatures = [4, 4]
+# kernel = [3, 3]
+# featureList = [512, 512, 512, 512, 256, 128, 64, 32]
+# linearFeatures = [4, 4]
 
 # model = jekelCNNsurrogate(input_size=29,
 #                           linear_features=linearFeatures,
@@ -148,8 +148,8 @@ SAVEFIG = args.savefig
 # For LSC usually have been using test IDX 689 or 3914
 model = tCNNsurrogate(
     input_size=29,
-    #linear_features=(7, 5, 256),
-    #linear_features=(7, 5, 512),
+    # linear_features=(7, 5, 256),
+    # linear_features=(7, 5, 512),
     linear_features=(7, 5, 768),
     initial_tconv_kernel=(5, 5),
     initial_tconv_stride=(5, 5),
@@ -157,8 +157,8 @@ model = tCNNsurrogate(
     initial_tconv_outpadding=(0, 0),
     initial_tconv_dilation=(1, 1),
     kernel=(3, 3),
-    #nfeature_list=[256, 128, 64, 32, 16],
-    #nfeature_list=[512, 512, 256, 128, 64],
+    # nfeature_list=[256, 128, 64, 32, 16],
+    # nfeature_list=[512, 512, 256, 128, 64],
     nfeature_list=[768, 512, 256, 128, 64],
     output_image_size=(1120, 800),
     act_layer=nn.GELU,
