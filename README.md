@@ -1,6 +1,11 @@
 YOKE: Yielding Optimal Knowledge Enhancement
 ============================================
 
+
+[![pipeline status](https://gitlab.lanl.gov/multiphysmultimatapps/yoke/badges/main/pipeline.svg)](https://gitlab.lanl.gov/multiphysmultimatapps/yoke/-/commits/main) 
+ [![coverage report](https://gitlab.lanl.gov/multiphysmultimatapps/yoke/badges/main/coverage.svg)](https://gitlab.lanl.gov/multiphysmultimatapps/yoke/-/commits/main) 
+  [![Latest Release](https://gitlab.lanl.gov/multiphysmultimatapps/yoke/-/badges/release.svg)](https://gitlab.lanl.gov/multiphysmultimatapps/yoke/-/releases) 
+
 ![Get YOKEd!](./YOKE_DALLE_512x512.png)
 
 
