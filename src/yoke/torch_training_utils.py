@@ -402,6 +402,70 @@ def train_array_datastep(data: tuple, model, optimizer, loss_fn, device: torch.d
     return truth, pred, loss
 
 
+def train_loderunner_datastep(
+        data: tuple,
+        model,
+        optimizer,
+        loss_fn,
+        device: torch.device):
+    """A training step for which the data is of multi-input, multi-output type.
+
+    This is currently a proto-type function to get the LodeRunner architecture
+    training on a non-variable set of channels.
+
+    Args:
+        data (tuple): tuple of model input and corresponding ground truth
+        model (loaded pytorch model): model to train
+        optimizer (torch.optim): optimizer for training set
+        loss_fn (torch.nn Loss Function): loss function for training set
+        device (torch.device): device index to select
+
+    Returns:
+        loss (): evaluated loss for the data sample
+
+    """
+    # Set model to train
+    model.train()
+
+    # Extract data
+    (start_img, end_img, Dt) = data
+    start_img = start_img.to(device, non_blocking=True)
+    Dt = Dt.to(torch.float32).to(device, non_blocking=True)
+
+    end_img = end_img.to(device, non_blocking=True)
+
+    # For our first LodeRunner training on the lsc240420 dataset the input and
+    # output prediction variables are fixed.
+    #
+    # Both in_vars and out_vars correspond to indices for every variable in
+    # this training setup...
+    #
+    # in_vars = ['density_case',
+    #            'density_cushion',
+    #            'density_maincharge',
+    #            'density_outside_air',
+    #            'density_striker',
+    #            'density_throw',
+    #            'Uvelocity',
+    #            'Wvelocity']
+    in_vars = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7]).to(device, non_blocking=True)
+    out_vars = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7]).to(device, non_blocking=True)
+    
+    # Perform a forward pass
+    # NOTE: If training on GPU model should have already been moved to GPU
+    # prior to initalizing optimizer.
+    pred_img = model(start_img, in_vars, out_vars, Dt)
+
+    loss = loss_fn(pred_img, end_img)
+
+    # Perform backpropagation and update the weights
+    optimizer.zero_grad(set_to_none=True)  # Possible speed-up
+    loss.mean().backward()
+    optimizer.step()
+
+    return end_img, pred_img, loss
+
+
 ####################################
 # Evaluating on a Datastep
 ####################################
@@ -461,6 +525,63 @@ def eval_array_datastep(data: tuple, model, loss_fn, device: torch.device):
     loss = loss_fn(pred, truth)
 
     return truth, pred, loss
+
+
+def eval_loderunner_datastep(
+        data: tuple,
+        model,
+        loss_fn,
+        device: torch.device):
+    """An evaluation step for which the data is of multi-input, multi-output type.
+
+    This is currently a proto-type function to get the LodeRunner architecture
+    training on a non-variable set of channels.
+
+    Args:
+        data (tuple): tuple of model input and corresponding ground truth
+        model (loaded pytorch model): model to train
+        loss_fn (torch.nn Loss Function): loss function for training set
+        device (torch.device): device index to select
+
+    Returns:
+        loss (): evaluated loss for the data sample
+
+    """
+    # Set model to train
+    model.eval()
+
+    # Extract data
+    (start_img, end_img, Dt) = data
+    start_img = start_img.to(device, non_blocking=True)
+    Dt = Dt.to(torch.float32).to(device, non_blocking=True)
+
+    end_img = end_img.to(device, non_blocking=True)
+
+    # For our first LodeRunner training on the lsc240420 dataset the input and
+    # output prediction variables are fixed.
+    #
+    # Both in_vars and out_vars correspond to indices for every variable in
+    # this training setup...
+    #
+    # in_vars = ['density_case',
+    #            'density_cushion',
+    #            'density_maincharge',
+    #            'density_outside_air',
+    #            'density_striker',
+    #            'density_throw',
+    #            'Uvelocity',
+    #            'Wvelocity']
+    in_vars = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7]).to(device, non_blocking=True)
+    out_vars = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7]).to(device, non_blocking=True)
+    
+    # Perform a forward pass
+    # NOTE: If training on GPU model should have already been moved to GPU
+    # prior to initalizing optimizer.
+    pred_img = model(start_img, in_vars, out_vars, Dt)
+
+    loss = loss_fn(pred_img, end_img)
+
+    return end_img, pred_img, loss
 
 
 ######################################
@@ -699,6 +820,90 @@ def train_array_csv_epoch(
                 for valdata in validation_data:
                     valbatch_ID += 1
                     truth, pred, val_loss = eval_array_datastep(
+                        valdata, model, loss_fn, device
+                    )
+
+                    template = "{}, {}, {}"
+                    for i in range(val_batchsize):
+                        print(
+                            template.format(
+                                epochIDX,
+                                valbatch_ID,
+                                val_loss.cpu().detach().numpy().flatten()[i],
+                            ),
+                            file=val_rcrd_file,
+                        )
+
+    return
+
+
+def train_simple_loderunner_epoch(
+    training_data,
+    validation_data,
+    model,
+    optimizer,
+    loss_fn,
+    epochIDX,
+    train_per_val,
+    train_rcrd_filename: str,
+    val_rcrd_filename: str,
+    device: torch.device,
+):
+    """Function to complete a training epoch on the LodeRunner architecture with
+    fixed channels in the input and output. Training and validation information
+    is saved to successive CSV files.
+
+    Args:
+        training_data (torch.dataloader): dataloader containing the training samples
+        validation_data (torch.dataloader): dataloader containing the validation samples
+        model (loaded pytorch model): model to train
+        optimizer (torch.optim): optimizer for training set
+        loss_fn (torch.nn Loss Function): loss function for training set
+        epochIDX (int): Index of current training epoch
+        train_per_val (int): Number of Training epochs between each validation
+        train_rcrd_filename (str): Name of CSV file to save training sample stats to
+        val_rcrd_filename (str): Name of CSV file to save validation sample stats to
+        device (torch.device): device index to select
+
+    """
+    # Initialize things to save
+    trainbatches = len(training_data)
+    valbatches = len(validation_data)
+    trainbatch_ID = 0
+    valbatch_ID = 0
+
+    train_batchsize = training_data.batch_size
+    val_batchsize = validation_data.batch_size
+
+    train_rcrd_filename = train_rcrd_filename.replace("<epochIDX>", f"{epochIDX:04d}")
+    # Train on all training samples
+    with open(train_rcrd_filename, "a") as train_rcrd_file:
+        for traindata in training_data:
+            trainbatch_ID += 1
+            truth, pred, train_loss = train_loderunner_datastep(
+                traindata, model, optimizer, loss_fn, device
+            )
+            
+            template = "{}, {}, {}"
+            for i in range(train_batchsize):
+                print(
+                    template.format(
+                        epochIDX,
+                        trainbatch_ID,
+                        train_loss.cpu().detach().numpy().flatten()[i],
+                    ),
+                    file=train_rcrd_file,
+                )
+
+    # Evaluate on all validation samples
+    if epochIDX % train_per_val == 0:
+        print("Validating...", epochIDX)
+        val_rcrd_filename = val_rcrd_filename.replace("<epochIDX>", f"{epochIDX:04d}")
+        with open(val_rcrd_filename, "a") as val_rcrd_file:
+            with torch.no_grad():
+                for valdata in validation_data:
+                    valbatch_ID += 1
+                    truth, pred, val_loss = eval_loderunner_datastep(
                         valdata, model, loss_fn, device
                     )
 

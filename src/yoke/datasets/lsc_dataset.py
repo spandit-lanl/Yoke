@@ -7,7 +7,9 @@ Charge data, *lsc240420*.
 # Packages
 ####################################
 import os
+from pathlib import Path
 import typing
+import random
 import numpy as np
 import pandas as pd
 import torch
@@ -238,8 +240,12 @@ class LSCnorm_cntr2rho_DataSet(Dataset):
 
 class LSC_rho2rho_temporal_DataSet(Dataset):
     def __init__(
-        self, LSC_NPZ_DIR: str, file_prefix_list: str, max_timeIDX_offset: int
-    ):
+            self,
+            LSC_NPZ_DIR: str,
+            file_prefix_list: str,
+            max_timeIDX_offset: int,
+            max_file_checks: int,
+    ) -> None:
         """This dataset returns multi-channel images at two different times
         from the *Layered Shaped Charge* simulation. The *maximum time-offset*
         can be specified. The channels in the images returned are the densities
@@ -253,20 +259,28 @@ class LSC_rho2rho_temporal_DataSet(Dataset):
             LSC_NPZ_DIR (str): Location of LSC NPZ files.
             file_prefix_list (str): Text file listing unique prefixes corresponding
                                     to unique simulations.
-            max_timeIDX_offset (int): Maximum time-ahead to attempt
+            max_timeIDX_offset (int): Maximum timesteps-ahead to attempt
                                       prediction for. A prediction image will be chosen
                                       within this timeframe at random.
+            max_file_checks (int): This dataset generates two random time indices and 
+                                   checks if the corresponding files exist. This 
+                                   argument controls the maximum number of times indices 
+                                   are generated before throwing an error.
 
         """
         
         # Model Arguments
         self.LSC_NPZ_DIR = LSC_NPZ_DIR
         self.max_timeIDX_offset = max_timeIDX_offset
-
+        self.max_file_checks = max_file_checks
+        
         # Create filelist
         with open(file_prefix_list) as f:
             self.file_prefix_list = [line.rstrip() for line in f]
 
+        # Shuffle the list of prefixes in-place
+        random.shuffle(self.file_prefix_list)
+        
         self.Nsamples = len(self.file_prefix_list)
 
         # Lists of fields to return images for 
@@ -294,16 +308,35 @@ class LSC_rho2rho_temporal_DataSet(Dataset):
         # Get the input image
         file_prefix = self.file_prefix_list[index]
 
-        # Files have name format *lsc240420_id01001_pvi_idx00000.npz*. Choose
-        # random starting index 0-96 so the end index will be less than or
-        # equal to 99.
-        startIDX = self.rng.integers(0, 97)
-        endIDX = self.rng.integers(1, self.max_timeIDX_offset + 1) + startIDX
+        # Use `while` loop to search until a pair of files which exists is
+        # found.
+        attempt = 0
+        while attempt < self.max_file_checks:
+            # Files have name format
+            # *lsc240420_id01001_pvi_idx00000.npz*. Choose random starting
+            # index 0-96 so the end index will be less than or equal to 99.
+            startIDX = self.rng.integers(0, 97)
+            endIDX = self.rng.integers(1, self.max_timeIDX_offset + 1) + startIDX
 
-        # Construct file names
-        start_file = file_prefix + f'_pvi_idx{startIDX:05d}.npz'
-        end_file = file_prefix + f'_pvi_idx{endIDX:05d}.npz'
+            # Construct file names
+            start_file = file_prefix + f'_pvi_idx{startIDX:05d}.npz'
+            end_file = file_prefix + f'_pvi_idx{endIDX:05d}.npz'
 
+            # Check if both files exist
+            start_file_path = Path(self.LSC_NPZ_DIR + start_file)
+            end_file_path = Path(self.LSC_NPZ_DIR + end_file)
+
+            if start_file_path.is_file() and end_file_path.is_file():
+                break
+
+            attempt +=1
+
+        if attempt == self.max_file_checks:
+            print("In LSC_rho2rho_temporal_DataSet, max_file_checks reached for prefix:",
+                  file_prefix)
+            raise FileNotFoundError(("Two files were not found within "
+                                     "max_file_checks attempts."))
+        
         # Load NPZ files
         start_npz = np.load(self.LSC_NPZ_DIR + start_file)
         end_npz = np.load(self.LSC_NPZ_DIR + end_file)
@@ -311,6 +344,8 @@ class LSC_rho2rho_temporal_DataSet(Dataset):
         start_img_list = []
         for hfield in self.hydro_fields:
             tmp_img = LSCread_npz(start_npz, hfield)
+            # Remember to replace all NaNs with 0.0
+            tmp_img = np.nan_to_num(tmp_img, nan=0.0)
             tmp_img = np.concatenate((np.fliplr(tmp_img), tmp_img), axis=1)
 
             start_img_list.append(tmp_img)
@@ -322,6 +357,8 @@ class LSC_rho2rho_temporal_DataSet(Dataset):
         end_img_list = []
         for hfield in self.hydro_fields:
             tmp_img = LSCread_npz(end_npz, hfield)
+            # Remember to replace all NaNs with 0.0
+            tmp_img = np.nan_to_num(tmp_img, nan=0.0)
             tmp_img = np.concatenate((np.fliplr(tmp_img), tmp_img), axis=1)
 
             end_img_list.append(tmp_img)

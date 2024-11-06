@@ -42,8 +42,7 @@ def make_prefix_tvtlists(
     prefix_list: list,
     sample_split: tuple[float, float, float],
     save_path: NoneStr = None,
-    save: bool = True,
-):
+    save: bool = True) -> tuple[list[str], list[str], list[str]]: 
     """Function to make training, validation, and testing sample lists and save
     them to files.
 

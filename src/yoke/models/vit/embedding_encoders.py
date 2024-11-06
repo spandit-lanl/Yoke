@@ -148,8 +148,16 @@ class ClimaX_VarEmbed(nn.Module):
         self.initialize_weights()
 
     def create_var_embedding(self, dim):
+        """Create variable embedding.
+
+        Returns a variable embedding tensor of the correct size along with a
+        dictionary mapping variable name strings to integers that can be used
+        to construct the `in_vars` input to the forward method during training.
+
+        """
         var_embed = nn.Parameter(
-            torch.zeros(1, len(self.default_vars), dim), requires_grad=True
+            torch.zeros(1, len(self.default_vars), dim),
+            requires_grad=True
         )
         # TODO: create a mapping from var --> idx
         var_map = {}
@@ -167,22 +175,31 @@ class ClimaX_VarEmbed(nn.Module):
         )
         self.var_embed.data.copy_(torch.from_numpy(var_embed).float().unsqueeze(0))
 
-    @lru_cache(maxsize=None)
-    def get_var_ids(self, vars, device):
-        ids = np.array([self.var_map[var] for var in vars])
-        return torch.from_numpy(ids).to(device)
+    # @lru_cache(maxsize=None)
+    # def get_var_ids(self, vars, device):
+    #     ids = np.array([self.var_map[var] for var in vars])
+    #     return torch.from_numpy(ids).to(device)
 
-    def get_var_emb(self, var_emb, vars):
-        ids = self.get_var_ids(vars, var_emb.device)
-        return var_emb[:, ids, :]
+    # def get_var_emb(self, var_emb, vars):
+    #     ids = self.get_var_ids(vars, var_emb.device)
+    #     return var_emb[:, ids, :]
 
-    def forward(self, x, vars):
+    def forward(self, x, in_vars):
+        """Forward method for ClimaX variable embedding.
+
+        NOTE: `in_vars` should be a (1, C) tensor of integers where the
+        integers correspond to the variables present in the channels of
+        `x`. This implies that every sample in the batch represented by `x`
+        must correspond to the same variables.
+
+        """
         # The input tensor is shape:
         #  (B, V, L, D)=(B, NumVars, NumTokens, embed_dim)
-        variables = tuple(vars)
+        #variables = tuple(vars)
 
         # Variable embedding is (1, V, D)
-        var_embed = self.get_var_emb(self.var_embed, variables)
+        var_embed = self.var_embed[:, in_vars, :]
+        #var_embed = self.get_var_emb(self.var_embed, vars)
 
         # Unsqueeze a dimension after variable dimension...
         #   var_embed -> (1, V, 1, D)
@@ -369,10 +386,6 @@ if __name__ == "__main__":
 
     """
 
-    # Original: (B, C, H, W) = (3, 5, 128, 128)
-    # After parallel-patch embedding: (B, V, L, D)
-    x = torch.rand(3, 4, 64, 72)
-
     default_vars = [
         "cu_pressure",
         "cu_density",
@@ -390,23 +403,29 @@ if __name__ == "__main__":
     num_patches = 64
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    # Original: (B, C, H, W) = (3, 5, 128, 128)
+    # After parallel-patch embedding: (B, V, L, D)
+    x = torch.rand(3, 4, 64, 72)
     x = x.type(torch.FloatTensor).to(device)
 
+    # Indices correspond to
+    # ["cu_density", "ss_density", "ss_temperature", "r_vel"]
+    in_vars = torch.tensor([1, 4, 5, 6]).to(device)
+    
     # Prior to variable aggregation: (B, V, L, D)
-    var_emb_model = ClimaX_VarEmbed(default_vars=default_vars, embed_dim=embed_dim).to(
-        device
-    )
+    var_emb_model = ClimaX_VarEmbed(
+        default_vars=default_vars,
+        embed_dim=embed_dim).to(device)
 
     print("Vaiable Encoding Input shape:", x.shape)
     print(
         "Variable Encoding shape:",
-        var_emb_model(
-            x, vars=["cu_density", "ss_density", "ss_temperature", "r_vel"]
-        ).shape,
+        var_emb_model(x, in_vars=in_vars).shape,
     )
 
     # After variable aggregation: (B, L, D)
-    x = torch.rand(3, 64, 72)
+    x = torch.rand(3, 64, 72).to(device)
     pos_emb_model = ClimaX_PosEmbed(
         embed_dim=embed_dim,
         patch_size=patch_size,
@@ -418,9 +437,8 @@ if __name__ == "__main__":
     print("Position Encoding shape:", pos_emb_model(x).shape)
 
     # After position encoding: (B, L, D)
-    x = torch.rand(3, 64, 72)
-    lead_times = torch.rand(3)
-    print(lead_times)
+    x = torch.rand(3, 64, 72).to(device)
+    lead_times = torch.rand(3).to(device)
     time_emb_model = ClimaX_TimeEmbed(embed_dim=embed_dim).to(device)
 
     print("Temporal Encoding input shape:", x.shape)
@@ -450,7 +468,7 @@ if __name__ == "__main__":
 
     # The input tensor is shape:
     #  (B, H, Hw, Ww, wh*ww, wh*ww)
-    win_patches = torch.rand(3, 10, 8, 16, wh * ww, wh * ww)
+    win_patches = torch.rand(3, 10, 8, 16, wh * ww, wh * ww).to(device)
     print("Size of relative-position embedding input:", win_patches.shape)
     print(
         "Size of relative-position embedding output:", rel_emb_model(win_patches).shape

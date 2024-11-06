@@ -29,13 +29,16 @@ class LodeRunner(nn.Module):
     surrogate models.
 
     Args:
-        emb_size (int): Initial embedding dimension.
+        default_vars (list[str]): List of default variables to be used for training
+        image_size (tuple[int, int]): Height and width, in pixels, of input image.
+        patch_size (tuple[int, int]): Height and width pixel dimensions of patch in 
+                                      initial embedding.
+        emb_dim (int): Initial embedding dimension.
         emb_factor (int): Scale of embedding in each patch merge/exand.
-        patch_grid_size (int, int): Initial patch-grid height and width for input.
+        num_heads (int): Number of heads in the MSA layers.
         block_structure (int, int, int, int): Tuple specifying the number of SWIN
                                               encoders in each block structure
                                               separated by the patch-merge layers.
-        num_heads (int): Number of heads in the MSA layers.
         window_sizes (list(4*(int, int))): Window sizes within each SWIN encoder/decoder.
         patch_merge_scales (list(3*(int, int))): Height and width scales used in
                                                  each patch-merge layer.
@@ -132,10 +135,19 @@ class LodeRunner(nn.Module):
             patch_size=self.patch_size,
         )
 
-    def forward(self, x, in_vars, out_vars, lead_times: torch.Tensor):
+    def forward(
+            self,
+            x: torch.Tensor,
+            in_vars: torch.Tensor,
+            out_vars: torch.Tensor,
+            lead_times: torch.Tensor):
+
+        # WARNING!: Most likely the `in_vars` and `out_vars` need to be tensors
+        # of integers corresponding to variables in the `default_vars` list.
+
         # First embed input
-        varIDXs = self.var_embed_layer.get_var_ids(tuple(in_vars), x.device)
-        x = self.parallel_embed(x, varIDXs)
+        #varIDXs = self.var_embed_layer.get_var_ids(tuple(in_vars), x.device)
+        x = self.parallel_embed(x, in_vars)
 
         # Encode variables
         x = self.var_embed_layer(x, in_vars)
@@ -159,8 +171,8 @@ class LodeRunner(nn.Module):
         x = self.unpatch(x)
 
         # Select only entries corresponding to out_vars for loss
-        out_var_ids = self.var_embed_layer.get_var_ids(tuple(out_vars), x.device)
-        preds = x[:, out_var_ids]
+        #out_var_ids = self.var_embed_layer.get_var_ids(tuple(out_vars), x.device)
+        preds = x[:, out_vars]
 
         return preds
 
@@ -168,8 +180,9 @@ class LodeRunner(nn.Module):
 if __name__ == "__main__":
     from yoke.torch_training_utils import count_torch_params
 
+    
     device = "cuda" if torch.cuda.is_available() else "cpu"
-
+    
     default_vars = [
         "cu_pressure",
         "cu_density",
@@ -197,22 +210,24 @@ if __name__ == "__main__":
     x = torch.rand(5, 4, 1120, 800)
     x = x.type(torch.FloatTensor).to(device)
 
-    lead_times = torch.rand(5)  # Lead time for each entry in batch
-    x_vars = ["cu_density", "ss_density", "ply_density", "air_density"]
+    lead_times = torch.rand(5).to(device)  # Lead time for each entry in batch
+    # x_vars = ["cu_density", "ss_density", "ply_density", "air_density"]
+    x_vars = torch.tensor([1, 7, 10, 13]).to(device)
+    
+    #out_vars = ["cu_density", "ss_density", "ply_density", "air_density"]
+    out_vars = torch.tensor([1, 7, 10, 13]).to(device)
 
-    out_vars = ["cu_density", "ss_density", "ply_density", "air_density"]
-
-    embed_dim = 128
+    # Common model setup for LodeRunner
     emb_factor = 2
     patch_size = (10, 10)
     image_size = (1120, 800)
-    block_structure = (1, 1, 3, 1)
     num_heads = 8
     window_sizes = [(8, 8), (8, 8), (4, 4), (2, 2)]
     patch_merge_scales = [(2, 2), (2, 2), (2, 2)]
-
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    x = x.type(torch.FloatTensor).to(device)
+    
+    # Tiny size
+    embed_dim = 96
+    block_structure = (1, 1, 3, 1)
 
     # Test LodeRunner architecture.
     lode_runner = LodeRunner(
@@ -227,7 +242,113 @@ if __name__ == "__main__":
         patch_merge_scales=patch_merge_scales,
         verbose=False,
     ).to(device)
+    loderunner_out = lode_runner(x, x_vars, out_vars, lead_times)
+    print("LodeRunner-tiny output shape:", loderunner_out.shape)
+    print("LodeRunner-tiny output has NaNs:", torch.isnan(loderunner_out).any())
+    print("LodeRunner-tiny parameters:", count_torch_params(lode_runner, trainable=True))
+
+    # Small size
+    embed_dim = 96
+    block_structure = (1, 1, 9, 1)
+
+    lode_runner = LodeRunner(
+        default_vars=default_vars,
+        image_size=image_size,
+        patch_size=patch_size,
+        embed_dim=embed_dim,
+        emb_factor=emb_factor,
+        num_heads=num_heads,
+        block_structure=block_structure,
+        window_sizes=window_sizes,
+        patch_merge_scales=patch_merge_scales,
+        verbose=False,
+    ).to(device)
     print(
-        "Lode Runner output shape:", lode_runner(x, x_vars, out_vars, lead_times).shape
+        "LodeRunner-small parameters:",
+        count_torch_params(lode_runner, trainable=True)
     )
-    print("Lode Runner parameters:", count_torch_params(lode_runner, trainable=True))
+
+    # Big size
+    embed_dim = 128
+    block_structure=(1, 1, 9, 1)
+
+    lode_runner = LodeRunner(
+        default_vars=default_vars,
+        image_size=image_size,
+        patch_size=patch_size,
+        embed_dim=embed_dim,
+        emb_factor=emb_factor,
+        num_heads=num_heads,
+        block_structure=block_structure,
+        window_sizes=window_sizes,
+        patch_merge_scales=patch_merge_scales,
+        verbose=False,
+    ).to(device)
+    print(
+        "LodeRunner-big parameters:",
+        count_torch_params(lode_runner, trainable=True)
+    )
+
+    # Large size
+    embed_dim = 192
+    block_structure=(1, 1, 9, 1)
+
+    lode_runner = LodeRunner(
+        default_vars=default_vars,
+        image_size=image_size,
+        patch_size=patch_size,
+        embed_dim=embed_dim,
+        emb_factor=emb_factor,
+        num_heads=num_heads,
+        block_structure=block_structure,
+        window_sizes=window_sizes,
+        patch_merge_scales=patch_merge_scales,
+        verbose=False,
+    ).to(device)
+    print(
+        "LodeRunner-large parameters:",
+        count_torch_params(lode_runner, trainable=True)
+    )
+
+    # Huge size
+    embed_dim = 352
+    block_structure=(1, 1, 9, 1)
+
+    lode_runner = LodeRunner(
+        default_vars=default_vars,
+        image_size=image_size,
+        patch_size=patch_size,
+        embed_dim=embed_dim,
+        emb_factor=emb_factor,
+        num_heads=num_heads,
+        block_structure=block_structure,
+        window_sizes=window_sizes,
+        patch_merge_scales=patch_merge_scales,
+        verbose=False,
+    ).to(device)
+    print(
+        "LodeRunner-huge parameters:",
+        count_torch_params(lode_runner, trainable=True)
+    )
+
+    
+    # Giant size
+    embed_dim = 512
+    block_structure=(1, 1, 11, 2)
+
+    lode_runner = LodeRunner(
+        default_vars=default_vars,
+        image_size=image_size,
+        patch_size=patch_size,
+        embed_dim=embed_dim,
+        emb_factor=emb_factor,
+        num_heads=num_heads,
+        block_structure=block_structure,
+        window_sizes=window_sizes,
+        patch_merge_scales=patch_merge_scales,
+        verbose=False,
+    ).to(device)
+    print(
+        "LodeRunner-giant parameters:",
+        count_torch_params(lode_runner, trainable=True)
+    )

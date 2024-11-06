@@ -322,7 +322,7 @@ class ShiftedWindowMSA(nn.Module):
                 self.window_size[0] * self.window_size[1],
                 self.window_size[0] * self.window_size[1],
             )
-        )  # .cuda() only if cuda enabled
+        ).to(x.device)  # .cuda() only if cuda enabled
 
         # Set bottom left quarter of mask to *-inf*
         halfIDX = self.window_size[0] * (self.window_size[1] // 2)
@@ -509,7 +509,8 @@ class WindowCosMSA(nn.Module):
         # dot-product attention.
         wei = F.normalize(Q, dim=-1) @ F.normalize(K, dim=-1).transpose(-2, -1)
         logit_scale = torch.clamp(
-            self.logit_scale, max=torch.log(torch.tensor(1.0 / 0.01))
+            self.logit_scale,
+            max=torch.log(torch.tensor(1.0 / 0.01).to(x.device))
         ).exp()
         wei = wei * logit_scale
 
@@ -688,7 +689,8 @@ class ShiftedWindowCosMSA(nn.Module):
         # dot-product attention.
         wei = F.normalize(Q, dim=-1) @ F.normalize(K, dim=-1).transpose(-2, -1)
         logit_scale = torch.clamp(
-            self.logit_scale, max=torch.log(torch.tensor(1.0 / 0.01))
+            self.logit_scale,
+            max=torch.log(torch.tensor(1.0 / 0.01).to(x.device))
         ).exp()
         wei = wei * logit_scale
 
@@ -705,7 +707,7 @@ class ShiftedWindowCosMSA(nn.Module):
                 self.window_size[0] * self.window_size[1],
                 self.window_size[0] * self.window_size[1],
             )
-        )  # .cuda() only if cuda enabled
+        ).to(x.device)
 
         # Set bottom left quarter of mask to *-inf*
         halfIDX = self.window_size[0] * (self.window_size[1] // 2)

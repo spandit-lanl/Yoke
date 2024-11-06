@@ -64,7 +64,7 @@ class ClimaX_ParallelVarPatchEmbed(nn.Module):
             raise
 
         try:
-            msg = "Image width not divisible by patch widht!!!"
+            msg = "Image width not divisible by patch width!!!"
             assert img_size[1] % patch_size[1] == 0, msg
         except AssertionError as e:
             msg_tuple = ("Image width:", img_size[1], "Patch width:", patch_size[1])
@@ -112,14 +112,19 @@ class ClimaX_ParallelVarPatchEmbed(nn.Module):
                 bound = 1 / math.sqrt(fan_in)
                 nn.init.uniform_(self.proj_biases[idx], -bound, bound)
 
-    def forward(self, x, vars=None):
+    def forward(self, x: torch.Tensor, in_vars: torch.Tensor):
+        """Forward method of the Parallel Embedding.
+
+        NOTE: `in_vars` should be a (1, C) tensor of integers where the
+        integers correspond to the variables present in the channels of
+        `x`. This implies that every sample in the batch represented by `x`
+        must correspond to the same variables.
+
+        """
         B, C, H, W = x.shape
 
-        if vars is None:
-            vars = range(self.max_vars)
-
-        weights = self.proj_weights[vars].flatten(0, 1)
-        biases = self.proj_biases[vars].flatten(0, 1)
+        weights = self.proj_weights[in_vars].flatten(0, 1)
+        biases = self.proj_biases[in_vars].flatten(0, 1)
 
         # Each variable's image is embedded separately. Each variable's image
         # gets mapped to an a set of patches of embeddings. The variable's
@@ -127,7 +132,7 @@ class ClimaX_ParallelVarPatchEmbed(nn.Module):
         #
         # For embedding dimension E and patch size p=(p1, p2),
         # (B, V, H, W) -> (B, VxE, H', W') with H'=H/p1, W'=W/p2
-        groups = len(vars)
+        groups = in_vars.shape[0]
         proj = F.conv2d(x, weights, biases, groups=groups, stride=self.patch_size)
 
         # Flatten the patch arrays and separate the variables and embeddings.
@@ -230,7 +235,7 @@ if __name__ == "__main__":
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     x = x.type(torch.FloatTensor).to(device)
-
+    in_vars = torch.tensor([0, 1, 3, 4]).to(device)
     PPembed_model = ClimaX_ParallelVarPatchEmbed(
         max_vars=5,
         img_size=(128, 128),
@@ -240,7 +245,7 @@ if __name__ == "__main__":
     ).to(device)
 
     print("Input shape:", x.shape)
-    print("Parallel-patch embed shape:", PPembed_model(x, vars=[0, 1, 3, 4]).shape)
+    print("Parallel-patch embed shape:", PPembed_model(x, in_vars=in_vars).shape)
 
     swin_embed_model = SwinEmbedding(
         num_vars=4,
