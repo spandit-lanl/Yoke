@@ -7,6 +7,7 @@ Charge data, *lsc240420*.
 # Packages
 ####################################
 import os
+import sys
 from pathlib import Path
 import typing
 import random
@@ -305,67 +306,86 @@ class LSC_rho2rho_temporal_DataSet(Dataset):
         index.
 
         """
-        # Get the input image
-        file_prefix = self.file_prefix_list[index]
+        # Get the input image. Try several indices if necessary.
+        prefix_attempt = 0
+        prefix_loop_break = False
+        while prefix_attempt < 5:
+            file_prefix = self.file_prefix_list[index]
 
-        # Use `while` loop to search until a pair of files which exists is
-        # found.
-        attempt = 0
-        while attempt < self.max_file_checks:
-            # Files have name format
-            # *lsc240420_id01001_pvi_idx00000.npz*. Choose random starting
-            # index 0-96 so the end index will be less than or equal to 99.
-            startIDX = self.rng.integers(0, 97)
-            endIDX = self.rng.integers(1, self.max_timeIDX_offset + 1) + startIDX
+            # Use `while` loop to search until a pair of files which exists is
+            # found.
+            attempt = 0
+            while attempt < self.max_file_checks:
+                # Files have name format
+                # *lsc240420_id01001_pvi_idx00000.npz*. Choose random starting
+                # index 0-96 so the end index will be less than or equal to 99.
+                startIDX = self.rng.integers(0, 97)
+                endIDX = self.rng.integers(1, self.max_timeIDX_offset + 1) + startIDX
 
-            # Construct file names
-            start_file = file_prefix + f'_pvi_idx{startIDX:05d}.npz'
-            end_file = file_prefix + f'_pvi_idx{endIDX:05d}.npz'
+                # Construct file names
+                start_file = file_prefix + f'_pvi_idx{startIDX:05d}.npz'
+                end_file = file_prefix + f'_pvi_idx{endIDX:05d}.npz'
 
-            # Check if both files exist
-            start_file_path = Path(self.LSC_NPZ_DIR + start_file)
-            end_file_path = Path(self.LSC_NPZ_DIR + end_file)
+                # Check if both files exist
+                start_file_path = Path(self.LSC_NPZ_DIR + start_file)
+                end_file_path = Path(self.LSC_NPZ_DIR + end_file)
 
-            if start_file_path.is_file() and end_file_path.is_file():
+                if start_file_path.is_file() and end_file_path.is_file():
+                    prefix_loop_break = True
+                    break
+
+                attempt += 1
+
+            if attempt == self.max_file_checks:
+                fnf_msg = ("In LSC_rho2rho_temporal_DataSet, "
+                           "max_file_checks "
+                           f"reached for prefix: {file_prefix}")
+                print(fnf_msg, file=sys.stderr)
+
+            # Break outer loop if time-pairs were found.
+            if prefix_loop_break:
                 break
 
-            attempt +=1
+            # Try different prefix if no time-pairs are found.
+            print(f"Prefix attempt {prefix_attempt + 1} failed. Trying next prefix.", 
+                  file=sys.stderr)
+            prefix_attempt += 1
+            index = (index + 1) % self.Nsamples  # Rotate index if necessarys
+                    
+        # Load NPZ files. Raise exceptions if file is not able to be loaded.
+        try:
+            start_npz = np.load(self.LSC_NPZ_DIR + start_file)
+        except Exception as e:
+            print(f"Error loading start file: {self.LSC_NPZ_DIR + start_file}",
+                  file=sys.stderr)
+            raise e
 
-        if attempt == self.max_file_checks:
-            print("In LSC_rho2rho_temporal_DataSet, max_file_checks reached for prefix:",
-                  file_prefix)
-            raise FileNotFoundError(("Two files were not found within "
-                                     "max_file_checks attempts."))
-        
-        # Load NPZ files
-        start_npz = np.load(self.LSC_NPZ_DIR + start_file)
-        end_npz = np.load(self.LSC_NPZ_DIR + end_file)
+        try:
+            end_npz = np.load(self.LSC_NPZ_DIR + end_file)
+        except Exception as e:
+            print(f"Error loading end file: {self.LSC_NPZ_DIR + end_file}",
+                  file=sys.stderr)
+            start_npz.close()
+            raise e
 
         start_img_list = []
+        end_img_list = []
         for hfield in self.hydro_fields:
             tmp_img = LSCread_npz(start_npz, hfield)
             # Remember to replace all NaNs with 0.0
             tmp_img = np.nan_to_num(tmp_img, nan=0.0)
             tmp_img = np.concatenate((np.fliplr(tmp_img), tmp_img), axis=1)
-
             start_img_list.append(tmp_img)
 
-        # Concatenate images channel first.
-        start_img = np.stack(start_img_list, axis=0)
-        start_img = torch.tensor(start_img).to(torch.float32)
-
-        end_img_list = []
-        for hfield in self.hydro_fields:
             tmp_img = LSCread_npz(end_npz, hfield)
             # Remember to replace all NaNs with 0.0
             tmp_img = np.nan_to_num(tmp_img, nan=0.0)
             tmp_img = np.concatenate((np.fliplr(tmp_img), tmp_img), axis=1)
-
             end_img_list.append(tmp_img)
 
         # Concatenate images channel first.
-        end_img = np.stack(end_img_list, axis=0)
-        end_img = torch.tensor(end_img).to(torch.float32)
+        start_img = torch.tensor(np.stack(start_img_list, axis=0)).to(torch.float32)
+        end_img = torch.tensor(np.stack(end_img_list, axis=0)).to(torch.float32)
 
         # Get the time offset
         Dt = 0.25*(endIDX - startIDX)
@@ -376,114 +396,3 @@ class LSC_rho2rho_temporal_DataSet(Dataset):
 
         return start_img, end_img, Dt
 
-# if __name__ == '__main__':
-#     """For testing and debugging.
-
-#     """
-
-#     # Imports for plotting
-#     # To view possible matplotlib backends use
-#     # >>> import matplotlib
-#     # >>> bklist = matplotlib.rcsetup.interactive_bk
-#     # >>> print(bklist)
-#     import matplotlib.pyplot as plt
-#     import matplotlib
-#     from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
-#     import os
-#     matplotlib.use('MacOSX')
-#     #matplotlib.use('TkAgg')
-#     # Get rid of type 3 fonts in figures
-#     matplotlib.rcParams['pdf.fonttype'] = 42
-#     matplotlib.rcParams['ps.fonttype'] = 42
-#     import matplotlib.pyplot as plt
-#     # Ensure LaTeX font
-#     font = {'family': 'serif'}
-#     plt.rc('font', **font)
-#     plt.rcParams['figure.figsize'] = (6, 6)
-#     from mpl_toolkits.axes_grid1 import make_axes_locatable
-
-
-#     npz_dir = "/Users/l255541/LSC_DATA/lsc240420/"
-#     file_prefix_list = os.path.join(os.path.dirname(__file__),
-#                                     "../../../applications/prefixes_test_samples.txt")
-#     lsc_r2r_DS = LSC_rho2rho_temporal_DataSet(LSC_NPZ_DIR=npz_dir,
-#                                               file_prefix_list=file_prefix_list,
-#                                               max_timeIDX_offset=3)
-    
-#     # # Test key
-#     # npz_filename = LSC_NPZ_DIR + 'lsc240420_id01001_pvi_idx00000.npz'
-#     # print('LSC NPZ filename:', npz_filename)
-#     # LSCkey = LSCnpz2key(npz_filename)
-#     # print('LSC key:', LSCkey)
-
-#     # # Test B-spline retrieval
-#     # csv_filename = LSC_DESIGN_DIR + 'design_lsc240420_SAMPLE.csv'
-#     # bspline_pts = LSCcsv2bspline_pts(csv_filename, LSCkey)
-#     # print('Shape of B-spline points:', bspline_pts.shape)
-#     # print('B-spline points:', bspline_pts)
-
-#     # filelist = YOKE_DIR + 'filelists/lsc240420_test_sample.txt'
-#     # LSC_ds = LSC_cntr2rho_DataSet(LSC_NPZ_DIR,
-#     #                               filelist,
-#     #                               csv_filename)
-#     # normalization_file = YOKE_DIR + 'normalization/lsc240420_norm.npz'
-#     # LSC_ds  = LSCnorm_cntr2rho_DataSet(LSC_NPZ_DIR,
-#     #                                    filelist,
-#     #                                    csv_filename,
-#     #                                    normalization_file)
-
-#     sampIDX = 1
-#     # Normalization dataset returns: norm_sim_params, unbias_true_image
-#     start_img, end_img, Dt = lsc_r2r_DS.__getitem__(sampIDX)
-
-#     print('Shape of start_img tensor: ', start_img.shape)
-#     print('Shape of end_img tensor: ', end_img.shape)
-#     print('Dt:', Dt)
-
-#     # sim_params = sim_params.numpy()
-#     # true_image = np.squeeze(true_image.numpy())
-
-#     # Possible fields to plot
-#     # self.hydro_fields = ['density_case',
-#     #                      'density_cushion',
-#     #                      'density_maincharge',
-#     #                      'density_outside_air',
-#     #                      'density_striker',
-#     #                      'density_throw',
-#     #                      'Uvelocity',
-#     #                      'Wvelocity']
-
-#     # Plot successive fields.
-#     hfield = 'density_throw'
-#     hIDX = lsc_r2r_DS.hydro_fields.index(hfield)
-
-#     fig1, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
-#     fig1.suptitle(f"{hfield}, Dt={Dt:.3f}us", fontsize=18)
-#     img1 = ax1.imshow(
-#         start_img[hIDX, :, :],
-#         aspect="equal",
-#         origin="lower",
-#         cmap="jet")
-#     ax1.set_ylabel("Z-axis", fontsize=16)
-#     ax1.set_xlabel("R-axis", fontsize=16)
-#     ax1.set_title("Start", fontsize=18)
-
-#     divider1 = make_axes_locatable(ax1)
-#     cax1 = divider1.append_axes('right', size='10%', pad=0.1)
-#     fig1.colorbar(img1,
-#                   cax=cax1).set_label(hfield,
-#                                       fontsize=14)
-
-#     img2 = ax2.imshow(
-#         end_img[hIDX, :, :],
-#         aspect="equal",
-#         origin="lower",
-#         cmap="jet")
-#     ax2.set_title("End", fontsize=18)
-#     ax2.tick_params(axis="y", which="both", left=False, labelleft=False)
-
-#     divider2 = make_axes_locatable(ax2)
-#     cax2 = divider2.append_axes("right", size="10%", pad=0.1)
-#     fig1.colorbar(img2, cax=cax2).set_label(hfield, fontsize=14)
-
-#     plt.show()

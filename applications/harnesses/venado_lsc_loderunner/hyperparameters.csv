@@ -1,7 +1,6 @@
 studyIDX,YOKE_TORCH_ENV,NUM_WORKERS,BATCH_SIZE,NTRN_BATCH,NVAL_BATCH,LEARN_RATE,LR_EPOCH_PER_STEP,LR_DECAY_RATE,train_script
-#1,torch_ve_gpu_241028b,4,32,4,4,5.00E-03,20,0.5,train_density_LodeRunner.py
-#2,torch_ve_gpu_241028b,4,32,88125,11000,5.00E-03,20,0.5,train_density_LodeRunner.py
-3,torch_ve_gpu_241028b,4,32,5000,1000,5.00E-03,20,0.5,train_density_LodeRunner.py
+#1,torch_ve_gpu_241028b,4,32,88125,11000,5.00E-03,20,0.5,train_density_LodeRunner.py
+2,torch_ve_gpu_241107,4,32,1000,200,5.00E-03,20,0.5,train_density_LodeRunner.py
 
 
 

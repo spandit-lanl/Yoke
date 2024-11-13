@@ -116,6 +116,15 @@ parser.add_argument(
     "--batch_size", action="store", type=int, default=64, help="Batch size"
 )
 
+parser.add_argument(
+    "--num_workers",
+    action="store",
+    type=int,
+    default=4,
+    help=("Number of processes simultaneously loading batches of data. "
+          "NOTE: If set too big workers will swamp memory!!")
+)
+
 #############################################
 # Epoch Parameters
 #############################################
@@ -213,8 +222,13 @@ if __name__ == "__main__":
     LRepoch_per_step = args.LRepoch_per_step
     LRdecay = args.LRdecay
     batch_size = args.batch_size
-    # Leave one CPU out of the worker queue. Not sure if this is necessary.
-    num_workers = int(os.environ["SLURM_JOB_CPUS_PER_NODE"])  # - 1
+
+    # Number of workers controls how batches of data are prefetched and,
+    # possibly, pre-loaded onto GPUs. If the number of workers is large they
+    # will swamp memory and jobs will fail.
+    #
+    #num_workers = int(os.environ["SLURM_JOB_CPUS_PER_NODE"])
+    num_workers = args.num_workers
     train_per_val = args.TRAIN_PER_VAL
 
     # Epoch Parameters
@@ -327,22 +341,48 @@ if __name__ == "__main__":
         last_epoch=starting_epoch - 1,
     )
 
+    # # Sanity check for architecture and inputs
+    # # Scramble to see if model takes input expected
+    # img_input = torch.rand(batch_size, 8, 1120, 800)
+    # img_input = img_input.to(device, non_blocking=True)
+    # Dt = 0.25 * torch.ones(batch_size, dtype=torch.float32)
+    # Dt = Dt.to(device, non_blocking=True)
+    # print('train_density_LodeRunner.py, Dt.shape:', Dt.shape)
+    # # Both in_vars and out_vars correspond to indices for every variable in
+    # # this training setup...
+    # #
+    # # in_vars = ['density_case',
+    # #            'density_cushion',
+    # #            'density_maincharge',
+    # #            'density_outside_air',
+    # #            'density_striker',
+    # #            'density_throw',
+    # #            'Uvelocity',
+    # #            'Wvelocity']            
+    # in_vars = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7]).to(device)
+    # out_vars = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7]).to(device)
+
+    # pred_img = model(img_input, in_vars, out_vars, Dt)
+    # print('In train_density_LodeRunner.py, pred_img.shape:', pred_img.shape)
+    
     #############################################
     # Script and compile model on device
     #############################################
-    scripted_model = torch.jit.script(model)
+    # The LodeRunner model has flow-control statements in the forward method
+    # and, thus, cannot be scripted.
+    #scripted_model = torch.jit.script(model)
 
     # Model compilation has some interesting parameters to play with.
     #
     # NOTE: Compiled model is not able to be loaded from checkpoint for some
     # reason.
-    compiled_model = torch.compile(
-        scripted_model,
-        fullgraph=True,  #  If TRUE, throw error if
-                         #  whole graph is not
-                         #  compileable.
-        mode="reduce-overhead",
-    )
+    # compiled_model = torch.compile(
+    #     model,
+    #     fullgraph=True,  #  If TRUE, throw error if
+    #                      #  whole graph is not
+    #                      #  compileable.
+    #     mode="reduce-overhead",
+    # )
     
     #############################################
     # Initialize Data
@@ -351,16 +391,19 @@ if __name__ == "__main__":
         args.LSC_NPZ_DIR,
         file_prefix_list=train_filelist,
         max_timeIDX_offset=2,  # This could be a variable.
+        max_file_checks=10,
     )
     val_dataset = LSC_rho2rho_temporal_DataSet(
         args.LSC_NPZ_DIR,
         file_prefix_list=validation_filelist,
         max_timeIDX_offset=2,  # This could be a variable.
+        max_file_checks=10,
     )
     test_dataset = LSC_rho2rho_temporal_DataSet(
         args.LSC_NPZ_DIR,
         file_prefix_list=test_filelist,
         max_timeIDX_offset=2,  # This could be a variable.
+        max_file_checks=10,
     )
 
     print("Datasets initialized...")
@@ -382,64 +425,64 @@ if __name__ == "__main__":
     )
     print("DataLoaders initialized...")
     
-    # for epochIDX in range(starting_epoch, ending_epoch):
-    #     # Time each epoch and print to stdout
-    #     startTime = time.time()
+    for epochIDX in range(starting_epoch, ending_epoch):
+        # Time each epoch and print to stdout
+        startTime = time.time()
 
-    #     # Train an Epoch
-    #     tr.train_array_csv_epoch(
-    #         training_data=train_dataloader,
-    #         validation_data=val_dataloader,
-    #         model=compiled_model,
-    #         optimizer=optimizer,
-    #         loss_fn=loss_fn,
-    #         epochIDX=epochIDX,
-    #         train_per_val=train_per_val,
-    #         train_rcrd_filename=trn_rcrd_filename,
-    #         val_rcrd_filename=val_rcrd_filename,
-    #         device=device,
-    #     )
+        # Train an Epoch
+        tr.train_simple_loderunner_epoch(
+            training_data=train_dataloader,
+            validation_data=val_dataloader,
+            model=model,
+            optimizer=optimizer,
+            loss_fn=loss_fn,
+            epochIDX=epochIDX,
+            train_per_val=train_per_val,
+            train_rcrd_filename=trn_rcrd_filename,
+            val_rcrd_filename=val_rcrd_filename,
+            device=device,
+        )
 
-    #     # Increment LR scheduler
-    #     stepLRsched.step()
+        # Increment LR scheduler
+        stepLRsched.step()
 
-    #     endTime = time.time()
-    #     epoch_time = (endTime - startTime) / 60
+        endTime = time.time()
+        epoch_time = (endTime - startTime) / 60
 
-    #     # Print Summary Results
-    #     print("Completed epoch " + str(epochIDX) + "...")
-    #     print("Epoch time:", epoch_time)
+        # Print Summary Results
+        print("Completed epoch " + str(epochIDX) + "...")
+        print("Epoch time (minutes):", epoch_time)
 
-    # # Save Model Checkpoint
-    # print("Saving model checkpoint at end of epoch " + str(epochIDX) + ". . .")
+    # Save Model Checkpoint
+    print("Saving model checkpoint at end of epoch " + str(epochIDX) + ". . .")
 
-    # # Move the model back to CPU prior to saving to increase portability
-    # compiled_model.to("cpu")
-    # # Move optimizer state back to CPU
-    # for state in optimizer.state.values():
-    #     for k, v in state.items():
-    #         if isinstance(v, torch.Tensor):
-    #             state[k] = v.to("cpu")
+    # Move the model back to CPU prior to saving to increase portability
+    model.to("cpu")
+    # Move optimizer state back to CPU
+    for state in optimizer.state.values():
+        for k, v in state.items():
+            if isinstance(v, torch.Tensor):
+                state[k] = v.to("cpu")
 
-    # # Save model and optimizer state in hdf5
-    # h5_name_str = "study{0:03d}_modelState_epoch{1:04d}.hdf5"
-    # new_h5_path = os.path.join("./", h5_name_str.format(studyIDX, epochIDX))
-    # tr.save_model_and_optimizer_hdf5(
-    #     compiled_model, optimizer, epochIDX, new_h5_path, compiled=True
-    # )
+    # Save model and optimizer state in hdf5
+    h5_name_str = "study{0:03d}_modelState_epoch{1:04d}.hdf5"
+    new_h5_path = os.path.join("./", h5_name_str.format(studyIDX, epochIDX))
+    tr.save_model_and_optimizer_hdf5(
+        model, optimizer, epochIDX, new_h5_path, compiled=False
+    )
 
-    # #############################################
-    # # Continue if Necessary
-    # #############################################
-    # FINISHED_TRAINING = epochIDX + 1 > total_epochs
-    # if not FINISHED_TRAINING:
-    #     new_slurm_file = tr.continuation_setup(
-    #         new_h5_path, studyIDX, last_epoch=epochIDX
-    #     )
-    #     os.system(f"sbatch {new_slurm_file}")
+    #############################################
+    # Continue if Necessary
+    #############################################
+    FINISHED_TRAINING = epochIDX + 1 > total_epochs
+    if not FINISHED_TRAINING:
+        new_slurm_file = tr.continuation_setup(
+            new_h5_path, studyIDX, last_epoch=epochIDX
+        )
+        os.system(f"sbatch {new_slurm_file}")
 
-    # ###########################################################################
-    # # For array prediction, especially large array prediction, the network is
-    # # not evaluated on the test set after training. This is performed using
-    # # the *evaluation* module as a separate post-analysis step.
-    # ###########################################################################
+    ###########################################################################
+    # For array prediction, especially large array prediction, the network is
+    # not evaluated on the test set after training. This is performed using
+    # the *evaluation* module as a separate post-analysis step.
+    ###########################################################################

@@ -17,7 +17,7 @@
 #SBATCH --ntasks-per-node=64
 #SBATCH --partition=gpu
 #SBATCH --constraint=gpu40
-#SBATCH --time=00:10:00
+#SBATCH --time=16:00:00
 #SBATCH --output=study<studyIDX>_epoch0001.out
 #SBATCH --error=study<studyIDX>_epoch0001.err
 #SBATCH -vvv
