@@ -32,6 +32,15 @@ parser = argparse.ArgumentParser(
 )
 
 #############################################
+# Data Parallelism
+#############################################
+parser.add_argument(
+    '--multigpu',
+    action='store_true',
+    help='Supports multiple GPUs on a single node.'
+)
+
+#############################################
 # Learning Problem
 #############################################
 parser.add_argument(
@@ -324,6 +333,8 @@ if __name__ == "__main__":
     #############################################
     # Move model and optimizer state to GPU
     #############################################
+    if args.multigpu:
+        model = nn.DataParallel(model)00
     model.to(device)
 
     for state in optimizer.state.values():

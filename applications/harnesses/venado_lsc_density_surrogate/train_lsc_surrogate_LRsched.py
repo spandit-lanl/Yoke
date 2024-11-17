@@ -33,6 +33,15 @@ parser = argparse.ArgumentParser(
 )
 
 #############################################
+# Data Parallelism
+#############################################
+parser.add_argument(
+    '--multigpu',
+    action='store_true',
+    help='Supports multiple GPUs on a single node.'
+)
+
+#############################################
 # Learning Problem
 #############################################
 parser.add_argument(
@@ -332,6 +341,8 @@ if __name__ == "__main__":
     #############################################
     # Move model and optimizer state to GPU
     #############################################
+    if args.multigpu:
+        model = nn.DataParallel(model)
     model.to(device)
 
     for state in optimizer.state.values():
@@ -352,22 +363,25 @@ if __name__ == "__main__":
     #############################################
     # Script and compile model on device
     #############################################
-    scripted_model = torch.jit.script(model)
+    if args.multigpu:
+        compiled_model = model # jit compilation disabled in multi-gpu scenarios.
+    else:
+        scripted_model = torch.jit.script(model)
 
-    # Model compilation has some interesting parameters to play with.
-    #
-    # NOTE: Compiled model is not able to be loaded from checkpoint for some
-    # reason.
-    compiled_model = torch.compile(
-        scripted_model,
-        fullgraph=True,  # If TRUE, throw error if
-        # whole graph is not
-        # compileable.
-        mode="reduce-overhead",
-    )  # Other compile
-    # modes that may
-    # provide better
-    # performance
+        # Model compilation has some interesting parameters to play with.
+        #
+        # NOTE: Compiled model is not able to be loaded from checkpoint for some
+        # reason.
+        compiled_model = torch.compile(
+            scripted_model,
+            fullgraph=True,  # If TRUE, throw error if
+            # whole graph is not
+            # compileable.
+            mode="reduce-overhead",
+        )  # Other compile
+        # modes that may
+        # provide better
+        # performance
 
     #############################################
     # Initialize Data
