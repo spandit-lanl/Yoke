@@ -240,36 +240,35 @@ class LSCnorm_cntr2rho_DataSet(Dataset):
 
 
 class LSC_rho2rho_temporal_DataSet(Dataset):
+    """This dataset returns multi-channel images at two different times
+    from the *Layered Shaped Charge* simulation. The *maximum time-offset*
+    can be specified. The channels in the images returned are the densities
+    for each material at a given time as well as the (R, Z)-velocity
+    fields. The time-offset between the two images is also returned.
+
+    NOTE: The way time indices are chosen necessitates *max_timeIDX_offset*
+    being less than or equal to 3 in the lsc240420 data.
+
+    Args:
+        LSC_NPZ_DIR (str): Location of LSC NPZ files.
+        file_prefix_list (str): Text file listing unique prefixes corresponding
+                                to unique simulations.
+        max_timeIDX_offset (int): Maximum timesteps-ahead to attempt
+                                  prediction for. A prediction image will be chosen
+                                  within this timeframe at random.
+        max_file_checks (int): This dataset generates two random time indices and 
+                               checks if the corresponding files exist. This 
+                               argument controls the maximum number of times indices 
+                               are generated before throwing an error.
+
+    """
     def __init__(
             self,
             LSC_NPZ_DIR: str,
             file_prefix_list: str,
             max_timeIDX_offset: int,
             max_file_checks: int,
-    ) -> None:
-        """This dataset returns multi-channel images at two different times
-        from the *Layered Shaped Charge* simulation. The *maximum time-offset*
-        can be specified. The channels in the images returned are the densities
-        for each material at a given time as well as the (R, Z)-velocity
-        fields. The time-offset between the two images is also returned.
-
-        NOTE: The way time indices are chosen necessitates *max_timeIDX_offset*
-        being less than or equal to 3 in the lsc240420 data.
-        
-        Args:
-            LSC_NPZ_DIR (str): Location of LSC NPZ files.
-            file_prefix_list (str): Text file listing unique prefixes corresponding
-                                    to unique simulations.
-            max_timeIDX_offset (int): Maximum timesteps-ahead to attempt
-                                      prediction for. A prediction image will be chosen
-                                      within this timeframe at random.
-            max_file_checks (int): This dataset generates two random time indices and 
-                                   checks if the corresponding files exist. This 
-                                   argument controls the maximum number of times indices 
-                                   are generated before throwing an error.
-
-        """
-        
+    ) -> None:        
         # Model Arguments
         self.LSC_NPZ_DIR = LSC_NPZ_DIR
         self.max_timeIDX_offset = max_timeIDX_offset
@@ -306,6 +305,9 @@ class LSC_rho2rho_temporal_DataSet(Dataset):
         index.
 
         """
+        # Rotate index if necessary
+        index = index % self.Nsamples
+        
         # Get the input image. Try several indices if necessary.
         prefix_attempt = 0
         prefix_loop_break = False
@@ -350,7 +352,7 @@ class LSC_rho2rho_temporal_DataSet(Dataset):
             print(f"Prefix attempt {prefix_attempt + 1} failed. Trying next prefix.", 
                   file=sys.stderr)
             prefix_attempt += 1
-            index = (index + 1) % self.Nsamples  # Rotate index if necessarys
+            index = (index + 1) % self.Nsamples  # Rotate index if necessary
                     
         # Load NPZ files. Raise exceptions if file is not able to be loaded.
         try:

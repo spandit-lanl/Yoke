@@ -13,6 +13,10 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, RandomSampler
 
+# Debugging tools
+import pdb  # Python debugger
+from torch.profiler import profile, record_function, ProfilerActivity
+
 
 def count_torch_params(model, trainable=True):
     """Count parameters in a pytorch model.
@@ -51,6 +55,10 @@ def save_model_and_optimizer_hdf5(model, optimizer, epoch, filepath, compiled=Fa
                          was compiled.
 
     """
+    # If model is wrapped in DataParallel, access the underlying module
+    if isinstance(model, torch.nn.DataParallel):
+        model = model.module
+
     # If the model is a `torch.compiled` version the original model must be
     # extracted first.
     if compiled:
@@ -109,6 +117,10 @@ def load_model_and_optimizer_hdf5(model, optimizer, filepath):
         epoch (int): Epoch associated with training
 
     """
+    # If model is wrapped in DataParallel, access the underlying module
+    if isinstance(model, torch.nn.DataParallel):
+        model = model.module
+
     with h5py.File(filepath, "r") as h5f:
         # Get epoch number
         epoch = h5f.attrs["epoch"]
@@ -175,28 +187,19 @@ def make_dataloader(
     batch_size: int = 8,
     num_batches: int = 100,
     num_workers: int = 4,
+    prefetch_factor: int = 2,
 ):
     """Function to create a pytorch dataloader from a pytorch dataset
     **https://pytorch.org/docs/stable/data.html#torch.utils.data.DataLoader**
     Each dataloader has batch_size*num_batches samples randomly selected
     from the dataset
 
-    num_workers: behavior training on dodona
-        =0 if not specified, data is loaded in the main process;
-           trains slower if multiple models being trained on the same node
-        =1 seperates the data from the main process;
-           training speed unaffected by multiple models being trained
-        =2 splits data across 2 processors;
-           cuts training time in half from num_workers=1
-        >2 diminishing returns on training time
-
-    persistant_workers:
-        training time seems minimally affected, slight improvement when =True
-
     Args:
         dataset(torch.utils.data.Dataset): dataset to sample from for data loader
         batch_size (int): batch size
         num_batches (int): number of batches to include in data loader
+        num_workers (int): Number of processes to load data in parallel
+        prefetch_factor (int): Specifies the number of batches each worker preloads
 
     Returns:
         dataloader (torch.utils.data.DataLoader): pytorch dataloader
@@ -211,7 +214,7 @@ def make_dataloader(
         sampler=randomsampler,
         num_workers=num_workers,
         persistent_workers=True,
-        prefetch_factor=4,
+        prefetch_factor=prefetch_factor,
         pin_memory=True,
     )
 
@@ -429,9 +432,9 @@ def train_loderunner_datastep(
 
     # Extract data
     (start_img, end_img, Dt) = data
+    
     start_img = start_img.to(device, non_blocking=True)
     Dt = Dt.to(torch.float32).to(device, non_blocking=True)
-
     end_img = end_img.to(device, non_blocking=True)
 
     # For our first LodeRunner training on the lsc240420 dataset the input and
@@ -456,14 +459,23 @@ def train_loderunner_datastep(
     # prior to initalizing optimizer.
     pred_img = model(start_img, in_vars, out_vars, Dt)
 
+    # Expecting to use a *reduction="none"* loss function so we can track loss
+    # between individual samples. However, this will make the loss be computed
+    # element-wise so we need to still average over the (channel, height,
+    # width) dimensions to get the per-sample loss.
     loss = loss_fn(pred_img, end_img)
+    per_sample_loss = loss.mean(dim=[1, 2, 3])  # Shape: (batch_size,)
 
     # Perform backpropagation and update the weights
     optimizer.zero_grad(set_to_none=True)  # Possible speed-up
     loss.mean().backward()
     optimizer.step()
 
-    return end_img, pred_img, loss
+    # Delete created tensors to free memory
+    del in_vars
+    del out_vars
+
+    return end_img, pred_img, per_sample_loss
 
 
 ####################################
@@ -579,9 +591,18 @@ def eval_loderunner_datastep(
     # prior to initalizing optimizer.
     pred_img = model(start_img, in_vars, out_vars, Dt)
 
+    # Expecting to use a *reduction="none"* loss function so we can track loss
+    # between individual samples. However, this will make the loss be computed
+    # element-wise so we need to still average over the (channel, height,
+    # width) dimensions to get the per-sample loss.
     loss = loss_fn(pred_img, end_img)
+    per_sample_loss = loss.mean(dim=[1, 2, 3])  # Shape: (batch_size,)
 
-    return end_img, pred_img, loss
+    # Delete created tensors to free memory
+    del in_vars
+    del out_vars
+    
+    return end_img, pred_img, per_sample_loss
 
 
 ######################################
@@ -848,6 +869,7 @@ def train_simple_loderunner_epoch(
     train_rcrd_filename: str,
     val_rcrd_filename: str,
     device: torch.device,
+    verbose: bool=False,
 ):
     """Function to complete a training epoch on the LodeRunner architecture with
     fixed channels in the input and output. Training and validation information
@@ -864,6 +886,7 @@ def train_simple_loderunner_epoch(
         train_rcrd_filename (str): Name of CSV file to save training sample stats to
         val_rcrd_filename (str): Name of CSV file to save validation sample stats to
         device (torch.device): device index to select
+        verbose (boolean): Flag to print diagnostic output.
 
     """
     # Initialize things to save
@@ -880,20 +903,45 @@ def train_simple_loderunner_epoch(
     with open(train_rcrd_filename, "a") as train_rcrd_file:
         for traindata in training_data:
             trainbatch_ID += 1
-            truth, pred, train_loss = train_loderunner_datastep(
-                traindata, model, optimizer, loss_fn, device
-            )
-            
-            template = "{}, {}, {}"
-            for i in range(train_batchsize):
-                print(
-                    template.format(
-                        epochIDX,
-                        trainbatch_ID,
-                        train_loss.cpu().detach().numpy().flatten()[i],
-                    ),
-                    file=train_rcrd_file,
+
+            # Time each epoch and print to stdout
+            if verbose:
+                startTime = time.time()
+
+            with record_function("loderunner_trainstep"):
+                truth, pred, train_loss = train_loderunner_datastep(
+                    traindata, model, optimizer, loss_fn, device
                 )
+
+            if verbose:
+                endTime = time.time()
+                batch_time = endTime - startTime
+                print(f"Batch {trainbatch_ID} time (seconds): {batch_time:.5f}",
+                      flush=True)
+
+            if verbose:
+                startTime = time.time()
+
+            with record_function("loderunner_train_record"):
+                # Stack loss record and write using numpy
+                batch_records = np.column_stack([
+                    np.full(train_batchsize, epochIDX),
+                    np.full(train_batchsize, trainbatch_ID),
+                    train_loss.detach().cpu().numpy().flatten()
+                ])
+
+                np.savetxt(train_rcrd_file, batch_records, fmt="%d, %d, %.8f")
+
+            if verbose:
+                endTime = time.time()
+                record_time = endTime - startTime
+                print(f"Batch {trainbatch_ID} record time: {record_time:.5f}",
+                      flush=True)
+
+            # Explictly delete produced tensors to free memory
+            del truth
+            del pred
+            del train_loss
 
     # Evaluate on all validation samples
     if epochIDX % train_per_val == 0:
@@ -907,48 +955,18 @@ def train_simple_loderunner_epoch(
                         valdata, model, loss_fn, device
                     )
 
-                    template = "{}, {}, {}"
-                    for i in range(val_batchsize):
-                        print(
-                            template.format(
-                                epochIDX,
-                                valbatch_ID,
-                                val_loss.cpu().detach().numpy().flatten()[i],
-                            ),
-                            file=val_rcrd_file,
-                        )
+                    # Stack loss record and write using numpy
+                    batch_records = np.column_stack([
+                        np.full(val_batchsize, epochIDX),
+                        np.full(val_batchsize, valbatch_ID),
+                        val_loss.detach().cpu().numpy().flatten()
+                    ])
+
+                    np.savetxt(val_rcrd_file, batch_records, fmt="%d, %d, %.8f")
+
+                    # Explictly delete produced tensors to free memory
+                    del truth
+                    del pred
+                    del val_loss
 
     return
-
-
-if __name__ == "__main__":
-    """For testing and debugging.
-
-    """
-
-    from yoke.models.CNN_modules import PVI_SingleField_CNN
-
-    # Excercise model setup, save, and load
-    # NOTE: Model takes (BatchSize, Channels, Height, Width) tensor.
-    pvi_input = torch.rand(1, 1, 1700, 500)
-    pvi_CNN = PVI_SingleField_CNN(
-        img_size=(1, 1700, 500),
-        size_threshold=(8, 8),
-        kernel=5,
-        features=12,
-        interp_depth=15,
-        conv_onlyweights=True,
-        batchnorm_onlybias=True,
-        act_layer=nn.GELU,
-        hidden_features=20,
-    )
-
-    optimizer = torch.optim.AdamW(
-        pvi_CNN.parameters(), lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0.01
-    )
-
-    new_h5_path = os.path.join("./", "TEST_MODEL_SAVE.hdf5")
-    epochIDX = 5
-    save_model_and_optimizer_hdf5(pvi_CNN, optimizer, epochIDX, new_h5_path)
-    print("MODEL SAVED...")
-    starting_epoch = load_model_and_optimizer_hdf5(pvi_CNN, optimizer, new_h5_path)

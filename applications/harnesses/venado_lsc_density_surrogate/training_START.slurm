@@ -42,7 +42,7 @@ nvidia-smi --loop 5 --query-gpu=timestamp,gpu_bus_id,memory.used,memory.free,mem
 nvpid=$!
 
 # Start the Code
-python ../<train_script> @study<studyIDX>_START.input &
+python <train_script> @study<studyIDX>_START.input &
 pypid=$!
 
 # Kill GPU monitoring after python process finishes

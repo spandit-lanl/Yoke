@@ -45,7 +45,7 @@ nvpid=$!
 
 # Assumes running from inside harnesses directory
 # Start the Code
-python ../<train_script> @<INPUTFILE> &
+python <train_script> @<INPUTFILE> &
 pypid=$!
 
 # Kill GPU monitoring after python process finishes
