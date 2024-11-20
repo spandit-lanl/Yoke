@@ -17,7 +17,7 @@ for models developed under the **ArtIMis: Multi-physics/Multi-material
 Applications** and **ASC-PEM-EADA(Enabling Agile Design and Assessment)**
 projects.
 
-Module is divided into submodules, installed in a python environment:
+The Yoke module is divided into submodules, installed in a python environment:
 
 - torch_training_utils.py
 - datasets

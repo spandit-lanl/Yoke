@@ -19,6 +19,8 @@ import torch.nn as nn
 from yoke.models.vit.swin.bomberman import LodeRunner
 from yoke.datasets.lsc_dataset import LSC_rho2rho_temporal_DataSet
 import yoke.torch_training_utils as tr
+from yoke.parallel_utils import LodeRunner_DataParallel
+
 
 #############################################
 # Inputs
@@ -334,7 +336,7 @@ if __name__ == "__main__":
     # Move model and optimizer state to GPU
     #############################################
     if args.multigpu:
-        model = nn.DataParallel(model)
+        model = LodeRunner_DataParallel(model)
     
     model.to(device)
 

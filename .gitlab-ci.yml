@@ -2,11 +2,22 @@ stages:
   - test
   - lint_temp
 
+variables:
+  GIT_DEPTH: 0
+    
 unit-test-job:
   stage: test
-  script:
+  before_script:
+    - git clean -fdx
+    - git reset --hard HEAD
+    - git fetch --all
+    - git checkout $CI_COMMIT_SHA
+    - git log -1
+  script:    
     - echo "starting bashrc"
+    - cat /root/.bashrc
     - source /root/.bashrc
+    - flit install --user --symlink
     - echo "running pytest"
     - pytest -v --junitxml=report.xml --cov=yoke -Werror
     - coverage report

@@ -14,7 +14,7 @@
 #SBATCH --account=w25_artimis_g
 #SBATCH --reservation=DAT-253604
 #SBATCH --nodes=1
-#SBATCH --ntasks-per-node=72
+#SBATCH --ntasks-per-node=288
 #SBATCH --partition=gpu
 #SBATCH --time=16:00:00
 #SBATCH --output=study<studyIDX>_epoch0001.out
@@ -39,16 +39,16 @@ conda activate <YOKE_TORCH_ENV>
 export date00=`date`
 
 # Start GPU monitoring
-nvidia-smi --loop 5 --query-gpu=timestamp,gpu_bus_id,memory.used,memory.free,memory.total --format=csv > nvidia_smi_epoch0001.out &
-nvpid=$!
+# nvidia-smi --loop 5 --query-gpu=timestamp,gpu_bus_id,memory.used,memory.free,memory.total --format=csv > nvidia_smi_epoch0001.out &
+# nvpid=$!
 
 # Start the Code
-python ../<train_script> @study<studyIDX>_START.input &
-pypid=$!
+python <train_script> @study<studyIDX>_START.input
+#pypid=$!
 
 # Kill GPU monitoring after python process finishes
-wait $pypid
-kill $nvpid
+#wait $pypid
+#kill $nvpid
 
 # Get end time and print to stdout
 export date01=`date`

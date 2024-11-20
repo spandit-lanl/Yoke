@@ -4,6 +4,7 @@
 # Packages
 ####################################
 import os
+import shutil
 import argparse
 import numpy as np
 import pandas as pd
@@ -45,8 +46,9 @@ def replace_keys(study_dict: dict, data: str) -> str:
 # Process Hyperparameters
 ####################################
 # .csv argparse argument
-descr_str = "Starts execution of Nested Cylinder CNN training"
-parser = argparse.ArgumentParser(prog="NC-CNN START", description=descr_str)
+descr_str = "Starts execution of training harness"
+parser = argparse.ArgumentParser(prog="HARNESS START", description=descr_str)
+
 parser.add_argument(
     "--csv",
     action="store",
@@ -54,12 +56,35 @@ parser.add_argument(
     default="./hyperparameters.csv",
     help="CSV file containing study hyperparameters",
 )
+
+parser.add_argument(
+    "--rundir",
+    action="store",
+    type=str,
+    default="./runs",
+    help=("Directory to create study directories within. This should be a softlink to "
+          "somewhere with a lot of drive space."),
+)
+
+parser.add_argument(
+    "--cpFile",
+    action="store",
+    type=str,
+    default="./cp_files.txt",
+    help=("Name of text file containing local files that should be copied to the "
+          "study directory."),
+)
+
 args = parser.parse_args()
 
 training_input_tmpl = "./training_input.tmpl"
 training_slurm_tmpl = "./training_slurm.tmpl"
 training_START_input = "./training_START.input"
 training_START_slurm = "./training_START.slurm"
+
+# List of files to copy
+with open(args.cpFile, 'r') as cp_text_file:
+    cp_file_list = [line.strip() for line in cp_text_file]
 
 # Process Hyperparmaeters File
 studyDF = pd.read_csv(
@@ -85,7 +110,7 @@ for i in idxlist:
 # Iterate Through Dictionary List to Run Studies
 for k, study in enumerate(studylist):
     # Make Study Directory
-    studydirname = "study_{:03d}".format(study["studyIDX"])
+    studydirname = args.rundir + "/study_{:03d}".format(study["studyIDX"])
 
     if not os.path.exists(studydirname):
         os.makedirs(studydirname)
@@ -132,5 +157,10 @@ for k, study in enumerate(studylist):
     with open(START_slurm_filepath, "w") as f:
         f.write(START_slurm_data)
 
+    # Copy files to study directory from list
+    for f in cp_file_list:
+        shutil.copy(f, studydirname)
+    
     # Submit Job
-    os.system(f"cd {studydirname}; sbatch {START_slurm_name}; cd ..")
+    os.system((f"cd {studydirname}; sbatch {START_slurm_name}; "
+               f"cd {os.path.dirname(__file__)}"))

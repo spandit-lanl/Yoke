@@ -8,6 +8,14 @@ description = "Sets of models and datasets with training and evaluation scripts.
 version = "0.0.0"
 authors = [
     {name = "Hickmann, Kyle", email = "hickmank@lanl.gov"},
+    {name = "Callis, Skylar", email = "sjcallis@lanl.gov"},
+    {name = "Egozi, Gal", email = "galgal@lanl.gov"},
+    {name = "De, Soumi", email = "soumide@lanl.gov"},
+    {name = "Kaiser, Bryan", email = "bkaiser@lanl.gov"},	
+    {name = "Pandit, Sourabh", email = "spandit@lanl.gov"},
+    {name = "Chakrabarti, Sharmistha", email = "schakrabarti@lanl.gov"},
+    {name = "Armstrong, Derek", email = "dearmstr@lanl.gov"},
+    {name = "Henrick, Andrew", email = "ahenrick@lanl.gov"},
 ]
 # NOTE: The PyTorch package through `conda` is `pytorch`, through
 # `pip` (and therefore `flit`) it is `torch`. Since `yoke` primarily
@@ -30,18 +38,9 @@ classifiers = ["Private :: Do Not Upload",
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
 ]
-#dynamic = ['version']
-
-# doc = [
-# 	"sphinx",
-# 	"sphinxcontrib_github_alt",
-# 	"pygments-github-lexers",  # TOML highlighting
-# ]
 
 [project.urls]
-#Documentation = "https://"
 Source = "https://gitlab.lanl.gov/multiphysmultimatapps/yoke"
-#Changelog = "https://"
 
 [tool.ruff]
 line-length = 89
