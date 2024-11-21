@@ -20,7 +20,7 @@ from yoke.models.vit.swin.bomberman import LodeRunner
 from yoke.datasets.lsc_dataset import LSC_rho2rho_temporal_DataSet
 import yoke.torch_training_utils as tr
 from yoke.parallel_utils import LodeRunner_DataParallel
-
+            
 
 #############################################
 # Inputs
@@ -136,6 +136,15 @@ parser.add_argument(
           "NOTE: If set too big workers will swamp memory!!")
 )
 
+parser.add_argument(
+    "--prefetch_factor",
+    action="store",
+    type=int,
+    default=2,
+    help=("Number of batches each worker preloads ahead of time. "
+          "NOTE: If set too big preload will swamp memory!!")
+)
+
 #############################################
 # Epoch Parameters
 #############################################
@@ -237,16 +246,15 @@ if __name__ == "__main__":
     # Number of workers controls how batches of data are prefetched and,
     # possibly, pre-loaded onto GPUs. If the number of workers is large they
     # will swamp memory and jobs will fail.
-    #
-    #num_workers = int(os.environ["SLURM_JOB_CPUS_PER_NODE"])
     num_workers = args.num_workers
-    train_per_val = args.TRAIN_PER_VAL
+    prefetch_factor = args.prefetch_factor
 
     # Epoch Parameters
     total_epochs = args.total_epochs
     cycle_epochs = args.cycle_epochs
     train_batches = args.train_batches
     val_batches = args.val_batches
+    train_per_val = args.TRAIN_PER_VAL
     trn_rcrd_filename = args.trn_rcrd_filename
     val_rcrd_filename = args.val_rcrd_filename
     CONTINUATION = args.continuation
@@ -337,7 +345,7 @@ if __name__ == "__main__":
     #############################################
     if args.multigpu:
         model = LodeRunner_DataParallel(model)
-    
+
     model.to(device)
 
     for state in optimizer.state.values():
@@ -354,49 +362,6 @@ if __name__ == "__main__":
         gamma=LRdecay,
         last_epoch=starting_epoch - 1,
     )
-
-    # # Sanity check for architecture and inputs
-    # # Scramble to see if model takes input expected
-    # img_input = torch.rand(batch_size, 8, 1120, 800)
-    # img_input = img_input.to(device, non_blocking=True)
-    # Dt = 0.25 * torch.ones(batch_size, dtype=torch.float32)
-    # Dt = Dt.to(device, non_blocking=True)
-    # print('train_density_LodeRunner.py, Dt.shape:', Dt.shape)
-    # # Both in_vars and out_vars correspond to indices for every variable in
-    # # this training setup...
-    # #
-    # # in_vars = ['density_case',
-    # #            'density_cushion',
-    # #            'density_maincharge',
-    # #            'density_outside_air',
-    # #            'density_striker',
-    # #            'density_throw',
-    # #            'Uvelocity',
-    # #            'Wvelocity']            
-    # in_vars = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7]).to(device)
-    # out_vars = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7]).to(device)
-
-    # pred_img = model(img_input, in_vars, out_vars, Dt)
-    # print('In train_density_LodeRunner.py, pred_img.shape:', pred_img.shape)
-    
-    #############################################
-    # Script and compile model on device
-    #############################################
-    # The LodeRunner model has flow-control statements in the forward method
-    # and, thus, cannot be scripted.
-    #scripted_model = torch.jit.script(model)
-
-    # Model compilation has some interesting parameters to play with.
-    #
-    # NOTE: Compiled model is not able to be loaded from checkpoint for some
-    # reason.
-    # compiled_model = torch.compile(
-    #     model,
-    #     fullgraph=True,  #  If TRUE, throw error if
-    #                      #  whole graph is not
-    #                      #  compileable.
-    #     mode="reduce-overhead",
-    # )
     
     #############################################
     # Initialize Data
@@ -432,10 +397,18 @@ if __name__ == "__main__":
 
     # Setup Dataloaders
     train_dataloader = tr.make_dataloader(
-        train_dataset, batch_size, train_batches, num_workers=num_workers
+        train_dataset,
+        batch_size,
+        train_batches,
+        num_workers=num_workers,
+        prefetch_factor=prefetch_factor
     )
     val_dataloader = tr.make_dataloader(
-        val_dataset, batch_size, val_batches, num_workers=num_workers
+        val_dataset,
+        batch_size,
+        val_batches,
+        num_workers=num_workers,
+        prefetch_factor=prefetch_factor
     )
     print("DataLoaders initialized...")
     
@@ -455,6 +428,7 @@ if __name__ == "__main__":
             train_rcrd_filename=trn_rcrd_filename,
             val_rcrd_filename=val_rcrd_filename,
             device=device,
+            verbose=False
         )
 
         # Increment LR scheduler
@@ -464,8 +438,11 @@ if __name__ == "__main__":
         epoch_time = (endTime - startTime) / 60
 
         # Print Summary Results
-        print("Completed epoch " + str(epochIDX) + "...")
-        print("Epoch time (minutes):", epoch_time)
+        print("Completed epoch " + str(epochIDX) + "...", flush=True)
+        print("Epoch time (minutes):", epoch_time, flush=True)
+
+        # Clear GPU memory after each epoch
+        torch.cuda.empty_cache()
 
     # Save Model Checkpoint
     print("Saving model checkpoint at end of epoch " + str(epochIDX) + ". . .")
