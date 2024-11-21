@@ -4,12 +4,14 @@ import os
 import pytest
 import torch
 from torch import nn, optim
+from torch.utils.data import Dataset, DataLoader
 from tempfile import TemporaryDirectory
 import h5py
 from collections.abc import Generator
 from yoke.torch_training_utils import count_torch_params
 from yoke.torch_training_utils import save_model_and_optimizer_hdf5
 from yoke.torch_training_utils import load_model_and_optimizer_hdf5
+from yoke.torch_training_utils import make_dataloader
 
 
 class SimpleModel(nn.Module):
@@ -191,15 +193,15 @@ def test_load_model_and_optimizer_hdf5(
         loaded_optimizer = optim.SGD(loaded_model.parameters(), lr=0.01, momentum=0.9)
 
         # Load the state into the new instances
-        loaded_epoch = load_model_and_optimizer_hdf5(loaded_model, loaded_optimizer, filepath)
+        loaded_epoch = load_model_and_optimizer_hdf5(
+            loaded_model, loaded_optimizer, filepath
+        )
 
         # Verify the epoch is correctly restored
         assert loaded_epoch == epoch
 
         # Verify the model parameters are correctly restored
-        for original, loaded in zip(
-            model.parameters(), loaded_model.parameters()
-        ):
+        for original, loaded in zip(model.parameters(), loaded_model.parameters()):
             assert torch.equal(original.cpu(), loaded.cpu())
 
         # Verify the optimizer state is correctly restored
@@ -213,3 +215,73 @@ def test_load_model_and_optimizer_hdf5(
             else:
                 assert original_state[key] == loaded_state[key]
 
+
+class DummyDataset(Dataset):
+    """A dummy dataset for testing."""
+
+    def __init__(self, size: int = 1000) -> None:
+        """Initialize dataset."""
+        self.data = torch.arange(size)
+
+    def __len__(self) -> int:
+        """Datasets must have length."""
+        return len(self.data)
+
+    def __getitem__(self, idx: int) -> torch.Tensor:
+        """Dummy getitem."""
+        return self.data[idx]
+
+
+@pytest.fixture
+def dummy_dataset() -> DummyDataset:
+    """Fixture to create a dummy dataset."""
+    return DummyDataset()
+
+
+def test_make_dataloader(dummy_dataset: DummyDataset) -> None:
+    """Test make_dataloader with default arguments."""
+    batch_size = 8
+    num_batches = 10
+
+    dataloader = make_dataloader(
+        dummy_dataset, batch_size=batch_size, num_batches=num_batches
+    )
+
+    # Check if the dataloader is a DataLoader instance
+    assert isinstance(dataloader, DataLoader)
+
+    # Validate the length of the dataloader
+    assert len(dataloader) == num_batches
+
+    # Validate the total number of samples
+    total_samples = batch_size * num_batches
+    sampled_data = list(dataloader)
+    assert len(sampled_data) == num_batches
+    assert sum(batch.shape[0] for batch in sampled_data) == total_samples
+
+
+@pytest.mark.parametrize(
+    "batch_size, num_batches, expected_length",
+    [
+        (4, 5, 5),  # Small batch size and number of batches
+        (16, 10, 10),  # Larger batch size
+        (32, 2, 2),  # Fewer batches with large batch size
+    ],
+)
+def test_make_dataloader_parametrized(
+    dummy_dataset: DummyDataset,
+    batch_size: int,
+    num_batches: int,
+    expected_length: int,
+) -> None:
+    """Test make_dataloader with various batch sizes and number of batches."""
+    dataloader = make_dataloader(
+        dummy_dataset, batch_size=batch_size, num_batches=num_batches
+    )
+    assert len(dataloader) == expected_length
+
+    # Validate all batches have the correct size except the last one if dataset
+    # is too small
+    sampled_data = list(dataloader)
+    for batch in sampled_data[:-1]:
+        assert batch.shape[0] == batch_size
