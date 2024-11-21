@@ -7,7 +7,9 @@ from torch import nn, optim
 from tempfile import TemporaryDirectory
 import h5py
 from collections.abc import Generator
-from yoke.torch_training_utils import count_torch_params, save_model_and_optimizer_hdf5
+from yoke.torch_training_utils import count_torch_params
+from yoke.torch_training_utils import save_model_and_optimizer_hdf5
+from yoke.torch_training_utils import load_model_and_optimizer_hdf5
 
 
 class SimpleModel(nn.Module):
@@ -169,3 +171,45 @@ def test_save_model_and_optimizer_hdf5_compiled_model(
                 else:
                     saved_param = h5f[f"model/parameters/{name}"][:]
                     assert torch.equal(torch.tensor(saved_param), param.detach().cpu())
+
+
+def test_load_model_and_optimizer_hdf5(
+    simple_model_and_optimizer: tuple[nn.Module, optim.Optimizer],
+) -> None:
+    """Test loading a model and optimizer from an HDF5 file."""
+    model, optimizer = simple_model_and_optimizer
+    epoch = 5
+
+    with TemporaryDirectory() as tmpdir:
+        filepath = os.path.join(tmpdir, "checkpoint.h5")
+
+        # Save the model and optimizer state
+        save_model_and_optimizer_hdf5(model, optimizer, epoch, filepath)
+
+        # Create new model and optimizer instances for loading
+        loaded_model = SimpleModel2()
+        loaded_optimizer = optim.SGD(loaded_model.parameters(), lr=0.01, momentum=0.9)
+
+        # Load the state into the new instances
+        loaded_epoch = load_model_and_optimizer_hdf5(loaded_model, loaded_optimizer, filepath)
+
+        # Verify the epoch is correctly restored
+        assert loaded_epoch == epoch
+
+        # Verify the model parameters are correctly restored
+        for original, loaded in zip(
+            model.parameters(), loaded_model.parameters()
+        ):
+            assert torch.equal(original.cpu(), loaded.cpu())
+
+        # Verify the optimizer state is correctly restored
+        original_state = optimizer.state_dict()
+        loaded_state = loaded_optimizer.state_dict()
+        assert original_state.keys() == loaded_state.keys()
+        for key in original_state:
+            if isinstance(original_state[key], list):
+                for orig, load in zip(original_state[key], loaded_state[key]):
+                    assert orig == load
+            else:
+                assert original_state[key] == loaded_state[key]
+
