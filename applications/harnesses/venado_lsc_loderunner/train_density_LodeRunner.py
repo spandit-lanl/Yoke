@@ -99,6 +99,22 @@ parser.add_argument(
 #############################################
 # Model Parameters
 #############################################
+parser.add_argument(
+    "--block_structure",
+    action="store",
+    type=int,
+    nargs="+",
+    default=[1, 1, 3, 1],
+    help="List of number of SW-MSA layers in each SWIN block.",
+)
+
+parser.add_argument(
+    "--embed_dim",
+    action="store",
+    type=int,
+    default=128,
+    help="Initial embedding dimension for SWIN-Unet.",
+)
 
 #############################################
 # Training Parameters
@@ -236,7 +252,9 @@ if __name__ == "__main__":
     test_filelist = args.FILELIST_DIR + args.test_filelist
 
     # Model Parameters
-
+    embed_dim = args.embed_dim
+    block_structure = tuple(args.block_structure)
+    
     # Training Parameters
     initial_learningrate = args.init_learnrate
     LRepoch_per_step = args.LRepoch_per_step
@@ -291,10 +309,10 @@ if __name__ == "__main__":
                       'Wvelocity'],
         image_size=(1120, 800),
         patch_size=(10, 10),
-        embed_dim=128,
+        embed_dim=embed_dim,
         emb_factor=2,
         num_heads=8,
-        block_structure=(1, 1, 3, 1),  #  This should vary as in the SWIN models.
+        block_structure=block_structure,
         window_sizes=[
             (8, 8),
             (8, 8),
