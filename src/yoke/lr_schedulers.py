@@ -22,18 +22,19 @@ class WarmUpRootDecayScheduler(_LRScheduler):
     
     Scheduler mentioned in *https://kikaben.com/transformers-training-details*
 
-    This goes through a linear warm-up phase for the first `warmup_steps` in which the 
-    learning rate goes from 0 to `warmup_steps**-0.5`. Then the learning rate decays as 
-    the inverse square root of the number of steps.
+    This goes through a linear warm-up phase for the first `warmup_steps` in
+    which the learning rate goes from 0 to `warmup_steps**-0.5`. Then the
+    learning rate decays as the inverse square root of the number of steps.
 
     """
-    def __init__(self, 
-                 optimizer: Optimizer,
-                 dim_embed: int,
-                 warmup_steps: int,
-                 last_epoch: int=-1,
-                 verbose: bool=False) -> None:
-
+    def __init__(
+            self, 
+            optimizer: Optimizer,
+            dim_embed: int,
+            warmup_steps: int,
+            last_epoch: int=-1,
+            verbose: bool=False
+    ) -> None:
         self.dim_embed = dim_embed
         self.warmup_steps = warmup_steps
         self.num_param_groups = len(optimizer.param_groups)
@@ -46,7 +47,12 @@ class WarmUpRootDecayScheduler(_LRScheduler):
     
 
 class CosineWithWarmupLR(LambdaLR):
-    """From https://github.com/krasserm/perceiver-io/blob/main/perceiver/scripts/lrs.py"""
+    """Cosine decay after warmup.
+
+    From:
+    https://github.com/krasserm/perceiver-io/blob/main/perceiver/scripts/lrs.py
+
+    """
     def __init__(
         self,
         optimizer: Optimizer,
@@ -62,20 +68,39 @@ class CosineWithWarmupLR(LambdaLR):
         def lr_lambda(current_step):
             if current_step < warmup_steps:
                 return float(current_step) / float(max(1, warmup_steps))
-            progress = float(current_step - warmup_steps) / float(max(1, self.training_steps - warmup_steps))
-            return min_fraction + max(
-                0.0, 0.5 * (1.0 - min_fraction) * (1.0 + math.cos(math.pi * float(num_cycles) * 2.0 * progress))
-            )
+
+            progress = float(current_step - warmup_steps)
+            progress = progress / float(max(1, self.training_steps - warmup_steps))
+
+            tmp_lr = (1.0 + math.cos(math.pi * float(num_cycles) * 2.0 * progress))
+            tmp_lr = 0.5 * (1.0 - min_fraction) * tmp_lr
+            lr_return = max(0.0, tmp_lr)
+            lr_return = min_fraction + lr_return
+            
+            return lr_return
+
 
         super().__init__(optimizer, lr_lambda, last_epoch=last_epoch)
 
 
 class ConstantWithWarmupLR(LambdaLR):
-    """From https://github.com/krasserm/perceiver-io/blob/main/perceiver/scripts/lrs.py"""
-    def __init__(self, optimizer: Optimizer, warmup_steps: int = 0, last_epoch: int = -1):
+    """Constant LR after warmup
+
+    From:
+    https://github.com/krasserm/perceiver-io/blob/main/perceiver/scripts/lrs.py
+
+    """
+    def __init__(
+            self,
+            optimizer: Optimizer,
+            warmup_steps: int = 0,
+            last_epoch: int = -1
+    ):
+        
         def lr_lambda(current_step: int):
             if current_step < warmup_steps:
                 return float(current_step) / float(max(1.0, warmup_steps))
+            
             return 1.0
 
         super().__init__(optimizer, lr_lambda, last_epoch=last_epoch)
