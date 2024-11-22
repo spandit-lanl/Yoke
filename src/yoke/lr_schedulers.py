@@ -118,7 +118,6 @@ class WarmUpPowerDecayScheduler(_LRScheduler):
         warmup_steps (int): Number of steps for linear warm up
         dim_embed (int): Dimension of transformer embedding used to scale LR
         last_epoch (int): Last step if restarting
-        verbose (bool): Verbosity of scheduler
 
     """
 
@@ -130,7 +129,6 @@ class WarmUpPowerDecayScheduler(_LRScheduler):
         warmup_steps: int = 1000,
         dim_embed: int = 1,
         last_epoch: int = -1,
-        verbose: bool = False,
     ) -> None:
         """Initialize scheduler."""
         self.anchor_lr = anchor_lr
@@ -139,7 +137,7 @@ class WarmUpPowerDecayScheduler(_LRScheduler):
         self.warmup_steps = warmup_steps
         self.num_param_groups = len(optimizer.param_groups)
 
-        super().__init__(optimizer, last_epoch, verbose)
+        super().__init__(optimizer, last_epoch)
 
     def get_lr(self) -> float:
         """Return learning rate."""
@@ -172,7 +170,6 @@ class CosineWithWarmupScheduler(_LRScheduler):
         min_fraction (float): Fraction of anchor LR at cosine trough
         warmup_steps (int): Number of steps for linear warm up
         last_epoch (int): Last step if restarting
-        verbose (bool): Verbosity of scheduler
 
     """
 
@@ -185,7 +182,6 @@ class CosineWithWarmupScheduler(_LRScheduler):
         num_cycles: float = 0.5,
         min_fraction: float = 0.5,
         last_epoch: int = -1,
-        verbose: bool = False,
     ) -> None:
         """Initialize scheduler."""
         self.anchor_lr = anchor_lr
@@ -196,7 +192,7 @@ class CosineWithWarmupScheduler(_LRScheduler):
 
         self.num_param_groups = len(optimizer.param_groups)
 
-        super().__init__(optimizer, last_epoch, verbose)
+        super().__init__(optimizer, last_epoch)
 
     def get_lr(self) -> float:
         """Return learning rate."""
@@ -222,7 +218,6 @@ class ConstantWithWarmupScheduler(_LRScheduler):
         lr_constant (float): LR that scheduler warms up to
         warmup_steps (int): Number of steps for linear warm up
         last_epoch (int): Last step if restarting
-        verbose (bool): Verbosity of scheduler
 
     """
 
@@ -232,14 +227,13 @@ class ConstantWithWarmupScheduler(_LRScheduler):
         warmup_steps: int = 100,
         lr_constant: float = 1e-3,
         last_epoch: int = -1,
-        verbose: bool = False,
     ) -> None:
         """Initialize scheduler."""
         self.warmup_steps = warmup_steps
         self.lr_constant = lr_constant
         self.num_param_groups = len(optimizer.param_groups)
 
-        super().__init__(optimizer, last_epoch, verbose)
+        super().__init__(optimizer, last_epoch)
 
     def get_lr(self) -> float:
         """Return learning rate."""
