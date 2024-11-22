@@ -5,7 +5,6 @@ import warnings
 import numpy as np
 import torch
 from torch.optim import SGD
-from torch.optim.lr_scheduler import _LRScheduler
 from yoke.lr_schedulers import (
     power_decay_lr_calc,
     cos_decay_lr_calc,
