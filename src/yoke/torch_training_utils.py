@@ -13,10 +13,6 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, RandomSampler
 
-# Debugging tools
-import pdb  # Python debugger
-from torch.profiler import profile, record_function, ProfilerActivity
-
 
 def count_torch_params(model, trainable=True):
     """Count parameters in a pytorch model.
@@ -908,10 +904,9 @@ def train_simple_loderunner_epoch(
             if verbose:
                 startTime = time.time()
 
-            with record_function("loderunner_trainstep"):
-                truth, pred, train_loss = train_loderunner_datastep(
-                    traindata, model, optimizer, loss_fn, device
-                )
+            truth, pred, train_loss = train_loderunner_datastep(
+                traindata, model, optimizer, loss_fn, device
+            )
 
             if verbose:
                 endTime = time.time()
@@ -922,15 +917,14 @@ def train_simple_loderunner_epoch(
             if verbose:
                 startTime = time.time()
 
-            with record_function("loderunner_train_record"):
-                # Stack loss record and write using numpy
-                batch_records = np.column_stack([
-                    np.full(train_batchsize, epochIDX),
-                    np.full(train_batchsize, trainbatch_ID),
-                    train_loss.detach().cpu().numpy().flatten()
-                ])
+            # Stack loss record and write using numpy
+            batch_records = np.column_stack([
+                np.full(train_batchsize, epochIDX),
+                np.full(train_batchsize, trainbatch_ID),
+                train_loss.detach().cpu().numpy().flatten()
+            ])
 
-                np.savetxt(train_rcrd_file, batch_records, fmt="%d, %d, %.8f")
+            np.savetxt(train_rcrd_file, batch_records, fmt="%d, %d, %.8f")
 
             if verbose:
                 endTime = time.time()
@@ -969,4 +963,118 @@ def train_simple_loderunner_epoch(
                     del pred
                     del val_loss
 
-    return
+
+def train_LRsched_loderunner_epoch(
+    training_data,
+    validation_data,
+    model,
+    optimizer,
+    loss_fn,
+    LRsched,
+    epochIDX,
+    train_per_val,
+    train_rcrd_filename: str,
+    val_rcrd_filename: str,
+    device: torch.device,
+    verbose: bool=False,
+):
+    """Function to complete a training epoch on the LodeRunner architecture with
+    fixed channels in the input and output. Training and validation information
+    is saved to successive CSV files.
+
+    Args:
+        training_data (torch.dataloader): dataloader containing the training samples
+        validation_data (torch.dataloader): dataloader containing the validation samples
+        model (loaded pytorch model): model to train
+        optimizer (torch.optim): optimizer for training set
+        loss_fn (torch.nn Loss Function): loss function for training set
+        LRsched (torch.optim.lr_scheduler): Learning-rate scheduler that will be called
+                                            every training step.
+        epochIDX (int): Index of current training epoch
+        train_per_val (int): Number of Training epochs between each validation
+        train_rcrd_filename (str): Name of CSV file to save training sample stats to
+        val_rcrd_filename (str): Name of CSV file to save validation sample stats to
+        device (torch.device): device index to select
+        verbose (boolean): Flag to print diagnostic output.
+
+    """
+    # Initialize things to save
+    trainbatches = len(training_data)
+    valbatches = len(validation_data)
+    trainbatch_ID = 0
+    valbatch_ID = 0
+
+    train_batchsize = training_data.batch_size
+    val_batchsize = validation_data.batch_size
+
+    train_rcrd_filename = train_rcrd_filename.replace("<epochIDX>", f"{epochIDX:04d}")
+    # Train on all training samples
+    with open(train_rcrd_filename, "a") as train_rcrd_file:
+        for traindata in training_data:
+            trainbatch_ID += 1
+
+            # Time each epoch and print to stdout
+            if verbose:
+                startTime = time.time()
+
+            truth, pred, train_loss = train_loderunner_datastep(
+                traindata, model, optimizer, loss_fn, device
+            )
+
+            # Increment the learning-rate scheduler
+            LRsched.step()
+                
+            if verbose:
+                endTime = time.time()
+                batch_time = endTime - startTime
+                print(f"Batch {trainbatch_ID} time (seconds): {batch_time:.5f}",
+                      flush=True)
+
+            if verbose:
+                startTime = time.time()
+
+            # Stack loss record and write using numpy
+            batch_records = np.column_stack([
+                np.full(train_batchsize, epochIDX),
+                np.full(train_batchsize, trainbatch_ID),
+                train_loss.detach().cpu().numpy().flatten()
+            ])
+
+            np.savetxt(train_rcrd_file, batch_records, fmt="%d, %d, %.8f")
+
+            if verbose:
+                endTime = time.time()
+                record_time = endTime - startTime
+                print(f"Batch {trainbatch_ID} record time: {record_time:.5f}",
+                      flush=True)
+
+            # Explictly delete produced tensors to free memory
+            del truth
+            del pred
+            del train_loss
+
+    # Evaluate on all validation samples
+    if epochIDX % train_per_val == 0:
+        print("Validating...", epochIDX)
+        val_rcrd_filename = val_rcrd_filename.replace("<epochIDX>", f"{epochIDX:04d}")
+        with open(val_rcrd_filename, "a") as val_rcrd_file:
+            with torch.no_grad():
+                for valdata in validation_data:
+                    valbatch_ID += 1
+                    truth, pred, val_loss = eval_loderunner_datastep(
+                        valdata, model, loss_fn, device
+                    )
+
+                    # Stack loss record and write using numpy
+                    batch_records = np.column_stack([
+                        np.full(val_batchsize, epochIDX),
+                        np.full(val_batchsize, valbatch_ID),
+                        val_loss.detach().cpu().numpy().flatten()
+                    ])
+
+                    np.savetxt(val_rcrd_file, batch_records, fmt="%d, %d, %.8f")
+
+                    # Explictly delete produced tensors to free memory
+                    del truth
+                    del pred
+                    del val_loss
