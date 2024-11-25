@@ -471,6 +471,9 @@ def train_loderunner_datastep(
     del in_vars
     del out_vars
 
+    # Clear GPU memory after each deallocation
+    torch.cuda.empty_cache()
+
     return end_img, pred_img, per_sample_loss
 
 
@@ -597,6 +600,9 @@ def eval_loderunner_datastep(
     # Delete created tensors to free memory
     del in_vars
     del out_vars
+
+    # Clear GPU memory after each deallocation
+    torch.cuda.empty_cache()
     
     return end_img, pred_img, per_sample_loss
 
@@ -767,8 +773,6 @@ def train_scalar_csv_epoch(
                             file=val_rcrd_file,
                         )
 
-    return
-
 
 def train_array_csv_epoch(
     training_data,
@@ -937,6 +941,9 @@ def train_simple_loderunner_epoch(
             del pred
             del train_loss
 
+            # Clear GPU memory after each batch
+            torch.cuda.empty_cache()
+
     # Evaluate on all validation samples
     if epochIDX % train_per_val == 0:
         print("Validating...", epochIDX)
@@ -963,7 +970,10 @@ def train_simple_loderunner_epoch(
                     del pred
                     del val_loss
 
+                    # Clear GPU memory after each batch
+                    torch.cuda.empty_cache()
 
+                    
 def train_LRsched_loderunner_epoch(
     training_data,
     validation_data,
@@ -1053,6 +1063,9 @@ def train_LRsched_loderunner_epoch(
             del pred
             del train_loss
 
+            # Clear GPU memory after each batch
+            torch.cuda.empty_cache()
+            
     # Evaluate on all validation samples
     if epochIDX % train_per_val == 0:
         print("Validating...", epochIDX)
@@ -1078,3 +1091,6 @@ def train_LRsched_loderunner_epoch(
                     del truth
                     del pred
                     del val_loss
+
+                    # Clear GPU memory after each batch
+                    torch.cuda.empty_cache()
