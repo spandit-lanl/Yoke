@@ -406,6 +406,10 @@ if __name__ == "__main__":
     #############################################
     # We will take a scheduler step every back-prop step so the number of steps
     # is the number of previous batches.
+    if starting_epoch == 0:
+        last_epoch = -1
+    else:
+        last_epoch = train_batches * (starting_epoch - 1)
     LRsched = CosineWithWarmupScheduler(
         optimizer,
         anchor_lr=anchor_lr,
@@ -413,7 +417,7 @@ if __name__ == "__main__":
         warmup_steps=warmup_steps,
         num_cycles=num_cycles,
         min_fraction=min_fraction,
-        last_epoch=train_batches * (starting_epoch - 1),
+        last_epoch=last_epoch,
     )
     
     #############################################
