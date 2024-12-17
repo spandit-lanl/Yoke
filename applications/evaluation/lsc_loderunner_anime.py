@@ -50,7 +50,8 @@ plt.rcParams["figure.figsize"] = (6, 6)
 
 ###################################################################
 # Define command line argument parser
-descr_str = "Create animation of single hydro-field for LodeRunner on lsc240420 simulation IDX."
+descr_str = ("Create animation of single hydro-field for LodeRunner on lsc240420 "
+             "simulation IDX.")
 parser = argparse.ArgumentParser(prog="Animation of LodeRunner", description=descr_str)
 
 parser.add_argument(
@@ -146,6 +147,9 @@ if __name__ == "__main__":
     runID = args_ns.runID
     VERBOSE = args_ns.verbose
 
+    if not os.path.exists(outdir):
+        os.makedirs(outdir)
+
     # Assemble filenames
     # Example: lsc240420_id00201_pvi_idx00100.npz
     npz_glob = os.path.join(indir, f"lsc240420_id{runID:05d}_pvi_idx?????.npz")
@@ -202,61 +206,115 @@ if __name__ == "__main__":
     in_vars = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7])
     out_vars = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7])
 
-    input_img_list = []
-    for hfield in default_vars:
-        tmp_img = singlePVIarray(npzfile=npz_list[0], FIELD=hfield)
-
-        # Remember to replace all NaNs with 0.0
-        tmp_img = np.nan_to_num(tmp_img, nan=0.0)
-        input_img_list.append(tmp_img)
-
-    # Concatenate images channel first.
-    input_img = torch.tensor(np.stack(input_img_list, axis=0)).to(torch.float32)
-
     # Time offset
     Dt = torch.tensor([0.25])
 
-    # Make a prediction
-    pred_img = model(torch.unsqueeze(input_img, 0), in_vars, out_vars, Dt)
-    pred_rho = np.squeeze(pred_img.detach().numpy()).sum(0)
-    print('Shape LodeRunner out:', pred_rho.shape)
+    # Loop through images
+    for k, npzfile in enumerate(npz_list):
+        # Get index
+        pviIDX = npzfile.split('idx')[1]
+        pviIDX = int(pviIDX.split('.')[0])
 
-    # for k, npzfile in enumerate(npz_list):
-    #     if k == 0:
-    #         # Do evaluation of LodeRunner from ICs
-    #     else:
-    #         # Evaluate LodeRunner from last prediction
-    #
-    #     # Get index
-    #     pviIDX = npzfile.split('idx')[1]
-    #     pviIDX = int(pviIDX.split('.')[0])
+        # Get the coordinates and time
+        simtime = singlePVIarray(npzfile=npzfile, FIELD="sim_time")
+        Rcoord = singlePVIarray(npzfile=npzfile, FIELD="Rcoord")
+        Zcoord = singlePVIarray(npzfile=npzfile, FIELD="Zcoord")
 
-    #     # Get the fields
-    #     Hfield = singlePVIarray(npzfile=npzfile, FIELD=FIELD)
-    #     simtime = singlePVIarray(npzfile=npzfile, FIELD="sim_time")
-    #     Rcoord = singlePVIarray(npzfile=npzfile, FIELD="Rcoord")
-    #     Zcoord = singlePVIarray(npzfile=npzfile, FIELD="Zcoord")
+        if k == 0:
+            input_img_list = []
+            for hfield in default_vars:
+                tmp_img = singlePVIarray(npzfile=npzfile, FIELD=hfield)
 
-    #     # Plot normalized radiograph and density field for diagnostics.
-    #     fig1, ax1 = plt.subplots(1, 1, figsize=(12, 12))
-    #     img1 = ax1.imshow(
-    #         Hfield,
-    #         aspect="equal",
-    #         extent=[0.0, Rcoord.max(), Zcoord.min(), Zcoord.max()],
-    #         origin="lower",
-    #         cmap="jet",
-    #     )
-    #     ax1.set_ylabel("Z-axis (cm)", fontsize=16)
-    #     ax1.set_xlabel("R-axis (cm)", fontsize=16)
-    #     ax1.set_title(f"T={float(simtime):.2f}us", fontsize=18)
+                # Remember to replace all NaNs with 0.0
+                tmp_img = np.nan_to_num(tmp_img, nan=0.0)
+                input_img_list.append(tmp_img)
 
-    #     divider1 = make_axes_locatable(ax1)
-    #     cax1 = divider1.append_axes("right", size="10%", pad=0.1)
-    #     fig1.colorbar(img1, cax=cax1).set_label(f"{FIELD}", fontsize=14)
+            # Concatenate images channel first.
+            input_img = torch.tensor(np.stack(input_img_list, axis=0)).to(torch.float32)
 
-    #     fig1.savefig(
-    #         os.path.join(outdir,
-    #                      f"lsc240420_id{runID:05d}_{FIELD}_idx{pviIDX:05d}.png"),
-    #         bbox_inches="tight",
-    #     )
-    #     plt.close()
+            # Sum for true average density
+            true_rho = input_img.detach().numpy()
+            true_rho = true_rho[0:6, :, :].sum(0)
+            
+            # Make a prediction
+            pred_img = model(torch.unsqueeze(input_img, 0), in_vars, out_vars, Dt)
+            pred_rho = np.squeeze(pred_img.detach().numpy())
+            pred_rho = pred_rho[0:6, :, :].sum(0)
+            
+        else:
+            # Get ground-truth average density
+            true_img_list = []
+            for hfield in default_vars:
+                tmp_img = singlePVIarray(npzfile=npzfile, FIELD=hfield)
+
+                # Remember to replace all NaNs with 0.0
+                tmp_img = np.nan_to_num(tmp_img, nan=0.0)
+                true_img_list.append(tmp_img)
+
+            # Concatenate images channel and sum
+            true_img = np.stack(true_img_list, axis=0)
+
+            # Sum for true average density
+            true_rho = true_img[0:6, :, :].sum(0)
+
+            # Evaluate LodeRunner from last prediction
+            pred_img = model(pred_img, in_vars, out_vars, Dt)
+            pred_rho = np.squeeze(pred_img.detach().numpy())
+            pred_rho = pred_rho[0:6, :, :].sum(0)
+
+        # Plot Truth/Prediction/Discrepancy panel.
+        fig1, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(16, 6))
+        fig1.suptitle(f"T={float(simtime):.2f}us", fontsize=18)
+        img1 = ax1.imshow(
+            true_rho,
+            aspect="equal",
+            extent=[0.0, Rcoord.max(), Zcoord.min(), Zcoord.max()],
+            origin="lower",
+            cmap="jet",
+            vmin=true_rho.min(),
+            vmax=true_rho.max(),
+        )
+        ax1.set_ylabel("Z-axis", fontsize=16)
+        ax1.set_xlabel("R-axis", fontsize=16)
+        ax1.set_title("True", fontsize=18)
+
+        img2 = ax2.imshow(
+            pred_rho,
+            aspect="equal",
+            extent=[0.0, Rcoord.max(), Zcoord.min(), Zcoord.max()],
+            origin="lower",
+            cmap="jet",
+            vmin=true_rho.min(),
+            vmax=true_rho.max(),
+        )
+        ax2.set_title("Predicted", fontsize=18)
+        ax2.tick_params(axis="y", which="both", left=False, labelleft=False)
+
+        divider2 = make_axes_locatable(ax2)
+        cax2 = divider2.append_axes("right", size="10%", pad=0.1)
+        fig1.colorbar(img2, cax=cax2).set_label("Density (g/cc)", fontsize=14)
+
+        discrepancy = np.abs(true_rho - pred_rho)
+        img3 = ax3.imshow(
+            discrepancy,
+            aspect="equal",
+            extent=[0.0, Rcoord.max(), Zcoord.min(), Zcoord.max()],
+            origin="lower",
+            cmap="hot",
+            vmin=discrepancy.min(),
+            vmax=0.3 * discrepancy.max(),
+        )
+        ax3.set_title("Discrepancy", fontsize=18)
+        ax3.tick_params(axis="y", which="both", left=False, labelleft=False)
+
+        divider3 = make_axes_locatable(ax3)
+        cax3 = divider3.append_axes("right", size="10%", pad=0.1)
+        fig1.colorbar(img3, cax=cax3).set_label("Discrepancy", fontsize=14)
+
+        # Save images
+        fig1.savefig(
+            os.path.join(outdir,
+                         f"loderunner_prediction_id{runID:05d}_idx{pviIDX:05d}.png"),
+            bbox_inches="tight",
+            )
+        plt.close()
