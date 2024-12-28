@@ -5,11 +5,15 @@ data for testing. This avoids a lot of costly sample file storage.
 
 """
 
+import os
 import pytest
+import tempfile
 import numpy as np
 import torch
+from typing import List
 from unittest.mock import patch, mock_open, MagicMock
 from yoke.datasets.lsc_dataset import LSC_rho2rho_temporal_DataSet
+from yoke.datasets.lsc_dataset import LSC_cntr2hfield_DataSet
 
 
 # Mock np.load to simulate loading .npz files
@@ -135,3 +139,117 @@ def test_getitem_load_error(
     """Test error thrown if load unsuccessful."""
     with pytest.raises(IOError, match="File could not be loaded"):
         dataset[0]
+
+
+# Tests for cntr2field dataset
+@pytest.fixture
+def create_mock_files():
+    """Create temporary files and directories for testing."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        npz_dir = os.path.join(tmpdir, "npz_files/")
+        os.makedirs(npz_dir, exist_ok=True)
+
+        npz_file = os.path.join(npz_dir, "test_file.npz")
+        np.savez(npz_file, dummy_data=np.array([1, 2, 3]))
+
+        filelist_path = os.path.join(tmpdir, "filelist.txt")
+        with open(filelist_path, "w") as f:
+            f.write("test_file.npz\n")
+
+        design_file = os.path.join(tmpdir, "design.csv")
+        with open(design_file, "w") as f:
+            f.write("sim_key,bspline_node1,bspline_node2\n")
+            f.write("test_key,0.1,0.2\n")
+
+        yield {
+            "npz_dir": npz_dir,
+            "filelist": filelist_path,
+            "design_file": design_file,
+        }
+
+
+@patch("yoke.datasets.lsc_dataset.LSCread_npz")
+@patch("yoke.datasets.lsc_dataset.LSCnpz2key")
+@patch("yoke.datasets.lsc_dataset.LSCcsv2bspline_pts")
+def test_dataset_length(
+    mock_lsc_csv2bspline_pts: MagicMock,
+    mock_lsc_npz2key: MagicMock,
+    mock_lsc_read_npz: MagicMock,
+    create_mock_files,
+):
+    """Test that the dataset length matches the number of samples."""
+    files = create_mock_files
+    dataset = LSC_cntr2hfield_DataSet(
+        LSC_NPZ_DIR=files["npz_dir"],
+        filelist=files["filelist"],
+        design_file=files["design_file"],
+    )
+
+    assert len(dataset) == 1
+
+
+@patch("yoke.datasets.lsc_dataset.LSCread_npz")
+@patch("yoke.datasets.lsc_dataset.LSCnpz2key")
+@patch("yoke.datasets.lsc_dataset.LSCcsv2bspline_pts")
+def test_dataset_getitem(
+    mock_lsc_csv2bspline_pts: MagicMock,
+    mock_lsc_npz2key: MagicMock,
+    mock_lsc_read_npz: MagicMock,
+    create_mock_files,
+):
+    """Test that the __getitem__ method returns the correct data format."""
+    files = create_mock_files
+
+    # Mock return values
+    mock_lsc_read_npz.return_value = np.array([0.0, np.nan, 1.0])
+    mock_lsc_npz2key.return_value = "test_key"
+    mock_lsc_csv2bspline_pts.return_value = np.array([0.1, 0.2])
+
+    dataset = LSC_cntr2hfield_DataSet(
+        LSC_NPZ_DIR=files["npz_dir"],
+        filelist=files["filelist"],
+        design_file=files["design_file"],
+    )
+
+    geom_params, hfield = dataset[0]
+
+    # Check types
+    assert isinstance(geom_params, torch.Tensor)
+    assert isinstance(hfield, torch.Tensor)
+
+    # Check values
+    assert geom_params.shape == (2,)
+    assert hfield.shape == (1, 3)  # Assuming single channel
+
+    # Validate NaN handling
+    assert torch.equal(hfield, torch.tensor([[0.0, 0.0, 1.0]]).to(torch.float32))
+
+
+def test_invalid_filelist(create_mock_files):
+    """Test behavior with an invalid file list."""
+    files = create_mock_files
+    invalid_filelist = os.path.join(tempfile.gettempdir(), "invalid_filelist.txt")
+
+    with pytest.raises(FileNotFoundError):
+        LSC_cntr2hfield_DataSet(
+            LSC_NPZ_DIR=files["npz_dir"],
+            filelist=invalid_filelist,
+            design_file=files["design_file"],
+        )
+
+
+def test_empty_dataset(create_mock_files):
+    """Test behavior when file list is empty."""
+    files = create_mock_files
+
+    # Create an empty filelist
+    with open(files["filelist"], "w") as f:
+        f.truncate(0)
+
+    dataset = LSC_cntr2hfield_DataSet(
+        LSC_NPZ_DIR=files["npz_dir"],
+        filelist=files["filelist"],
+        design_file=files["design_file"],
+    )
+
+    assert len(dataset) == 0
