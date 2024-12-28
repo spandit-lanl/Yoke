@@ -106,6 +106,18 @@ applications-viewers:
   allow_failure: false
   image: 're-registry.lanl.gov/artimis_mpmm/mpmmcicdrbot/bookworm-slim-amd64-conda-py3_12_5__2024_10_29'
 
+lint-datasets:
+  stage: lint_temp
+  script:
+    - echo "starting bashrc"
+    - source /root/.bashrc
+    - echo "Running linting (through ruff)"
+    - ruff check src/yoke/datasets
+    - ruff check src/yoke/datasets --preview
+    - ruff format src/yoke/datasets --check --diff
+  allow_failure: false
+  image: 're-registry.lanl.gov/artimis_mpmm/mpmmcicdrbot/bookworm-slim-amd64-conda-py3_12_5__2024_10_29'
+
 lint-tests-directory:   # This job also runs in the test stage.
   stage: lint_temp    # It can run at the same time as unit-test-job (in parallel).
   script:

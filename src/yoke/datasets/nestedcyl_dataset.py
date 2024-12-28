@@ -1,4 +1,6 @@
-"""This dataloader processes only PVI .npz files and returns a single specified
+"""Relating to the nc231213 data.
+
+This dataloader processes only PVI .npz files and returns a single specified
 hydrodynamic field.
 
 Contains functions that process the .npz files for the nested cylinder
@@ -25,8 +27,8 @@ NoneStr = typing.Union[None, str]
 ################################################
 # Functions for processing nested cylinder data
 ################################################
-def npz2key(npz_file: str):
-    """Function to extract study information from the name of an .npz file
+def npz2key(npz_file: str) -> str:
+    """Function to extract study information from the name of an .npz file.
 
     Args:
         npz_file (str): file path from working directory to .npz file
@@ -42,8 +44,10 @@ def npz2key(npz_file: str):
     return key
 
 
-def csv2scalar(csv_file: str, key: str, scalar: str):
-    """Function to extract the scalar value from the design .csv file given the
+def csv2scalar(csv_file: str, key: str, scalar: str) -> float:
+    """Extract simulation key.
+
+    Function to extract the scalar value from the design .csv file given the
     study key.
 
     Args:
@@ -71,8 +75,8 @@ def csv2scalar(csv_file: str, key: str, scalar: str):
     return value
 
 
-def npz_pvi2field(npz: np.lib.npyio.NpzFile, field: str):
-    """Function to extract a field "picture" array from an .npz file
+def npz_pvi2field(npz: np.lib.npyio.NpzFile, field: str) -> np.ndarray:
+    """Function to extract a field "picture" array from an .npz file.
 
     Args:
         npz (np.lib.npyio.NpzFile): a loaded .npz file
@@ -93,6 +97,8 @@ def npz_pvi2field(npz: np.lib.npyio.NpzFile, field: str):
 # DataSet Class
 ####################################
 class PVI_SingleField_DataSet(Dataset):
+    """Single field dataset for nc231213."""
+
     def __init__(
         self,
         NC_NPZ_DIR: str,
@@ -100,8 +106,10 @@ class PVI_SingleField_DataSet(Dataset):
         input_field: str = "rho",
         predicted: str = "ptw_scale",
         design_file: str = "/data2/design_nc231213_Sn_MASTER.csv",
-    ):
-        """The definition of a dataset object for the simple nested cylinder
+    ) -> None:
+        """Initialization.
+
+        The definition of a dataset object for the simple nested cylinder
         problem: Nested Cylinder MOI density -> PTW scale value
 
         Args:
@@ -126,12 +134,12 @@ class PVI_SingleField_DataSet(Dataset):
 
         self.Nsamples = len(self.filelist)
 
-    def __len__(self):
+    def __len__(self) -> int:
         """Return number of samples in dataset."""
         return self.Nsamples
 
-    def __getitem__(self, index):
-        """Return a tuple of a batch's input and output data for training at a given index."""
+    def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor]:
+        """Return a tuple of a batch's input and output data."""
         # Get the input image
         filepath = self.filelist[index]
         npz = np.load(self.NC_NPZ_DIR + filepath)
@@ -146,69 +154,3 @@ class PVI_SingleField_DataSet(Dataset):
         truth = csv2scalar(self.design_file, key, self.predicted)
 
         return img_input, truth
-
-    # def __getitems__(self, indices):
-    #     """A mysterious method that PyTorch may have support for and documentation
-    #     implies may produce a speed up that returns a batch as a list of tensors
-    #     instead of a single tensor.
-
-    #     """
-
-
-# if __name__ == '__main__':
-#     """For testing and debugging.
-
-#     """
-
-#     # Imports for plotting
-#     # To view possible matplotlib backends use
-#     # >>> import matplotlib
-#     # >>> bklist = matplotlib.rcsetup.interactive_bk
-#     # >>> print(bklist)
-#     import matplotlib
-#     #matplotlib.use('MacOSX')
-#     matplotlib.use('TkAgg')
-#     # Get rid of type 3 fonts in figures
-#     matplotlib.rcParams['pdf.fonttype'] = 42
-#     matplotlib.rcParams['ps.fonttype'] = 42
-#     import matplotlib.pyplot as plt
-#     # Ensure LaTeX font
-#     font = {'family': 'serif'}
-#     plt.rc('font', **font)
-#     plt.rcParams['figure.figsize'] = (6, 6)
-#     from mpl_toolkits.axes_grid1 import make_axes_locatable
-
-#     # Get yoke environment variables
-#     YOKE_DIR = os.getenv('YOKE_DIR')
-#     NC_NPZ_DIR = os.getenv('NC_NPZ_DIR')
-#     NC_DESIGN_DIR = os.getenv('NC_DESIGN_DIR')
-
-#     pvi_test_ds = PVI_SingleField_DataSet(NC_NPZ_DIR,
-#                                           YOKE_DIR+'filelists/nc231213_test_10pct.txt',
-#                                           input_field='rho',
-#                                           predicted='ptw_scale',
-#                                           design_file=NC_DESIGN_DIR+'design_nc231213_Sn_MASTER.csv')
-
-#     sampIDX = 123
-#     rho_samp, ptw_scale_samp = pvi_test_ds.__getitem__(sampIDX)
-
-#     print('Shape of density field tensor: ', rho_samp.shape)
-#     rho_samp = np.squeeze(rho_samp.numpy())
-
-#     # Plot normalized radiograph and density field for diagnostics.
-#     fig1, ax1 = plt.subplots(1, 1, figsize=(12, 12))
-#     img1 = ax1.imshow(rho_samp,
-#                       aspect='equal',
-#                       origin='lower',
-#                       cmap='jet')
-#     ax1.set_ylabel("Z-axis", fontsize=16)
-#     ax1.set_xlabel("R-axis", fontsize=16)
-#     ax1.set_title('c-PTW={:.3f}'.format(float(ptw_scale_samp)), fontsize=18)
-
-#     divider1 = make_axes_locatable(ax1)
-#     cax1 = divider1.append_axes('right', size='10%', pad=0.1)
-#     fig1.colorbar(img1,
-#                   cax=cax1).set_label('Density',
-#                                       fontsize=14)
-
-#     plt.show()

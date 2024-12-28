@@ -1,12 +1,13 @@
-"""Functions and classes for torch DataSets which sample the Layered Shaped
-Charge data, *lsc240420*.
+"""Relating to the layered shaped charge data.
+
+Functions and classes for torch DataSets which sample the Layered Shaped Charge
+data, *lsc240420*.
 
 """
 
 ####################################
 # Packages
 ####################################
-import os
 import sys
 from pathlib import Path
 import typing
@@ -23,8 +24,10 @@ NoneStr = typing.Union[None, str]
 # Functions for returning the run *key* from
 # the npz-file name
 ################################################
-def LSCnpz2key(npz_file: str):
-    """Function to extract simulation *key* from the name of an .npz file.
+def LSCnpz2key(npz_file: str) -> str:
+    """Simulation key extraction.
+
+    Function to extract simulation *key* from the name of an .npz file.
 
     A study key looks like **lsc240420_id00001** and a NPZ filename is like
     **lsc240420_id00001_pvi_idx00000.npz**
@@ -41,12 +44,13 @@ def LSCnpz2key(npz_file: str):
     return key
 
 
-def LSCcsv2bspline_pts(design_file: str, key: str):
-    """Function to extract the B-spline nodes from the design .csv file given the
-    study key.
+def LSCcsv2bspline_pts(design_file: str, key: str) -> np.ndarray:
+    """Function to extract the B-spline nodes.
+
+    Nodes are extracted from the design .csv file given the study key.
 
     Args:
-        csv_file (str): file path from working directory to the .csv design file
+        design_file (str): File path from working directory to the .csv design file
         key (str): The study information for a given simulation; of the
                    form *lsc240420_id?????*
 
@@ -66,7 +70,7 @@ def LSCcsv2bspline_pts(design_file: str, key: str):
     return bspline_pts.astype(float)
 
 
-def LSCread_npz(npz: np.lib.npyio.NpzFile, field: str):
+def LSCread_npz(npz: np.lib.npyio.NpzFile, field: str) -> np.ndarray:
     """Function to extract a value corresponding to an NPZ key.
 
     Args:
@@ -81,10 +85,14 @@ def LSCread_npz(npz: np.lib.npyio.NpzFile, field: str):
 # DataSet Classes
 ####################################
 class LSC_cntr2rho_DataSet(Dataset):
-    def __init__(self, LSC_NPZ_DIR: str, filelist: str, design_file: str):
-        """The definition of a dataset object for the *Layered Shaped Charge* data
-        which produces pairs of B-spline contour-node vectors and simulation times
-        together with an average density field.
+    """Contour to average density dataset."""
+
+    def __init__(self, LSC_NPZ_DIR: str, filelist: str, design_file: str) -> None:
+        """Initialization of class.
+
+        The definition of a dataset object for the *Layered Shaped Charge* data
+        which produces pairs of B-spline contour-node vectors and simulation
+        times together with an average density field.
 
         Args:
             LSC_NPZ_DIR (str): Location of LSC NPZ files. A YOKE env variable.
@@ -103,15 +111,12 @@ class LSC_cntr2rho_DataSet(Dataset):
 
         self.Nsamples = len(self.filelist)
 
-    def __len__(self):
+    def __len__(self) -> int:
         """Return number of samples in dataset."""
         return self.Nsamples
 
-    def __getitem__(self, index):
-        """Return a tuple of a batch's input and output data for training at a given
-        index.
-
-        """
+    def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor]:
+        """Return a tuple of a batch's input and output data."""
         # Get the input image
         filepath = self.filelist[index]
         npz = np.load(self.LSC_NPZ_DIR + filepath)
@@ -135,12 +140,16 @@ class LSC_cntr2rho_DataSet(Dataset):
 
 
 class LSCnorm_cntr2rho_DataSet(Dataset):
+    """Normalized contour to average density dataset."""
+
     def __init__(
         self, LSC_NPZ_DIR: str, filelist: str, design_file: str, normalization_file: str
-    ):
-        """The definition of a dataset object for the *Layered Shaped Charge* data
-        which produces pairs of B-spline contour-node vectors and simulation times
-        together with an average density field.
+    ) -> None:
+        """Initialization of normalized dataset.
+
+        The definition of a dataset object for the *Layered Shaped Charge* data
+        which produces pairs of B-spline contour-node vectors and simulation
+        times together with an average density field.
 
         This class uses pre-calculated normalization constants to normalize the
         geometry parameters and the density field. The time values are also
@@ -193,15 +202,12 @@ class LSCnorm_cntr2rho_DataSet(Dataset):
 
         self.Nsamples = len(self.filelist)
 
-    def __len__(self):
+    def __len__(self) -> int:
         """Return number of samples in dataset."""
         return self.Nsamples
 
-    def __getitem__(self, index):
-        """Return a tuple of a batch's input and output data for training at a given
-        index.
-
-        """
+    def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor]:
+        """Return a tuple of a batch's input and output data."""
         # Get the input image
         filepath = self.filelist[index]
         npz = np.load(self.LSC_NPZ_DIR + filepath)
@@ -239,75 +245,147 @@ class LSCnorm_cntr2rho_DataSet(Dataset):
         return norm_sim_params, unbias_true_image
 
 
-class LSC_rho2rho_temporal_DataSet(Dataset):
-    """This dataset returns multi-channel images at two different times
-    from the *Layered Shaped Charge* simulation. The *maximum time-offset*
-    can be specified. The channels in the images returned are the densities
-    for each material at a given time as well as the (R, Z)-velocity
-    fields. The time-offset between the two images is also returned.
+class LSC_cntr2hfield_DataSet(Dataset):
+    """Contour to set of fields dataset."""
 
-    NOTE: The way time indices are chosen necessitates *max_timeIDX_offset*
-    being less than or equal to 3 in the lsc240420 data.
-
-    Args:
-        LSC_NPZ_DIR (str): Location of LSC NPZ files.
-        file_prefix_list (str): Text file listing unique prefixes corresponding
-                                to unique simulations.
-        max_timeIDX_offset (int): Maximum timesteps-ahead to attempt
-                                  prediction for. A prediction image will be chosen
-                                  within this timeframe at random.
-        max_file_checks (int): This dataset generates two random time indices and 
-                               checks if the corresponding files exist. This 
-                               argument controls the maximum number of times indices 
-                               are generated before throwing an error.
-
-    """
     def __init__(
-            self,
-            LSC_NPZ_DIR: str,
-            file_prefix_list: str,
-            max_timeIDX_offset: int,
-            max_file_checks: int,
-    ) -> None:        
+        self,
+        LSC_NPZ_DIR: str,
+        filelist: str,
+        design_file: str,
+        field_list: list[str] = ["density_throw"],
+    ) -> None:
+        """Initialization of class.
+
+        The definition of a dataset object for the *Layered Shaped Charge* data
+        which produces B-spline contour-node vectors and a *hydro-dynamic
+        field* image consisting of channels specified in *field_list*.
+
+        Args:
+            LSC_NPZ_DIR (str): Location of LSC NPZ files. A YOKE env variable.
+            filelist (str): Text file listing file names to read
+            design_file (str): Full-path to .csv file with master design study parameters
+            field_list (List[str]): List of hydro-dynamic fields to include as channels
+                                    in image.
+
+        """
+        # Model Arguments
+        self.LSC_NPZ_DIR = LSC_NPZ_DIR
+        self.filelist = filelist
+        self.design_file = design_file
+        self.hydro_fields = field_list
+
+        # Create filelist
+        with open(filelist) as f:
+            self.filelist = [line.rstrip() for line in f]
+
+        # Shuffle the list of prefixes in-place
+        random.shuffle(self.filelist)
+
+        self.Nsamples = len(self.filelist)
+
+    def __len__(self) -> int:
+        """Return number of samples in dataset."""
+        return self.Nsamples
+
+    def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor]:
+        """Return a tuple of a batch's input and output data."""
+        # Get the input image
+        filepath = self.filelist[index]
+        npz = np.load(self.LSC_NPZ_DIR + filepath)
+
+        hfield_list = []
+        for hfield in self.hydro_fields:
+            tmp_img = LSCread_npz(npz, hfield)
+            # Remember to replace all NaNs with 0.0
+            tmp_img = np.nan_to_num(tmp_img, nan=0.0)
+            hfield_list.append(tmp_img)
+
+        # Concatenate images channel first.
+        hfield = torch.tensor(np.stack(hfield_list, axis=0)).to(torch.float32)
+
+        # Get the contours and sim_time
+        sim_key = LSCnpz2key(self.LSC_NPZ_DIR + filepath)
+        Bspline_nodes = LSCcsv2bspline_pts(self.design_file, sim_key)
+        npz.close()
+
+        geom_params = torch.from_numpy(Bspline_nodes).to(torch.float32)
+
+        return geom_params, hfield
+
+
+class LSC_rho2rho_temporal_DataSet(Dataset):
+    """Temporal LSC dataset."""
+
+    def __init__(
+        self,
+        LSC_NPZ_DIR: str,
+        file_prefix_list: str,
+        max_timeIDX_offset: int,
+        max_file_checks: int,
+    ) -> None:
+        """Initialization of timestep dataset.
+
+        This dataset returns multi-channel images at two different times from
+        the *Layered Shaped Charge* simulation. The *maximum time-offset* can
+        be specified. The channels in the images returned are the densities for
+        each material at a given time as well as the (R, Z)-velocity
+        fields. The time-offset between the two images is also returned.
+
+        NOTE: The way time indices are chosen necessitates *max_timeIDX_offset*
+        being less than or equal to 3 in the lsc240420 data.
+
+        Args:
+            LSC_NPZ_DIR (str): Location of LSC NPZ files.
+            file_prefix_list (str): Text file listing unique prefixes corresponding
+                                    to unique simulations.
+            max_timeIDX_offset (int): Maximum timesteps-ahead to attempt
+                                      prediction for. A prediction image will be chosen
+                                      within this timeframe at random.
+            max_file_checks (int): This dataset generates two random time indices and
+                                   checks if the corresponding files exist. This
+                                   argument controls the maximum number of times indices
+                                   are generated before throwing an error.
+
+        """
         # Model Arguments
         self.LSC_NPZ_DIR = LSC_NPZ_DIR
         self.max_timeIDX_offset = max_timeIDX_offset
         self.max_file_checks = max_file_checks
-        
+
         # Create filelist
         with open(file_prefix_list) as f:
             self.file_prefix_list = [line.rstrip() for line in f]
 
         # Shuffle the list of prefixes in-place
         random.shuffle(self.file_prefix_list)
-        
+
         self.Nsamples = len(self.file_prefix_list)
 
-        # Lists of fields to return images for 
-        self.hydro_fields = ['density_case',
-                             'density_cushion',
-                             'density_maincharge',
-                             'density_outside_air',
-                             'density_striker',
-                             'density_throw',
-                             'Uvelocity',
-                             'Wvelocity']
-        
+        # Lists of fields to return images for
+        self.hydro_fields = [
+            "density_case",
+            "density_cushion",
+            "density_maincharge",
+            "density_outside_air",
+            "density_striker",
+            "density_throw",
+            "Uvelocity",
+            "Wvelocity",
+        ]
+
         # Initialize random number generator for time index selection
         self.rng = np.random.default_rng()
-        
-    def __len__(self):
+
+    def __len__(self) -> int:
         """Return number of samples in dataset."""
         return self.Nsamples
 
-    def __getitem__(self, index):
-        """Return a tuple of a batch's input and output data for training at a given
-        index.
-
-        """
+    def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Return a tuple of a batch's input and output data."""
         # Rotate index if necessary
         index = index % self.Nsamples
-        
+
         # Get the input image. Try several indices if necessary.
         prefix_attempt = 0
         prefix_loop_break = False
@@ -325,8 +403,8 @@ class LSC_rho2rho_temporal_DataSet(Dataset):
                 endIDX = self.rng.integers(1, self.max_timeIDX_offset + 1) + startIDX
 
                 # Construct file names
-                start_file = file_prefix + f'_pvi_idx{startIDX:05d}.npz'
-                end_file = file_prefix + f'_pvi_idx{endIDX:05d}.npz'
+                start_file = file_prefix + f"_pvi_idx{startIDX:05d}.npz"
+                end_file = file_prefix + f"_pvi_idx{endIDX:05d}.npz"
 
                 # Check if both files exist
                 start_file_path = Path(self.LSC_NPZ_DIR + start_file)
@@ -339,9 +417,11 @@ class LSC_rho2rho_temporal_DataSet(Dataset):
                 attempt += 1
 
             if attempt == self.max_file_checks:
-                fnf_msg = ("In LSC_rho2rho_temporal_DataSet, "
-                           "max_file_checks "
-                           f"reached for prefix: {file_prefix}")
+                fnf_msg = (
+                    "In LSC_rho2rho_temporal_DataSet, "
+                    "max_file_checks "
+                    f"reached for prefix: {file_prefix}"
+                )
                 print(fnf_msg, file=sys.stderr)
 
             # Break outer loop if time-pairs were found.
@@ -349,24 +429,29 @@ class LSC_rho2rho_temporal_DataSet(Dataset):
                 break
 
             # Try different prefix if no time-pairs are found.
-            print(f"Prefix attempt {prefix_attempt + 1} failed. Trying next prefix.", 
-                  file=sys.stderr)
+            print(
+                f"Prefix attempt {prefix_attempt + 1} failed. Trying next prefix.",
+                file=sys.stderr,
+            )
             prefix_attempt += 1
             index = (index + 1) % self.Nsamples  # Rotate index if necessary
-                    
+
         # Load NPZ files. Raise exceptions if file is not able to be loaded.
         try:
             start_npz = np.load(self.LSC_NPZ_DIR + start_file)
         except Exception as e:
-            print(f"Error loading start file: {self.LSC_NPZ_DIR + start_file}",
-                  file=sys.stderr)
+            print(
+                f"Error loading start file: {self.LSC_NPZ_DIR + start_file}",
+                file=sys.stderr,
+            )
             raise e
 
         try:
             end_npz = np.load(self.LSC_NPZ_DIR + end_file)
         except Exception as e:
-            print(f"Error loading end file: {self.LSC_NPZ_DIR + end_file}",
-                  file=sys.stderr)
+            print(
+                f"Error loading end file: {self.LSC_NPZ_DIR + end_file}", file=sys.stderr
+            )
             start_npz.close()
             raise e
 
@@ -390,11 +475,10 @@ class LSC_rho2rho_temporal_DataSet(Dataset):
         end_img = torch.tensor(np.stack(end_img_list, axis=0)).to(torch.float32)
 
         # Get the time offset
-        Dt = 0.25*(endIDX - startIDX)
+        Dt = 0.25 * (endIDX - startIDX)
 
         # Close the npzs
         start_npz.close()
         end_npz.close()
 
         return start_img, end_img, Dt
-
