@@ -10,7 +10,6 @@ import pytest
 import tempfile
 import numpy as np
 import torch
-from typing import List
 from unittest.mock import patch, mock_open, MagicMock
 from yoke.datasets.lsc_dataset import LSC_rho2rho_temporal_DataSet
 from yoke.datasets.lsc_dataset import LSC_cntr2hfield_DataSet
@@ -143,7 +142,7 @@ def test_getitem_load_error(
 
 # Tests for cntr2field dataset
 @pytest.fixture
-def create_mock_files():
+def create_mock_files() -> None:
     """Create temporary files and directories for testing."""
     with tempfile.TemporaryDirectory() as tmpdir:
         npz_dir = os.path.join(tmpdir, "npz_files/")
@@ -175,8 +174,8 @@ def test_dataset_length(
     mock_lsc_csv2bspline_pts: MagicMock,
     mock_lsc_npz2key: MagicMock,
     mock_lsc_read_npz: MagicMock,
-    create_mock_files,
-):
+    create_mock_files: dict[str, str],
+) -> None:
     """Test that the dataset length matches the number of samples."""
     files = create_mock_files
     dataset = LSC_cntr2hfield_DataSet(
@@ -195,8 +194,8 @@ def test_dataset_getitem(
     mock_lsc_csv2bspline_pts: MagicMock,
     mock_lsc_npz2key: MagicMock,
     mock_lsc_read_npz: MagicMock,
-    create_mock_files,
-):
+    create_mock_files: dict[str, str],
+) -> None:
     """Test that the __getitem__ method returns the correct data format."""
     files = create_mock_files
 
@@ -225,7 +224,7 @@ def test_dataset_getitem(
     assert torch.equal(hfield, torch.tensor([[0.0, 0.0, 1.0]]).to(torch.float32))
 
 
-def test_invalid_filelist(create_mock_files):
+def test_invalid_filelist(create_mock_files: dict[str, str]) -> None:
     """Test behavior with an invalid file list."""
     files = create_mock_files
     invalid_filelist = os.path.join(tempfile.gettempdir(), "invalid_filelist.txt")
@@ -238,7 +237,7 @@ def test_invalid_filelist(create_mock_files):
         )
 
 
-def test_empty_dataset(create_mock_files):
+def test_empty_dataset(create_mock_files: dict[str, str]) -> None:
     """Test behavior when file list is empty."""
     files = create_mock_files
 
