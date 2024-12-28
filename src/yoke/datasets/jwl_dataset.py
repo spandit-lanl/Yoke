@@ -28,14 +28,19 @@ def compute_CJ(
     # reference isentrope: ps(v/v0)
     def ps(vs: float) -> float:
         return A * np.exp(-R1 * vs) + B * np.exp(-R2 * vs) + C / vs**k
+
     # adiabatic gamma on reference isentrope: gs(v/v0)
     def gs(vs: float) -> float:
-        return (vs * (A * R1 * np.exp(-R1 * vs) +
-                      B * R2 * np.exp(-R2 * vs) +
-                      C * k / vs**kp1)
-         / ps(vs))
+        return (
+            vs
+            * (A * R1 * np.exp(-R1 * vs) + B * R2 * np.exp(-R2 * vs) + C * k / vs**kp1)
+            / ps(vs)
+        )
+
     # at CJ: vj/v0 = gj/(gj+1) assuming p0=0
-    def fzero(vs: float) -> float: return gs(vs) * (vs - 1) + vs
+    def fzero(vs: float) -> float:
+        return gs(vs) * (vs - 1) + vs
+
     vsj = root(fzero, 0.5, tol=1e-14).x[0]
     pj = ps(vsj)
     Dj = np.sqrt(pj * v0 / (1 - vsj))
@@ -49,8 +54,17 @@ def compute_CJ(
     return np.array((Dj, pj, vsj, edet))
 
 
-def compute_e_release( A: float, B: float, C: float, G: float,
-                      R1: float, R2: float, v0: float, edet: float, vs: float) -> float:
+def compute_e_release(
+    A: float,
+    B: float,
+    C: float,
+    G: float,
+    R1: float,
+    R2: float,
+    v0: float,
+    edet: float,
+    vs: float,
+) -> float:
     """Return the detonation energy released at expansion vs=v/v0.
 
     Args: A,B,C in units of pressure
@@ -61,9 +75,12 @@ def compute_e_release( A: float, B: float, C: float, G: float,
         vs=v/v0 is the number of initial volumes of expansion
     Returns: detonation energy released in units of specific energy
     """
-    def Int(vs: float) -> float: return v0 * (
-        A / R1 * np.exp(-R1 * vs) + B / R2 * np.exp(-R2 * vs) + C / G / vs**G
-    )
+
+    def Int(vs: float) -> float:
+        return v0 * (
+            A / R1 * np.exp(-R1 * vs) + B / R2 * np.exp(-R2 * vs) + C / G / vs**G
+        )
+
     return edet - Int(vs)
 
 
@@ -74,6 +91,7 @@ def compute_e_release( A: float, B: float, C: float, G: float,
 
 class CYLEX_pdv2jwl_Dataset(Dataset):
     """PDV to JWL Dataset object for the *CYLEX/JWL*."""
+
     def __init__(self, rng: slice, file: str) -> None:
         """PDV to JWL Dataset object for the *CYLEX/JWL*.
 
@@ -102,7 +120,7 @@ class CYLEX_pdv2jwl_Dataset(Dataset):
         self.df = df = df.iloc[rng]
 
         self.Nsamples = len(df)
-        #self.resetCJ()
+        # self.resetCJ()
 
     def resetCJ(self) -> None:
         """Reset CJ and expansion energy for given JWL parameter."""
@@ -125,7 +143,7 @@ class CYLEX_pdv2jwl_Dataset(Dataset):
         """Return number of samples in dataset."""
         return self.Nsamples
 
-    def __getitem__(self, index: int) -> ([float],[float]):
+    def __getitem__(self, index: int) -> ([float], [float]):
         """Return a tuple (input,output) data for training at a given index."""
         # Get the PDV input
         vs = self.df.iloc[index]["t0.1":"t4.5"]
@@ -140,10 +158,11 @@ class CYLEX_pdv2jwl_Dataset(Dataset):
 
 class CYLEXnorm_pdv2jwl_Dataset(CYLEX_pdv2jwl_Dataset):
     """Normalized PDV to JWL Dataset object for the *CYLEX/JWL*."""
+
     def __init__(self, rng: slice, file: str) -> None:
         """PDV to JWL Normalized-Dataset object for the *CYLEX/JWL*."""
         # Model Arguments
-        super().__init__(rng,file)
+        super().__init__(rng, file)
         self.stats = self.df.describe()
         self.tslice = slice("t0.1", "t4.5")
         self.pdvmin = self.stats.loc["min", self.tslice].min()
@@ -152,7 +171,7 @@ class CYLEXnorm_pdv2jwl_Dataset(CYLEX_pdv2jwl_Dataset):
         self.jwlmins = self.stats.loc["min", self.jwlslice]
         self.jwlmaxs = self.stats.loc["max", self.jwlslice]
 
-    def __getitem__(self, index: int) -> ([float],[float]):
+    def __getitem__(self, index: int) -> ([float], [float]):
         """Return a tuple (input,output) data for training at a given index."""
         # Get the PDV input
         pdvs = self.df.iloc[index][self.tslice]
@@ -176,7 +195,6 @@ if __name__ == "__main__":
     # >>> bklist = matplotlib.rcsetup.interactive_bk
     # >>> print(bklist)
     import matplotlib.pyplot as plt
-    import matplotlib
 
     # NOTE: There is no way this will be portable!!
     # matplotlib.use("MacOSX")
@@ -194,11 +212,12 @@ if __name__ == "__main__":
     # load data and get initial stats
     data_df = pd.read_csv(
         os.path.join(
-            os.path.dirname(__file__),
-            "../../../data_examples/samples_sand-all.csv"),
+            os.path.dirname(__file__), "../../../data_examples/samples_sand-all.csv"
+        ),
         sep=",",
         header=0,
-        engine="python")
+        engine="python",
+    )
     print(data_df.keys())
     print(data_df.describe().loc[:, "dcj":"edet"])
     print(data_df.describe().loc[:, "edet":"e7"])
@@ -207,9 +226,9 @@ if __name__ == "__main__":
     cylex = CYLEXnorm_pdv2jwl_Dataset(
         slice(0, None),
         os.path.join(
-            os.path.dirname(__file__),
-            "../../../data_examples/samples_sand-all.csv")
-        )
+            os.path.dirname(__file__), "../../../data_examples/samples_sand-all.csv"
+        ),
+    )
 
     f, aax = plt.subplots(1, 2)
     tstr = data_df.keys().to_series()["t0.1":"t4.5"].values
