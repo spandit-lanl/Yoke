@@ -7,10 +7,13 @@ from yoke.models.vit.swin.encoder import SwinEncoder, SwinEncoder2
 from yoke.models.vit.patch_embed import SwinEmbedding
 from yoke.models.vit.patch_manipulation import PatchMerge
 
+from yoke.torch_training_utils import count_torch_params
+
 
 class Swin(nn.Module):
-    """Main SWIN architecture from the original 2021 SWIN paper. This takes in
-    an image and predicts a vector of size `num_output_classes`.
+    """Main SWIN architecture from the original 2021 SWIN paper.
+
+    This takes in an image and predicts a vector of size `num_output_classes`.
 
     Args:
         input_channels (int): Number of variables/channels input
@@ -53,7 +56,8 @@ class Swin(nn.Module):
         ],
         num_output_classes: int = 5,
         verbose: bool = False,
-    ):
+    ) -> None:
+        """Initialization for SWIN."""
         super().__init__()
         # Assign inputs as attributes of transformer
         self.input_channels = input_channels
@@ -196,7 +200,8 @@ class Swin(nn.Module):
 
         self.layer = nn.Linear(new_emb_size, num_output_classes)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward method for SWIN."""
         x = self.Embedding(x)
 
         # enumeration of nn.moduleList is supported under `torch.jit.script`
@@ -224,11 +229,13 @@ class Swin(nn.Module):
 
 
 class SwinV2(nn.Module):
-    """Main SWIN-V2 architecture. This adds a learnable per-head scaling cosine
-    attention in the MSA layers and swaps the order of the layer-normalization
-    and the MSA/MLP layers in the encoders. Within each block of SWIN encoders,
-    an extra layer normalization is added after every 3 encoders. These changes
-    are reported to allow stable training of billion-parameter models.
+    """Main SWIN-V2 architecture.
+
+    This adds a learnable per-head scaling cosine attention in the MSA layers
+    and swaps the order of the layer-normalization and the MSA/MLP layers in
+    the encoders. Within each block of SWIN encoders, an extra layer
+    normalization is added after every 3 encoders. These changes are reported
+    to allow stable training of billion-parameter models.
 
     Args:
         input_channels (int): Number of variables/channels input
@@ -271,7 +278,8 @@ class SwinV2(nn.Module):
         ],
         num_output_classes: int = 5,
         verbose: bool = False,
-    ):
+    ) -> None:
+        """Initialization for SWIN-V2."""
         super().__init__()
         # Assign inputs as attributes of transformer
         self.input_channels = input_channels
@@ -429,7 +437,8 @@ class SwinV2(nn.Module):
 
         self.layer = nn.Linear(new_emb_size, num_output_classes)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward method for SWIN-V2."""
         x = self.Embedding(x)
 
         # enumeration of nn.moduleList is supported under `torch.jit.script`
@@ -457,8 +466,6 @@ class SwinV2(nn.Module):
 
 
 if __name__ == "__main__":
-    from yoke.torch_training_utils import count_torch_params
-
     # (B, C, H, W)
     x = torch.rand(5, 25, 1120, 800)
 
