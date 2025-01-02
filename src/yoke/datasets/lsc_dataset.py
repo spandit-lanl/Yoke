@@ -339,9 +339,7 @@ class LSC_hfield_reward_DataSet(Dataset):
         filelist: str,
         design_file: str,
         field_list: list[str] = ["density_throw"],
-        reward_fn: Callable[
-            [torch.Tensor, torch.Tensor], torch.Tensor
-        ] = neg_mse_loss,
+        reward_fn: Callable[[torch.Tensor, torch.Tensor], torch.Tensor] = neg_mse_loss,
     ) -> None:
         """Initialization of class.
 
