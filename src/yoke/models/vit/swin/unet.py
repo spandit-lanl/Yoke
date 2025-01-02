@@ -7,12 +7,16 @@ from yoke.models.vit.swin.encoder import SwinEncoder2, SwinConnectEncoder
 from yoke.models.vit.swin.encoder import SwinConnectDecoder
 from yoke.models.vit.patch_manipulation import PatchMerge, PatchExpand
 
+from yoke.torch_training_utils import count_torch_params
+
 
 class SwinUnetBackbone(nn.Module):
-    """SWIN U-Net architecture. This backbone has no initial patch embedding or
-    terminal patch expansion. Instead this `nn.Module` just expects a (B, H*W,
-    C) tensor resulting from some patch embedding. The output is then a (B,
-    H*W, C) tensor.
+    """SWIN U-Net architecture.
+
+    This backbone has no initial patch embedding or terminal patch
+    expansion. Instead this `nn.Module` just expects a (B, H*W, C) tensor
+    resulting from some patch embedding. The output is then a (B, H*W, C)
+    tensor.
 
     In this U-Net architecture the *left-arm* architecture mirrors that of the
     *right-arm*. Architetures for these arms can not be specified
@@ -54,7 +58,8 @@ class SwinUnetBackbone(nn.Module):
         ],
         num_output_classes: int = 5,
         verbose: bool = False,
-    ):
+    ) -> None:
+        """Initialization for SWIN-UNet."""
         super().__init__()
         # Assign inputs as attributes of transformer
         self.emb_size = emb_size
@@ -414,7 +419,8 @@ class SwinUnetBackbone(nn.Module):
             if (i + 1) % 3 == 0:
                 self.up_stage3.append(nn.LayerNorm(new_emb_size))
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward method for SWIN-UNet."""
         # DOWN
         # Set up list of down-sample skip connections
         x_downsample = []
@@ -474,8 +480,6 @@ class SwinUnetBackbone(nn.Module):
 
 
 if __name__ == "__main__":
-    from yoke.torch_training_utils import count_torch_params
-
     # (B, H*W, C)
     x = torch.rand(5, 112 * 80, 96)  # 112*80=8960
 
