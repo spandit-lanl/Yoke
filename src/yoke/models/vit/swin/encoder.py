@@ -8,16 +8,18 @@ from yoke.models.vit.swin.windowed_msa import WindowCosMSA, ShiftedWindowCosMSA
 
 
 class MLP(nn.Module):
-    """A standard multi-layer perceptron structure using a GELU activtion, one
-    hidden layer, and expanding the embedding size by 4x before contracting
-    again.
+    """A standard multi-layer perceptron structure using a GELU activtion.
+
+    Consists of one hidden layer, and expanding the embedding size by 4x before
+    contracting again.
 
     Args:
         emb_size (int): Embedding layer dimension from input layer.
 
     """
 
-    def __init__(self, emb_size: int = 64):
+    def __init__(self, emb_size: int = 64) -> None:
+        """Initialization for MLP."""
         super().__init__()
         self.ff = nn.Sequential(
             nn.Linear(emb_size, 4 * emb_size),
@@ -25,12 +27,15 @@ class MLP(nn.Module):
             nn.Linear(4 * emb_size, emb_size),
         )
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward method for MLP."""
         return self.ff(x)
 
 
 class SwinEncoder(nn.Module):
-    """The main SWIN encoder alternates between a windowed-MSA and
+    """The main SWIN encoder.
+
+    The main SWIN encoder alternates between a windowed-MSA and
     shifted-windowed-MSA block. MLP layers are used between and layer
     normalization is used prior to each layer. Residual connections are also
     included at each layer.
@@ -55,7 +60,8 @@ class SwinEncoder(nn.Module):
         num_heads: int = 10,
         patch_grid_size: (int, int) = (16, 32),
         window_size: (int, int) = (8, 4),
-    ):
+    ) -> None:
+        """Initialization for SWIN-Encoder block."""
         super().__init__()
 
         self.emb_size = emb_size
@@ -79,7 +85,8 @@ class SwinEncoder(nn.Module):
         self.ln = nn.LayerNorm(self.emb_size)
         self.MLP = MLP(self.emb_size)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward method for SWIN-Encoder block."""
         # Window Attention
         x = x + self.WMSA(self.ln(x))
         x = x + self.MLP(self.ln(x))
@@ -91,9 +98,11 @@ class SwinEncoder(nn.Module):
 
 
 class SwinEncoder2(nn.Module):
-    """The main SWIN-V2 encoder changes the original SWIN encoder to apply
-    layer normalization after the MLP layers and MSA layers. The MSA layers are
-    also modified to use a *cosine* self-attention mechanism with a learnable,
+    """The main SWIN-V2 encoder.
+
+    The main SWIN-V2 encoder changes the original SWIN encoder to apply layer
+    normalization after the MLP layers and MSA layers. The MSA layers are also
+    modified to use a *cosine* self-attention mechanism with a learnable,
     per-head, scaling.
 
     Args:
@@ -110,7 +119,8 @@ class SwinEncoder2(nn.Module):
         num_heads: int = 10,
         patch_grid_size: (int, int) = (16, 32),
         window_size: (int, int) = (8, 4),
-    ):
+    ) -> None:
+        """Initialization for SWIN-V2 Encoder block."""
         super().__init__()
 
         self.emb_size = emb_size
@@ -134,7 +144,8 @@ class SwinEncoder2(nn.Module):
         self.ln = nn.LayerNorm(self.emb_size)
         self.MLP = MLP(self.emb_size)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward method for SWIN-V2 Encoder block."""
         # Window Attention
         x = x + self.ln(self.WMSA(x))
         x = x + self.ln(self.MLP(x))
@@ -146,7 +157,9 @@ class SwinEncoder2(nn.Module):
 
 
 class SwinConnectEncoder(SwinEncoder2):
-    """A SWIN-V2 encoder that outputs a copy of its forward pass to use in
+    """SWIN-V2 Encoder with residuals.
+
+    A SWIN-V2 encoder that outputs a copy of its forward pass to use in
     residual or skip connection layers.
 
     Args:
@@ -163,7 +176,8 @@ class SwinConnectEncoder(SwinEncoder2):
         num_heads: int = 10,
         patch_grid_size: (int, int) = (16, 32),
         window_size: (int, int) = (8, 4),
-    ):
+    ) -> None:
+        """Initialization for the SWIN-V2 encoder with residuals."""
         super().__init__(
             emb_size=emb_size,
             num_heads=num_heads,
@@ -171,15 +185,18 @@ class SwinConnectEncoder(SwinEncoder2):
             window_size=window_size,
         )
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> tuple(torch.Tensor, torch.Tensor):
+        """Forward method for the SWIN-V2 encoder with residuals."""
         x = super().forward(x)
 
         return x, x
 
 
 class SwinConnectDecoder(SwinEncoder2):
-    """A SWIN-V2 encoder that appends an extra input tensor and then remaps to
-    the embedding dimension through a linear layer prior to passing the result
+    """SWIN-V2 encoder with residual input.
+
+    A SWIN-V2 encoder that appends an extra input tensor and then remaps to the
+    embedding dimension through a linear layer prior to passing the result
     through a standard SWIN-V2 encoder.
 
     Args:
@@ -196,7 +213,8 @@ class SwinConnectDecoder(SwinEncoder2):
         num_heads: int = 10,
         patch_grid_size: (int, int) = (16, 32),
         window_size: (int, int) = (8, 4),
-    ):
+    ) -> None:
+        """Initialization for SWIN-V2 Connect Decoder."""
         super().__init__(
             emb_size=emb_size,
             num_heads=num_heads,
@@ -206,7 +224,8 @@ class SwinConnectDecoder(SwinEncoder2):
 
         self.linear_remap = nn.Linear(2 * emb_size, emb_size)
 
-    def forward(self, x, y):
+    def forward(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+        """Forward method for SWIN-V2 Connect Decoder."""
         # Concatenate with the skip connection input
         x = torch.cat([x, y], dim=-1)
 
