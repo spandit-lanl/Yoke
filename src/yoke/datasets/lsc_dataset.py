@@ -325,6 +325,11 @@ class LSC_cntr2hfield_DataSet(Dataset):
         return geom_params, hfield
 
 
+def neg_mse_loss(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+    """Negated MSE loss."""
+    return -torch.nn.functional.mse_loss(x, y)
+
+
 class LSC_hfield_reward_DataSet(Dataset):
     """Hydro-field discrepancy reward dataset."""
 
@@ -336,7 +341,7 @@ class LSC_hfield_reward_DataSet(Dataset):
         field_list: list[str] = ["density_throw"],
         reward_fn: Callable[
             [torch.Tensor, torch.Tensor], torch.Tensor
-        ] = -torch.nn.functional.mse_loss,
+        ] = neg_mse_loss,
     ) -> None:
         """Initialization of class.
 
