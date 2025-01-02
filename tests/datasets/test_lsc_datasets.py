@@ -14,6 +14,7 @@ from unittest.mock import patch, mock_open, MagicMock
 from yoke.datasets.lsc_dataset import LSC_rho2rho_temporal_DataSet
 from yoke.datasets.lsc_dataset import LSC_cntr2hfield_DataSet
 from yoke.datasets.lsc_dataset import LSC_hfield_reward_DataSet
+from yoke.datasets.lsc_dataset import LSC_hfield_policy_DataSet
 
 
 # Mock np.load to simulate loading .npz files
@@ -382,3 +383,75 @@ def test_reward_function_invocation(
     mock_reward_fn = mock_reward_dataset.reward
     mock_reward_dataset[0]
     assert mock_reward_fn.called
+
+
+# For LSC_hfield_policy_DataSet
+@pytest.fixture
+@patch("numpy.load")
+@patch("yoke.datasets.lsc_dataset.LSCread_npz", side_effect=mock_LSCread_npz)
+def mock_policy_dataset(
+    mock_LSCread_npz_func: MagicMock,
+    mock_np_load: MagicMock,
+) -> LSC_hfield_policy_DataSet:
+    """Fixture to create a mock instance of LSC_hfield_policy_DataSet."""
+    LSC_NPZ_DIR = "/mock/path/"
+    filelist = "mock_filelist.txt"
+    design_file = "mock_design.csv"
+    field_list = ["density_throw"]
+
+    # Mock numpy.load to return a mock dictionary
+    mock_np_load.return_value = MockNpzFile({"density_throw": np.array([1.0, 2.0, 3.0])})
+
+    mock_file_list = "mock_file_1\nmock_file_2\nmock_file_3\n"
+    with patch("builtins.open", mock_open(read_data=mock_file_list)):
+        with patch("random.shuffle") as mock_shuffle:
+            ds = LSC_hfield_policy_DataSet(
+                LSC_NPZ_DIR, filelist, design_file, field_list
+            )
+            mock_shuffle.assert_called_once()
+
+    return ds
+
+
+def test_policy_init(mock_policy_dataset: LSC_hfield_policy_DataSet) -> None:
+    """Test initialization of the dataset."""
+    assert mock_policy_dataset.LSC_NPZ_DIR == "/mock/path/"
+    assert mock_policy_dataset.filelist == ["mock_file_1", "mock_file_2", "mock_file_3"]
+    # Cartesian product of two files
+    assert len(mock_policy_dataset.state_target_list) == 9
+    assert mock_policy_dataset.hydro_fields == ["density_throw"]
+
+
+def test_policy_len(mock_policy_dataset: LSC_hfield_policy_DataSet) -> None:
+    """Test the __len__ method."""
+    assert len(mock_policy_dataset) == 9
+
+
+@patch("yoke.datasets.lsc_dataset.LSCread_npz", side_effect=mock_LSCread_npz)
+@patch("yoke.datasets.lsc_dataset.LSCnpz2key", return_value="mock_key")
+@patch(
+    "yoke.datasets.lsc_dataset.LSCcsv2bspline_pts",
+    return_value=np.array([0.5, 0.6, 0.7]),
+)
+@patch(
+    "numpy.load", side_effect=lambda _: MockNpzFile({"density_throw": np.ones((10, 10))})
+)
+@patch("pathlib.Path.is_file", return_value=True)
+def test_policy_getitem(
+    mock_is_file: MagicMock,
+    mock_npz_load: MagicMock,
+    mock_LSCread_npz: MagicMock,
+    mock_lsc_csv2bspline_pts: MagicMock,
+    mock_lsc_npz2key: MagicMock,
+    mock_policy_dataset: LSC_hfield_policy_DataSet,
+) -> None:
+    """Test the __getitem__ method."""
+    result = mock_policy_dataset[0]
+    state_geom_params, state_hfield, target_hfield, geom_discrepancy = result
+
+    assert state_geom_params.shape == torch.Size([3])  # Mocked B-spline node shape
+    assert state_hfield.shape == torch.Size([1, 10, 10])
+    assert target_hfield.shape == torch.Size([1, 10, 10])
+    assert torch.allclose(
+        geom_discrepancy, torch.tensor([0.0, 0.0, 0.0]), atol=1e-6
+    ), "Tensors are not equal."
