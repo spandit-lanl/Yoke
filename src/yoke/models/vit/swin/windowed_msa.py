@@ -1,4 +1,6 @@
-"""This module defines the *Windowed Multi-Headed Self-Attention* and the *Shifted
+"""Windowed Multi-headed Self-Attention layers module.
+
+This module defines the *Windowed Multi-Headed Self-Attention* and the *Shifted
 Windowed Multi-Headed Self-Attention* classes. These are used directly to
 construct the SWIN encoder block.
 
@@ -14,7 +16,9 @@ from yoke.models.vit.embedding_encoders import RelativePositionEmbed
 
 
 class WindowMSA(nn.Module):
-    """This module is designed to apply multi-headed self-attention within
+    """Original Windowed-MSA.
+
+    This module is designed to apply multi-headed self-attention within
     non-overlapping windows of tokens.
 
     Embedding size is the input dimension of the tokens. The embedding size
@@ -37,7 +41,8 @@ class WindowMSA(nn.Module):
         num_heads: int = 10,
         patch_grid_size: (int, int) = (16, 32),
         window_size: (int, int) = (8, 4),
-    ):
+    ) -> None:
+        """Initialization method."""
         super().__init__()
         # Check size compatibilities
         try:
@@ -88,7 +93,8 @@ class WindowMSA(nn.Module):
         # Initialize relative position embedding
         self.rel_pos_embed = RelativePositionEmbed(window_size=self.window_size)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward method for Window-MSA."""
         # B: Batch-size
         # L: Number of tokens = H*W
         # C: token length or embedding dimension, i.e. emb_size
@@ -161,7 +167,9 @@ class WindowMSA(nn.Module):
 
 
 class ShiftedWindowMSA(nn.Module):
-    """This module is designed to apply multi-headed self-attention within
+    """Shifted Windowed Multi-headed Self-Attention.
+
+    This module is designed to apply multi-headed self-attention within
     non-overlapping windows of tokens. The windows are shifted by half the
     window size to allow cross-attention between spatial windows.
 
@@ -186,7 +194,8 @@ class ShiftedWindowMSA(nn.Module):
         num_heads: int = 10,
         patch_grid_size: (int, int) = (16, 32),
         window_size: (int, int) = (8, 4),
-    ):
+    ) -> None:
+        """Initialization method."""
         super().__init__()
         # Check size compatibilities
         try:
@@ -253,7 +262,8 @@ class ShiftedWindowMSA(nn.Module):
         # Initialize relative position embedding
         self.rel_pos_embed = RelativePositionEmbed(window_size=self.window_size)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward method for Windowed MSA."""
         # B: Batch-size
         # L: Number of tokens = H*W
         # C: token length or embedding dimension, i.e. emb_size
@@ -383,9 +393,11 @@ class ShiftedWindowMSA(nn.Module):
 
 
 class WindowCosMSA(nn.Module):
-    """This class modifies the `WindowMSA` class to use a *cosine*
-    self-attention with a learnable per-head scaling. In SWIN-V2 this was
-    introduced to stabilize large-model training.
+    """Cosine-Attention Windowed-MSA.
+
+    This class modifies the `WindowMSA` class to use a *cosine* self-attention
+    with a learnable per-head scaling. In SWIN-V2 this was introduced to
+    stabilize large-model training.
 
     Args:
         emb_size (int): Incoming embedding dimension.
@@ -401,7 +413,8 @@ class WindowCosMSA(nn.Module):
         num_heads: int = 10,
         patch_grid_size: (int, int) = (16, 32),
         window_size: (int, int) = (8, 4),
-    ):
+    ) -> None:
+        """Initialization method for Cos-WindowMSA."""
         super().__init__()
         # Check size compatibilities
         try:
@@ -458,7 +471,8 @@ class WindowCosMSA(nn.Module):
         # Initialize relative position embedding
         self.rel_pos_embed = RelativePositionEmbed(window_size=self.window_size)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward method for Cos-WindowMSA."""
         # B: Batch-size
         # L: Number of tokens = H*W
         # C: token length or embedding dimension, i.e. emb_size
@@ -509,8 +523,7 @@ class WindowCosMSA(nn.Module):
         # dot-product attention.
         wei = F.normalize(Q, dim=-1) @ F.normalize(K, dim=-1).transpose(-2, -1)
         logit_scale = torch.clamp(
-            self.logit_scale,
-            max=torch.log(torch.tensor(1.0 / 0.01).to(x.device))
+            self.logit_scale, max=torch.log(torch.tensor(1.0 / 0.01).to(x.device))
         ).exp()
         wei = wei * logit_scale
 
@@ -539,7 +552,9 @@ class WindowCosMSA(nn.Module):
 
 
 class ShiftedWindowCosMSA(nn.Module):
-    """This class modifies the `ShiftedWindowMSA` class to use a *cosine*
+    """Cosine-Attention Shifted Window-MSA.
+
+    This class modifies the `ShiftedWindowMSA` class to use a *cosine*
     self-attention with a learnable per-head scaling. In SWIN-V2 this was
     introduced to stabilize large-model training.
 
@@ -558,7 +573,8 @@ class ShiftedWindowCosMSA(nn.Module):
         num_heads: int = 10,
         patch_grid_size: (int, int) = (16, 32),
         window_size: (int, int) = (8, 4),
-    ):
+    ) -> None:
+        """Initialization for Cos-WindowMSA."""
         super().__init__()
         # Check size compatibilities
         try:
@@ -631,7 +647,8 @@ class ShiftedWindowCosMSA(nn.Module):
         # Initialize relative position embedding
         self.rel_pos_embed = RelativePositionEmbed(window_size=self.window_size)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward method for Cos-WindowMSA."""
         # B: Batch-size
         # L: Number of tokens = H*W
         # C: token length or embedding dimension, i.e. emb_size
@@ -689,8 +706,7 @@ class ShiftedWindowCosMSA(nn.Module):
         # dot-product attention.
         wei = F.normalize(Q, dim=-1) @ F.normalize(K, dim=-1).transpose(-2, -1)
         logit_scale = torch.clamp(
-            self.logit_scale,
-            max=torch.log(torch.tensor(1.0 / 0.01).to(x.device))
+            self.logit_scale, max=torch.log(torch.tensor(1.0 / 0.01).to(x.device))
         ).exp()
         wei = wei * logit_scale
 
