@@ -98,7 +98,7 @@ class WindowMSA(nn.Module):
         # B: Batch-size
         # L: Number of tokens = H*W
         # C: token length or embedding dimension, i.e. emb_size
-        B, L, C = x.shape
+        _, L, _ = x.shape
 
         assert self.patch_grid_size[0] * self.patch_grid_size[1] == L
 
@@ -267,7 +267,7 @@ class ShiftedWindowMSA(nn.Module):
         # B: Batch-size
         # L: Number of tokens = H*W
         # C: token length or embedding dimension, i.e. emb_size
-        B, L, C = x.shape
+        _, L, _ = x.shape
 
         assert self.patch_grid_size[0] * self.patch_grid_size[1] == L
 
@@ -476,7 +476,7 @@ class WindowCosMSA(nn.Module):
         # B: Batch-size
         # L: Number of tokens = H*W
         # C: token length or embedding dimension, i.e. emb_size
-        B, L, C = x.shape
+        _, L, _ = x.shape
 
         assert self.patch_grid_size[0] * self.patch_grid_size[1] == L
 
@@ -652,7 +652,7 @@ class ShiftedWindowCosMSA(nn.Module):
         # B: Batch-size
         # L: Number of tokens = H*W
         # C: token length or embedding dimension, i.e. emb_size
-        B, L, C = x.shape
+        _, L, _ = x.shape
 
         assert self.patch_grid_size[0] * self.patch_grid_size[1] == L
 

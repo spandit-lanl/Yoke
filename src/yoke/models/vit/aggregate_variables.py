@@ -39,7 +39,7 @@ class ClimaX_AggVars(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward method for ClimaX variable aggregation."""
         # The input tensor is shape (B, NumVars, NumTokens, embed_dim)
-        B, V, L, D = x.shape
+        B, _, L, _ = x.shape
 
         x = rearrange(x, "b v l d -> (b l) v d")  # BxL, V, D
 

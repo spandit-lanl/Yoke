@@ -133,8 +133,6 @@ class ClimaX_ParallelVarPatchEmbed(nn.Module):
         must correspond to the same variables.
 
         """
-        B, C, H, W = x.shape
-
         weights = self.proj_weights[in_vars].flatten(0, 1)
         biases = self.proj_biases[in_vars].flatten(0, 1)
 

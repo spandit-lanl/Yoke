@@ -101,7 +101,7 @@ class PatchMerge(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward method for Patch Merging."""
         # The input tensor is shape (B, num_tokens, embedding_dim)
-        B, L, C = x.shape
+        _, L, _ = x.shape
 
         # NOTE: The number of tokens is assumed to be L=H*W
         assert L == self.H * self.W
@@ -204,7 +204,7 @@ class PatchExpand(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward method for patch expansion."""
         # The input tensor is shape (B, num_tokens, embedding_dim)
-        B, L, C = x.shape
+        _, L, _ = x.shape
 
         # NOTE: The number of tokens is assumed to be L=H*W
         assert L == self.H * self.W
@@ -266,7 +266,7 @@ class Unpatchify(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward method for Unpatchify."""
         # The input tensor is shape (B, num_tokens, embedding_dim)
-        B, L, C = x.shape
+        _, L, C = x.shape
 
         # Make sure shape requirements are met
         assert L == self.H * self.W
