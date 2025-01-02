@@ -1,9 +1,13 @@
-"""nn.Module classes defined here offer different methods to embed a
-multi-channel image as a series of tokenized patches.
+"""Grouped-convolution embedding.
+
+nn.Module classes defined here offer different methods to embed a multi-channel
+image as a series of tokenized patches.
 
 """
 
 import math
+
+from typing import Optional
 
 import torch
 import torch.nn.functional as F
@@ -13,22 +17,28 @@ from einops import rearrange
 from einops.layers.torch import Rearrange
 
 
-def _get_conv2d_weights(in_channels, out_channels, kernel_size):
+def _get_conv2d_weights(
+    in_channels: int, out_channels: int, kernel_size: tuple(int, int)
+) -> torch.Tensor:
+    """Set up tensor of proper dimensions for weights."""
     weight = torch.empty(out_channels, in_channels, *kernel_size)
 
     return weight
 
 
-def _get_conv2d_biases(out_channels):
+def _get_conv2d_biases(out_channels: int) -> torch.Tensor:
+    """Set up tensor of proper dimensions for biases."""
     bias = torch.empty(out_channels)
 
     return bias
 
 
 class ClimaX_ParallelVarPatchEmbed(nn.Module):
-    """Variable to Patch Embedding with multiple variables in a single
-    kernel. Key idea is to use Grouped Convolutions. This allows this layer to
-    embed an arbitrary subset of a default list of variables.
+    """ClimaX parallel patch embedding.
+
+    Variable to Patch Embedding with multiple variables in a single kernel. Key
+    idea is to use Grouped Convolutions. This allows this layer to embed an
+    arbitrary subset of a default list of variables.
 
     Based on the paper, **ClimaX: A foundation model for weather and
     climate.**
@@ -51,8 +61,9 @@ class ClimaX_ParallelVarPatchEmbed(nn.Module):
         img_size: (int, int) = (128, 128),
         patch_size: (int, int) = (16, 16),
         embed_dim: int = 64,
-        norm_layer=None,
-    ):
+        norm_layer: Optional[nn.Module] = None,
+    ) -> None:
+        """Initialization for ClimaX parallel embedding."""
         super().__init__()
         # Check size compatibilities
         try:
@@ -103,7 +114,8 @@ class ClimaX_ParallelVarPatchEmbed(nn.Module):
         # Initialize parameters
         self.reset_parameters()
 
-    def reset_parameters(self):
+    def reset_parameters(self) -> None:
+        """Initialize weights for projections."""
         for idx in range(self.max_vars):
             nn.init.kaiming_uniform_(self.proj_weights[idx], a=math.sqrt(5))
             fan_in, _ = nn.init._calculate_fan_in_and_fan_out(self.proj_weights[idx])
@@ -112,7 +124,7 @@ class ClimaX_ParallelVarPatchEmbed(nn.Module):
                 bound = 1 / math.sqrt(fan_in)
                 nn.init.uniform_(self.proj_biases[idx], -bound, bound)
 
-    def forward(self, x: torch.Tensor, in_vars: torch.Tensor):
+    def forward(self, x: torch.Tensor, in_vars: torch.Tensor) -> torch.Tensor:
         """Forward method of the Parallel Embedding.
 
         NOTE: `in_vars` should be a (1, C) tensor of integers where the
@@ -147,7 +159,9 @@ class ClimaX_ParallelVarPatchEmbed(nn.Module):
 
 
 class SwinEmbedding(nn.Module):
-    """This SWIN embedding layer takes a *channels-first* image, breaks it into
+    """SWIN patch embedding.
+
+    This SWIN embedding layer takes a *channels-first* image, breaks it into
     linear patch embeddings, then rearranges those embedded patches into sets
     of tokens.
 
@@ -176,8 +190,9 @@ class SwinEmbedding(nn.Module):
         img_size: (int, int) = (128, 128),
         patch_size: (int, int) = (16, 16),
         embed_dim: int = 64,
-        norm_layer=None,
-    ):
+        norm_layer: Optional[nn.Module] = None,
+    ) -> None:
+        """Initialization for SWIN patch embedding."""
         super().__init__()
         # Check size compatibilities
         try:
@@ -216,7 +231,8 @@ class SwinEmbedding(nn.Module):
 
         self.norm = norm_layer(self.embed_dim) if norm_layer else nn.Identity()
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward method for SWIN patch embedding."""
         x = self.linear_embedding(x)
         x = self.rearrange(x)
 
