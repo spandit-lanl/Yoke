@@ -154,7 +154,7 @@ class ClimaX_VarEmbed(nn.Module):
         # Initialize var_embed with sincos embedding
         self.initialize_weights()
 
-    def create_var_embedding(self, dim: int) -> tuple(torch.Tensor, dict):
+    def create_var_embedding(self, dim: int) -> tuple[torch.Tensor, dict]:
         """Create variable embedding.
 
         Returns a variable embedding tensor of the correct size along with a
@@ -241,8 +241,8 @@ class ClimaX_PosEmbed(nn.Module):
     def __init__(
         self,
         embed_dim: int,
-        patch_size: tuple(int, int),
-        image_size: tuple(int, int),
+        patch_size: tuple[int, int],
+        image_size: tuple[int, int],
         num_patches: int,
     ) -> None:
         """Initialization for ClimaX position embedding."""
