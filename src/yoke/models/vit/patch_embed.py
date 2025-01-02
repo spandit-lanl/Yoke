@@ -18,7 +18,7 @@ from einops.layers.torch import Rearrange
 
 
 def _get_conv2d_weights(
-    in_channels: int, out_channels: int, kernel_size: tuple(int, int)
+    in_channels: int, out_channels: int, kernel_size: tuple[int, int]
 ) -> torch.Tensor:
     """Set up tensor of proper dimensions for weights."""
     weight = torch.empty(out_channels, in_channels, *kernel_size)

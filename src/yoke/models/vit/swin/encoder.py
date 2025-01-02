@@ -185,7 +185,7 @@ class SwinConnectEncoder(SwinEncoder2):
             window_size=window_size,
         )
 
-    def forward(self, x: torch.Tensor) -> tuple(torch.Tensor, torch.Tensor):
+    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """Forward method for the SWIN-V2 encoder with residuals."""
         x = super().forward(x)
 
