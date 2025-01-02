@@ -13,6 +13,7 @@ import torch
 from unittest.mock import patch, mock_open, MagicMock
 from yoke.datasets.lsc_dataset import LSC_rho2rho_temporal_DataSet
 from yoke.datasets.lsc_dataset import LSC_cntr2hfield_DataSet
+from yoke.datasets.lsc_dataset import LSC_hfield_reward_DataSet
 
 
 # Mock np.load to simulate loading .npz files
@@ -38,8 +39,9 @@ def mock_LSCread_npz(npz_file: MockNpzFile, hfield: str) -> np.ndarray:
     return np.ones((10, 10))  # Return a simple array for testing
 
 
+# For LSC_rho2rho_temporal_DataSet
 @pytest.fixture
-def dataset() -> LSC_rho2rho_temporal_DataSet:
+def r2r_temporal_dataset() -> LSC_rho2rho_temporal_DataSet:
     """Setup an instance of the dataset.
 
     Mock arguments are used for testing.
@@ -61,13 +63,15 @@ def dataset() -> LSC_rho2rho_temporal_DataSet:
     return ds
 
 
-def test_dataset_init(dataset: LSC_rho2rho_temporal_DataSet) -> None:
+def test_r2r_temporal_dataset_init(
+        r2r_temporal_dataset: LSC_rho2rho_temporal_DataSet
+) -> None:
     """Test that the dataset is initialized correctly."""
-    assert dataset.LSC_NPZ_DIR == "/mock/path/"
-    assert dataset.max_timeIDX_offset == 3
-    assert dataset.max_file_checks == 5
-    assert dataset.Nsamples == 3
-    assert dataset.hydro_fields == [
+    assert r2r_temporal_dataset.LSC_NPZ_DIR == "/mock/path/"
+    assert r2r_temporal_dataset.max_timeIDX_offset == 3
+    assert r2r_temporal_dataset.max_file_checks == 5
+    assert r2r_temporal_dataset.Nsamples == 3
+    assert r2r_temporal_dataset.hydro_fields == [
         "density_case",
         "density_cushion",
         "density_maincharge",
@@ -79,9 +83,9 @@ def test_dataset_init(dataset: LSC_rho2rho_temporal_DataSet) -> None:
     ]
 
 
-def test_len(dataset: LSC_rho2rho_temporal_DataSet) -> None:
+def test_r2r_temporal_len(r2r_temporal_dataset: LSC_rho2rho_temporal_DataSet) -> None:
     """Test that the dataset length is correctly returned."""
-    assert len(dataset) == 3
+    assert len(r2r_temporal_dataset) == 3
 
 
 @patch("yoke.datasets.lsc_dataset.LSCread_npz", side_effect=mock_LSCread_npz)
@@ -89,15 +93,15 @@ def test_len(dataset: LSC_rho2rho_temporal_DataSet) -> None:
     "numpy.load", side_effect=lambda _: MockNpzFile({"dummy_field": np.ones((10, 10))})
 )
 @patch("pathlib.Path.is_file", return_value=True)
-def test_getitem(
+def test_r2r_tempoal_getitem(
     mock_is_file: MagicMock,
     mock_npz_load: MagicMock,
     mock_LSCread_npz: MagicMock,
-    dataset: LSC_rho2rho_temporal_DataSet,
+    r2r_temporal_dataset: LSC_rho2rho_temporal_DataSet,
 ) -> None:
     """Test the retrieval of items from the dataset."""
     idx = 0
-    start_img, end_img, Dt = dataset[idx]
+    start_img, end_img, Dt = r2r_temporal_dataset[idx]
 
     assert isinstance(start_img, torch.Tensor)
     assert isinstance(end_img, torch.Tensor)
@@ -108,15 +112,17 @@ def test_getitem(
     assert end_img.shape == (8, 10, 20)
 
 
-def test_file_prefix_list_loading(dataset: LSC_rho2rho_temporal_DataSet) -> None:
+def test_r2r_temporal_file_prefix_list_loading(
+        r2r_temporal_dataset: LSC_rho2rho_temporal_DataSet
+) -> None:
     """Test that the file prefix list is loaded correctly."""
     expected_prefixes = ["mock_prefix_1", "mock_prefix_2", "mock_prefix_3"]
-    assert sorted(dataset.file_prefix_list) == sorted(expected_prefixes)
+    assert sorted(r2r_temporal_dataset.file_prefix_list) == sorted(expected_prefixes)
 
 
 @patch("pathlib.Path.is_file", return_value=False)
-def test_getitem_max_file_checks(
-    mock_is_file: MagicMock, dataset: LSC_rho2rho_temporal_DataSet
+def test_r2r_temporal_getitem_max_file_checks(
+    mock_is_file: MagicMock, r2r_temporal_dataset: LSC_rho2rho_temporal_DataSet
 ) -> None:
     """Test that max_file_checks is respected.
 
@@ -128,16 +134,16 @@ def test_getitem_max_file_checks(
         r"'/mock/path/mock_prefix_2_pvi_idx\d{5}\.npz'"
     )
     with pytest.raises(FileNotFoundError, match=err_msg):
-        dataset[0]
+        r2r_temporal_dataset[0]
 
 
 @patch("numpy.load", side_effect=OSError("File could not be loaded"))
-def test_getitem_load_error(
-    mock_npz_load: MagicMock, dataset: LSC_rho2rho_temporal_DataSet
+def test_r2r_temporal_getitem_load_error(
+    mock_npz_load: MagicMock, r2r_temporal_dataset: LSC_rho2rho_temporal_DataSet
 ) -> None:
     """Test error thrown if load unsuccessful."""
     with pytest.raises(IOError, match="File could not be loaded"):
-        dataset[0]
+        r2r_temporal_dataset[0]
 
 
 # Tests for cntr2field dataset
@@ -170,7 +176,7 @@ def create_mock_files() -> None:
 @patch("yoke.datasets.lsc_dataset.LSCread_npz")
 @patch("yoke.datasets.lsc_dataset.LSCnpz2key")
 @patch("yoke.datasets.lsc_dataset.LSCcsv2bspline_pts")
-def test_dataset_length(
+def test_cntr2field_dataset_length(
     mock_lsc_csv2bspline_pts: MagicMock,
     mock_lsc_npz2key: MagicMock,
     mock_lsc_read_npz: MagicMock,
@@ -190,7 +196,7 @@ def test_dataset_length(
 @patch("yoke.datasets.lsc_dataset.LSCread_npz")
 @patch("yoke.datasets.lsc_dataset.LSCnpz2key")
 @patch("yoke.datasets.lsc_dataset.LSCcsv2bspline_pts")
-def test_dataset_getitem(
+def test_cntr2field_dataset_getitem(
     mock_lsc_csv2bspline_pts: MagicMock,
     mock_lsc_npz2key: MagicMock,
     mock_lsc_read_npz: MagicMock,
@@ -224,7 +230,7 @@ def test_dataset_getitem(
     assert torch.equal(hfield, torch.tensor([[0.0, 0.0, 1.0]]).to(torch.float32))
 
 
-def test_invalid_filelist(create_mock_files: dict[str, str]) -> None:
+def test_cntr2field_invalid_filelist(create_mock_files: dict[str, str]) -> None:
     """Test behavior with an invalid file list."""
     files = create_mock_files
     invalid_filelist = os.path.join(tempfile.gettempdir(), "invalid_filelist.txt")
@@ -237,7 +243,7 @@ def test_invalid_filelist(create_mock_files: dict[str, str]) -> None:
         )
 
 
-def test_empty_dataset(create_mock_files: dict[str, str]) -> None:
+def test_cntr2field_empty_dataset(create_mock_files: dict[str, str]) -> None:
     """Test behavior when file list is empty."""
     files = create_mock_files
 
@@ -252,3 +258,94 @@ def test_empty_dataset(create_mock_files: dict[str, str]) -> None:
     )
 
     assert len(dataset) == 0
+
+
+# For LSC_hfield_reward_DataSet
+@pytest.fixture
+def mock_reward_dataset() -> LSC_hfield_reward_DataSet:
+    """Fixture to create a mock instance of LSC_hfield_reward_DataSet."""
+    LSC_NPZ_DIR = "/mock/path/"
+    filelist = "mock_filelist.txt"
+    design_file = "mock_design.csv"
+    field_list = ["density_throw"]
+
+    reward_fn = MagicMock(return_value=torch.tensor(1.0))
+    return LSC_hfield_reward_DataSet(
+        LSC_NPZ_DIR, filelist, design_file, field_list, reward_fn
+    )
+
+
+@patch("builtins.open", new_callable=MagicMock)
+def test_reward_init(
+        mock_open: MagickMock,
+        mock_reward_dataset: LSC_hfield_reward_DataSet
+) -> None:
+    """Test initialization of the dataset."""
+    mock_open.return_value.__enter__.return_value = ["file1", "file2"]
+    assert mock_reward_dataset.LSC_NPZ_DIR == "/mock/path/"
+    assert mock_reward_dataset.filelist == ["file1", "file2"]
+    # Cartesian product of two files
+    assert len(mock_reward_dataset.state_target_list) == 4
+    assert mock_reward_dataset.hydro_fields == ["density_throw"]
+    assert callable(mock_reward_dataset.reward)
+
+
+def test_reward_len(mock_reward_dataset: LSC_hfield_reward_DataSet) -> None:
+    """Test the __len__ method."""
+    assert len(mock_reward_dataset) == 4
+
+
+@patch("numpy.load", return_value={"density_throw": np.array([1.0, 2.0, 3.0])})
+@patch("your_module.LSCread_npz", return_value=np.array([0.1, 0.2, 0.3]))
+@patch("your_module.LSCnpz2key", return_value="mock_key")
+@patch("your_module.LSCcsv2bspline_pts", return_value=np.array([0.5, 0.6]))
+def test_reward_getitem(
+    mock_bspline_pts: MagickMock,
+    mock_npz2key: MagickMock,
+    mock_read_npz: MagickMock,
+    mock_load: MagickMock,
+    mock_reward_dataset: LSC_hfield_reward_DataSet
+) -> None:
+    """Test the __getitem__ method."""
+    result = mock_reward_dataset[0]
+    state_geom_params, state_hfield, target_hfield, reward = result
+
+    assert state_geom_params.shape == torch.Size([2])  # Mocked B-spline node shape
+    assert state_hfield.shape == torch.Size([1, 3])
+    assert target_hfield.shape == torch.Size([1, 3])
+    assert reward == torch.tensor(1.0)
+
+
+def test_reward_invalid_index(mock_reward_dataset: LSC_hfield_reward_DataSet) -> None:
+    """Test handling of invalid index."""
+    with pytest.raises(IndexError):
+        _ = mock_reward_dataset[10]
+
+
+@patch("random.shuffle")
+def test_reward_shuffle_called(
+        mock_shuffle: MagickMock,
+        mock_reward_dataset: LSC_hfield_reward_DataSet
+) -> None:
+    """Test that shuffle is called on state-target pairs."""
+    mock_shuffle.assert_called_once_with(mock_reward_dataset.state_target_list)
+
+
+@patch("numpy.nan_to_num", side_effect=lambda x, nan: x)
+def test_reward_nan_to_num(
+        mock_nan_to_num: MagickMock,
+        mock_reward_dataset: LSC_hfield_reward_DataSet
+) -> None:
+    """Test that NaN values are replaced in the dataset."""
+    mock_reward_dataset[0]
+    assert mock_nan_to_num.called
+
+
+def test_reward_function_invocation(
+        mock_reward_dataset: LSC_hfield_reward_DataSet
+) -> None:
+    """Test the reward function invocation."""
+    mock_reward_fn = mock_reward_dataset.reward
+    mock_reward_dataset[0]
+    assert mock_reward_fn.called
+
