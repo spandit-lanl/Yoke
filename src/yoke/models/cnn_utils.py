@@ -6,8 +6,10 @@ import math
 ####################################
 # Get Conv2D Shape
 ####################################
-def conv2d_shape(w, h, k, s_w, s_h, p_w, p_h):
-    """Function to calculate the new dimension of an image after a nn.Conv2d
+def conv2d_shape(
+    w: int, h: int, k: int, s_w: int, s_h: int, p_w: int, p_h: int
+) -> tuple[int, int, int]:
+    """Function to calculate the new dimension of an image after a nn.Conv2d.
 
     Args:
         w (int): starting width
@@ -36,10 +38,24 @@ def conv2d_shape(w, h, k, s_w, s_h, p_w, p_h):
     return new_w, new_h, total
 
 
-def convtranspose2d_shape(w, h, k_w, k_h, s_w, s_h, p_w, p_h, op_w, op_h, d_w, d_h):
-    """Function to calculate the new dimension of an image after a
-    nn.ConvTranspose2d. This assumes *groups*, *dilation*, and *ouput_padding*
-    are all default values.
+def convtranspose2d_shape(
+    w: int,
+    h: int,
+    k_w: int,
+    k_h: int,
+    s_w: int,
+    s_h: int,
+    p_w: int,
+    p_h: int,
+    op_w: int,
+    op_h: int,
+    d_w: int,
+    d_h: int,
+) -> tuple[int, int, int]:
+    """Calculate the dimension of an image after a nn.ConvTranspose2d.
+
+    This assumes *groups*, *dilation*, and *ouput_padding* are all default
+    values.
 
     Args:
         w (int): starting width

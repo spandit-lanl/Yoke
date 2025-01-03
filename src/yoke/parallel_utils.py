@@ -19,7 +19,7 @@ class LodeRunner_DataParallel(nn.DataParallel):
     explicitly.
 
     """
-    def __init__(self, model):
+    def __init__(self, model: nn.Module) -> None:
         """Get it initialized using parent."""
         super(LodeRunner_DataParallel, self).__init__(model)
 

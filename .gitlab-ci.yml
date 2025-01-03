@@ -115,15 +115,15 @@ lint-yoke-datasets:
   allow_failure: false
   image: 're-registry.lanl.gov/artimis_mpmm/mpmmcicdrbot/bookworm-slim-amd64-conda-py3_12_5__2024_10_29'
 
-lint-yoke-vit:
+lint-yoke-models:
   stage: lint_temp
   script:
     - echo "starting bashrc"
     - source /root/.bashrc
     - echo "Running linting (through ruff)"
-    - ruff check src/yoke/models/vit
-    - ruff check src/yoke/models/vit --preview
-    - ruff format src/yoke/models/vit --check --diff
+    - ruff check src/yoke/models
+    - ruff check src/yoke/models --preview
+    - ruff format src/yoke/models --check --diff
   allow_failure: false
   image: 're-registry.lanl.gov/artimis_mpmm/mpmmcicdrbot/bookworm-slim-amd64-conda-py3_12_5__2024_10_29'
 
