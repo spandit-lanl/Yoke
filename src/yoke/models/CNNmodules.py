@@ -1,6 +1,4 @@
-"""Image to vector CNN modules.
-
-"""
+"""Image to vector CNN modules."""
 
 ####################################
 # Packages
@@ -35,6 +33,7 @@ class CNN_Interpretability_Module(nn.Module):
                                           to use as activation
 
     """
+
     def __init__(
         self,
         img_size: tuple[int, int, int] = (1, 1700, 500),
@@ -49,7 +48,7 @@ class CNN_Interpretability_Module(nn.Module):
         super().__init__()
 
         self.img_size = img_size
-        C, H, W = self.img_size
+        C, _, _ = self.img_size
         self.kernel = kernel
         self.features = features
         self.depth = depth
@@ -150,6 +149,7 @@ class CNN_Reduction_Module(nn.Module):
                                           use as activation
 
     """
+
     def __init__(
         self,
         img_size: tuple[int, int, int] = (1, 1700, 500),
@@ -302,6 +302,7 @@ class PVI_SingleField_CNN(nn.Module):
                                dense layer
 
     """
+
     def __init__(
         self,
         img_size: tuple[int, int, int] = (1, 1700, 500),
@@ -317,7 +318,7 @@ class PVI_SingleField_CNN(nn.Module):
         """Initialization for image-to-scalar CNN."""
         super().__init__()
         self.img_size = img_size
-        C, H, W = self.img_size
+        _, H, W = self.img_size
         self.size_threshold = size_threshold
         self.kernel = kernel
         self.features = features

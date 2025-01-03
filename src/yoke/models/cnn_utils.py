@@ -7,13 +7,7 @@ import math
 # Get Conv2D Shape
 ####################################
 def conv2d_shape(
-        w: int,
-        h: int,
-        k: int,
-        s_w: int,
-        s_h: int,
-        p_w: int,
-        p_h: int
+    w: int, h: int, k: int, s_w: int, s_h: int, p_w: int, p_h: int
 ) -> tuple[int, int, int]:
     """Function to calculate the new dimension of an image after a nn.Conv2d.
 
@@ -45,18 +39,18 @@ def conv2d_shape(
 
 
 def convtranspose2d_shape(
-        w: int,
-        h: int,
-        k_w: int,
-        k_h: int,
-        s_w: int,
-        s_h: int,
-        p_w: int,
-        p_h: int,
-        op_w: int,
-        op_h: int,
-        d_w: int,
-        d_h: int
+    w: int,
+    h: int,
+    k_w: int,
+    k_h: int,
+    s_w: int,
+    s_h: int,
+    p_w: int,
+    p_h: int,
+    op_w: int,
+    op_h: int,
+    d_w: int,
+    d_h: int,
 ) -> tuple[int, int, int]:
     """Calculate the dimension of an image after a nn.ConvTranspose2d.
 

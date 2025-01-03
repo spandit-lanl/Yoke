@@ -5,7 +5,6 @@ images.
 
 """
 
-from typing import List
 from collections import OrderedDict
 
 import torch
@@ -30,7 +29,7 @@ class jekelCNNsurrogate(nn.Module):
         linear_features (tuple[int, int]): Window size scalar parameters are
                                            originally mapped into
         kernel (tuple[int, int]): Size of transpose-convolutional kernel
-        nfeature_list (List[int]): List of number of features in each
+        nfeature_list (list[int]): List of number of features in each
                                    T-convolutional layer
         output_image_size (tuple[int, int]): Image size to output, (H, W).
                                              Channels are automatically inherited.
@@ -38,12 +37,13 @@ class jekelCNNsurrogate(nn.Module):
                                           to use as activation
 
     """
+
     def __init__(
         self,
         input_size: int = 29,
         linear_features: tuple[int, int] = (4, 4),
         kernel: tuple[int, int] = (3, 3),
-        nfeature_list: List[int] = [512, 512, 512, 512, 256, 128, 64, 32],
+        nfeature_list: list[int] = [512, 512, 512, 512, 256, 128, 64, 32],
         output_image_size: tuple[int, int] = (1120, 800),
         act_layer: nn.Moduel = nn.GELU,
     ) -> None:
@@ -176,10 +176,11 @@ class tCNNsurrogate(nn.Module):
         initial_tconv_kernel (tuple[int, int]): Kernel size of initial tconv2d
         initial_tconv_stride (tuple[int, int]): Stride size of initial tconv2d
         initial_tconv_padding (tuple[int, int]): Padding size of initial tconv2d
-        initial_tconv_outpadding (tuple[int, int]): Outout padding size of initial tconv2d
+        initial_tconv_outpadding (tuple[int, int]): Outout padding size of
+                                                    initial tconv2d
         initial_tconv_dilation (tuple[int, int]): Dilation size of initial tconv2d
         kernel (tuple[int, int]): Size of transpose-convolutional kernel
-        nfeature_list (List[int]): List of number of features in each
+        nfeature_list (list[int]): List of number of features in each
                                    T-convolutional layer
         output_image_size (tuple[int, int]): Image size to output, (H, W).
                                              Channels are automatically inherited.
@@ -187,6 +188,7 @@ class tCNNsurrogate(nn.Module):
                                           to use as activation
 
     """
+
     def __init__(
         self,
         input_size: int = 29,
@@ -197,7 +199,7 @@ class tCNNsurrogate(nn.Module):
         initial_tconv_outpadding: tuple[int, int] = (0, 0),
         initial_tconv_dilation: tuple[int, int] = (1, 1),
         kernel: tuple[int, int] = (3, 3),
-        nfeature_list: List[int] = [256, 256, 256, 128, 64, 64, 32],
+        nfeature_list: list[int] = [256, 256, 256, 128, 64, 64, 32],
         output_image_size: tuple[int, int] = (1120, 800),
         act_layer: nn.Module = nn.GELU,
     ) -> None:
