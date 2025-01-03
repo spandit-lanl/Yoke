@@ -183,7 +183,7 @@ class tCNNsurrogate(nn.Module):
         nfeature_list (list[int]): List of number of features in each
                                    T-convolutional layer
         output_image_size (tuple[int, int]): Image size to output, (H, W).
-                                             Channels are automatically inherited.
+        output_image_channels (int): Number of output image channels.
         act_layer(nn.modules.activation): torch neural network layer class
                                           to use as activation
 
@@ -201,6 +201,7 @@ class tCNNsurrogate(nn.Module):
         kernel: tuple[int, int] = (3, 3),
         nfeature_list: list[int] = [256, 256, 256, 128, 64, 64, 32],
         output_image_size: tuple[int, int] = (1120, 800),
+        output_image_channels: int = 1,
         act_layer: nn.Module = nn.GELU,
     ) -> None:
         """Initialization for the t-CNN surrogate."""
@@ -208,6 +209,7 @@ class tCNNsurrogate(nn.Module):
 
         self.input_size = input_size
         self.output_image_size = output_image_size
+        self.output_image_channels = output_image_channels
         self.linear_features = linear_features
         self.initial_tconv_kernel = initial_tconv_kernel
         self.initial_tconv_stride = initial_tconv_stride
@@ -284,7 +286,7 @@ class tCNNsurrogate(nn.Module):
         # Final Transpose Conv layer followed by hyperbolic tanh activation
         self.final_tconv = nn.ConvTranspose2d(
             in_channels=self.nfeature_list[-1],
-            out_channels=1,
+            out_channels=self.output_image_channels,
             kernel_size=self.kernel,
             stride=2,
             padding=1,

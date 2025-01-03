@@ -1,4 +1,3 @@
-# PYTORCH MODEL TRAINING FUNCTIONS
 """Contains functions for training, validating, and testing a pytorch model."""
 
 ####################################
