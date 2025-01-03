@@ -1,5 +1,4 @@
-"""Definition of CNN interpretability network parts. Full NC CNN network is
-built from these.
+"""Image to vector CNN modules.
 
 """
 
@@ -16,6 +15,26 @@ from yoke.models.cnn_utils import conv2d_shape
 # Interpretability Module
 ####################################
 class CNN_Interpretability_Module(nn.Module):
+    """Interpretability module.
+
+    Convolutional Neural Network Module that creates the "interpretability
+    layers" Sequence of Conv2D, Batch Normalization, and Activation. The key
+    idea is to keep the size of the image approximately equal throughout the
+    network.
+
+    Args:
+        img_size (tuple[int, int, int]): size of input (channels, height, width)
+        kernel (int): size of square convolutional kernel
+        features (int): number of features in the convolutional layers
+        depth (int): number of interpretability blocks
+        conv_onlyweights (bool): determines if convolutional layers learn
+                                 only weights or weights and bias
+        batchnorm_onlybias (bool): determines if the batch normalization
+                                   layers learn only bias or weights and bias
+        act_layer(nn.modules.activation): torch neural network layer class
+                                          to use as activation
+
+    """
     def __init__(
         self,
         img_size: tuple[int, int, int] = (1, 1700, 500),
@@ -24,24 +43,9 @@ class CNN_Interpretability_Module(nn.Module):
         depth: int = 12,
         conv_onlyweights: bool = True,
         batchnorm_onlybias: bool = True,
-        act_layer=nn.GELU,
-    ):
-        """Convolutional Neural Network Module that creates the "interpretability
-        layers" Sequence of Conv2D, Batch Normalization, and Activation
-
-        Args:
-            img_size (tuple[int, int, int]): size of input (channels, height, width)
-            kernel (int): size of square convolutional kernel
-            features (int): number of features in the convolutional layers
-            depth (int): number of interpretability blocks
-            conv_onlyweights (bool): determines if convolutional layers learn
-                                     only weights or weights and bias
-            batchnorm_onlybias (bool): determines if the batch normalization
-                                       layers learn only bias or weights and bias
-            act_layer(nn.modules.activation): torch neural network layer class
-                                              to use as activation
-
-        """
+        act_layer: nn.Module = nn.GELU,
+    ) -> None:
+        """Initialization for interpretability CNN."""
         super().__init__()
 
         self.img_size = img_size
@@ -104,7 +108,8 @@ class CNN_Interpretability_Module(nn.Module):
             self.interpNorms.append(normLayer)
             self.interpActivations.append(act_layer())
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward method for interpretable CNN."""
         # Input Layers
         x = self.inConv(x)
         x = self.inNorm(x)
@@ -123,6 +128,28 @@ class CNN_Interpretability_Module(nn.Module):
 # Reduction Module
 ####################################
 class CNN_Reduction_Module(nn.Module):
+    """Reduction CNN.
+
+    Convolutional Neural Network Module that creates the "reduction layers"
+    Sequence of Conv2D, Batch Normalization, and Activation. Key idea is to
+    halve the image size at each layer using double-strided convolutions.
+
+    Args:
+        img_size (tuple[int, int, int]): size of input
+                                         (channels, height, width)
+        size_threshold (tuple[int, int]): (approximate) size of final,
+                                          reduced image (height, width)
+        kernel (int): size of square convolutional kernel
+        stride (int): size of base stride for convolutional kernel
+        features (int): number of features in the convolutional layers
+        conv_onlyweights (bool): determines if convolutional layers learn
+                                 only weights or weights and bias
+        batchnorm_onlybias (bool): determines if the batch normalization layers
+                                   learn only bias or weights and bias
+        act_layer(nn.modules.activation): torch neural network layer class to
+                                          use as activation
+
+    """
     def __init__(
         self,
         img_size: tuple[int, int, int] = (1, 1700, 500),
@@ -132,27 +159,9 @@ class CNN_Reduction_Module(nn.Module):
         features: int = 12,
         conv_onlyweights: bool = True,
         batchnorm_onlybias: bool = True,
-        act_layer=nn.GELU,
-    ):
-        """Convolutional Neural Network Module that creates the "reduction layers"
-        Sequence of Conv2D, Batch Normalization, and Activation
-
-        Args:
-            img_size (tuple[int, int, int]): size of input
-                                             (channels, height, width)
-            size_threshold (tuple[int, int]): (approximate) size of final,
-                                              reduced image (height, width)
-            kernel (int): size of square convolutional kernel
-            stride (int): size of base stride for convolutional kernel
-            features (int): number of features in the convolutional layers
-            conv_onlyweights (bool): determines if convolutional layers learn
-                                     only weights or weights and bias
-            batchnorm_onlybias (bool): determines if the batch normalization layers
-                                       learn only bias or weights and bias
-            act_layer(nn.modules.activation): torch neural network layer class to
-                                              use as activation
-
-        """
+        act_layer: nn.Module = nn.GELU,
+    ) -> None:
+        """Initialization for reduction CNN."""
         super().__init__()
 
         self.img_size = img_size
@@ -253,7 +262,8 @@ class CNN_Reduction_Module(nn.Module):
         self.finalW = W
         self.finalH = H
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward method for reduction CNN."""
         # Input Layers
         x = self.inConv(x)
         x = self.inNorm(x)
@@ -269,6 +279,29 @@ class CNN_Reduction_Module(nn.Module):
 
 
 class PVI_SingleField_CNN(nn.Module):
+    """Image to scalar CNN.
+
+    Convolutional Neural Network Model that uses a single PVI field to predict
+    one scalar value. Constructed using both an interpretability block, defined
+    above, and a reduction block.
+
+    Args:
+        img_size (tuple[int, int, int]): size of input (channels, height, width)
+        size_threshold (tuple[int, int]): (approximate) size of reduced image
+                                          (height, width)
+        kernel (int): size of square convolutional kernel
+        features (int): number of features in the convolutional layers
+        interp_depth (int): number of interpretability blocks
+        conv_onlyweights (bool): determines if convolutional layers learn only
+                                 weights or weights and bias
+        batchnorm_onlybias (bool): determines if the batch normalization layers
+                                   learn only bias or weights and bias
+        act_layer (nn.modules.activation): torch neural network layer class to
+                                           use as activation
+        hidden_features (int): number of hidden features in the fully connected
+                               dense layer
+
+    """
     def __init__(
         self,
         img_size: tuple[int, int, int] = (1, 1700, 500),
@@ -278,30 +311,10 @@ class PVI_SingleField_CNN(nn.Module):
         interp_depth: int = 12,
         conv_onlyweights: bool = True,
         batchnorm_onlybias: bool = True,
-        act_layer=nn.GELU,
+        act_layer: nn.Module = nn.GELU,
         hidden_features: int = 20,
-    ):
-        """Convolutional Neural Network Model that uses a single PVI field to predict
-        one scalar value. Constructed using both an interpretability block,
-        defined above, and a reduction block.
-
-        Args:
-            img_size (tuple[int, int, int]): size of input (channels, height, width)
-            size_threshold (tuple[int, int]): (approximate) size of reduced image
-                                              (height, width)
-            kernel (int): size of square convolutional kernel
-            features (int): number of features in the convolutional layers
-            interp_depth (int): number of interpretability blocks
-            conv_onlyweights (bool): determines if convolutional layers learn only
-                                     weights or weights and bias
-            batchnorm_onlybias (bool): determines if the batch normalization layers
-                                       learn only bias or weights and bias
-            act_layer (nn.modules.activation): torch neural network layer class to
-                                               use as activation
-            hidden_features (int): number of hidden features in the fully connected
-                                   dense layer
-
-        """
+    ) -> None:
+        """Initialization for image-to-scalar CNN."""
         super().__init__()
         self.img_size = img_size
         C, H, W = self.img_size
@@ -363,7 +376,8 @@ class PVI_SingleField_CNN(nn.Module):
         # Linear Output Layer
         self.linOut = nn.Linear(self.hidden_features, 1)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward method for image-to-scalar CNN."""
         x = self.interp_module(x)
         x = self.reduction_module(x)
 
