@@ -85,14 +85,11 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--verbose",
-    "-V",
-    action="store_true",
-    help="Flag to turn on debugging output."
+    "--verbose", "-V", action="store_true", help="Flag to turn on debugging output."
 )
 
 
-def print_NPZ_keys(npzfile: str="./lsc240420_id00405_pvi_idx00100.npz") -> None:
+def print_NPZ_keys(npzfile: str = "./lsc240420_id00405_pvi_idx00100.npz") -> None:
     """Print keys of NPZ file."""
     NPZ = np.load(npzfile)
     print("NPZ file keys:")
@@ -105,7 +102,7 @@ def print_NPZ_keys(npzfile: str="./lsc240420_id00405_pvi_idx00100.npz") -> None:
 
 
 def singlePVIarray(
-    npzfile: str="./lsc240420_id00405_pvi_idx00100.npz", FIELD: str="rho"
+    npzfile: str = "./lsc240420_id00405_pvi_idx00100.npz", FIELD: str = "rho"
 ) -> np.array:
     """Function to grab single array from NPZ.
 
@@ -153,9 +150,9 @@ if __name__ == "__main__":
     else:
         for npzfile in npz_list:
             # Get index
-            pviIDX = npzfile.split('idx')[1]
-            pviIDX = int(pviIDX.split('.')[0])
-            
+            pviIDX = npzfile.split("idx")[1]
+            pviIDX = int(pviIDX.split(".")[0])
+
             # Get the fields
             Hfield = singlePVIarray(npzfile=npzfile, FIELD=FIELD)
             simtime = singlePVIarray(npzfile=npzfile, FIELD="sim_time")
@@ -180,8 +177,9 @@ if __name__ == "__main__":
             fig1.colorbar(img1, cax=cax1).set_label(f"{FIELD}", fontsize=14)
 
             fig1.savefig(
-                os.path.join(outdir,
-                             f"lsc240420_id{runID:05d}_{FIELD}_idx{pviIDX:05d}.png"),
+                os.path.join(
+                    outdir, f"lsc240420_id{runID:05d}_{FIELD}_idx{pviIDX:05d}.png"
+                ),
                 bbox_inches="tight",
             )
             plt.close()

@@ -1,7 +1,7 @@
 """Script to produce animation of LodeRunner prediction.
 
 This script allows production of an animation of a single hydrodynamic field
-within one lsc240420 simulation set of NPZ files. 
+within one lsc240420 simulation set of NPZ files.
 
 Three types of images are produced:
 
@@ -17,11 +17,8 @@ import argparse
 import numpy as np
 
 import torch
-import torch.nn as nn
 
 from yoke.models.vit.swin.bomberman import LodeRunner
-from yoke.datasets.lsc_dataset import LSC_halfimage_DataSet
-from yoke.datasets.lsc_dataset import LSCnpz2key
 import yoke.torch_training_utils as tr
 
 # Imports for plotting
@@ -50,8 +47,10 @@ plt.rcParams["figure.figsize"] = (6, 6)
 
 ###################################################################
 # Define command line argument parser
-descr_str = ("Create animation of single hydro-field for LodeRunner on lsc240420 "
-             "simulation IDX.")
+descr_str = (
+    "Create animation of single hydro-field for LodeRunner on lsc240420 "
+    "simulation IDX."
+)
 parser = argparse.ArgumentParser(prog="Animation of LodeRunner", description=descr_str)
 
 parser.add_argument(
@@ -94,14 +93,11 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--verbose",
-    "-V",
-    action="store_true",
-    help="Flag to turn on debugging output."
+    "--verbose", "-V", action="store_true", help="Flag to turn on debugging output."
 )
 
 
-def print_NPZ_keys(npzfile: str="./lsc240420_id00201_pvi_idx00100.npz") -> None:
+def print_NPZ_keys(npzfile: str = "./lsc240420_id00201_pvi_idx00100.npz") -> None:
     """Print keys of NPZ file."""
     NPZ = np.load(npzfile)
     print("NPZ file keys:")
@@ -114,7 +110,7 @@ def print_NPZ_keys(npzfile: str="./lsc240420_id00201_pvi_idx00100.npz") -> None:
 
 
 def singlePVIarray(
-    npzfile: str="./lsc240420_id00201_pvi_idx00100.npz", FIELD: str="av_density"
+    npzfile: str = "./lsc240420_id00201_pvi_idx00100.npz", FIELD: str = "av_density"
 ) -> np.array:
     """Function to grab single array from NPZ.
 
@@ -159,16 +155,23 @@ if __name__ == "__main__":
         print("NPZ files:", npz_list)
 
     # Instantiate model from checkpoint
-    default_vars = ['density_case',
-                    'density_cushion',
-                    'density_maincharge',
-                    'density_outside_air',
-                    'density_striker',
-                    'density_throw',
-                    'Uvelocity',
-                    'Wvelocity']
+    default_vars = [
+        "density_case",
+        "density_cushion",
+        "density_maincharge",
+        "density_outside_air",
+        "density_striker",
+        "density_throw",
+        "Uvelocity",
+        "Wvelocity",
+    ]
     embed_dim = 512
-    block_structure = (1, 1, 11, 2,)
+    block_structure = (
+        1,
+        1,
+        11,
+        2,
+    )
     model = LodeRunner(
         default_vars=default_vars,
         image_size=(1120, 400),
@@ -212,8 +215,8 @@ if __name__ == "__main__":
     # Loop through images
     for k, npzfile in enumerate(npz_list):
         # Get index
-        pviIDX = npzfile.split('idx')[1]
-        pviIDX = int(pviIDX.split('.')[0])
+        pviIDX = npzfile.split("idx")[1]
+        pviIDX = int(pviIDX.split(".")[0])
 
         # Get the coordinates and time
         simtime = singlePVIarray(npzfile=npzfile, FIELD="sim_time")
@@ -235,12 +238,12 @@ if __name__ == "__main__":
             # Sum for true average density
             true_rho = input_img.detach().numpy()
             true_rho = true_rho[0:6, :, :].sum(0)
-            
+
             # Make a prediction
             pred_img = model(torch.unsqueeze(input_img, 0), in_vars, out_vars, Dt)
             pred_rho = np.squeeze(pred_img.detach().numpy())
             pred_rho = pred_rho[0:6, :, :].sum(0)
-            
+
         else:
             # Get ground-truth average density
             true_img_list = []
@@ -313,8 +316,9 @@ if __name__ == "__main__":
 
         # Save images
         fig1.savefig(
-            os.path.join(outdir,
-                         f"loderunner_prediction_id{runID:05d}_idx{pviIDX:05d}.png"),
+            os.path.join(
+                outdir, f"loderunner_prediction_id{runID:05d}_idx{pviIDX:05d}.png"
+            ),
             bbox_inches="tight",
-            )
+        )
         plt.close()
