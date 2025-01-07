@@ -1,5 +1,6 @@
-"""Patch manipulation layers. Includes *merging*, *expanding*, *depatching*
-layer definitions.
+"""Patch manipulation layers.
+
+Includes *merging*, *expanding*, *depatching* layer definitions.
 
 The goal of these layers is to reduce or increase the number of tokens of a
 patch embedding while simultaneously modifying the embedding
@@ -47,7 +48,8 @@ class PatchMerge(nn.Module):
         patch_grid_size: (int, int) = (64, 64),
         s1: int = 2,
         s2: int = 2,
-    ):
+    ) -> None:
+        """Initialization for Patch Merging."""
         super().__init__()
         # Check size compatibilities
         try:
@@ -96,9 +98,10 @@ class PatchMerge(nn.Module):
         # Linear re-embedding
         self.linear = nn.Linear(self.s1 * self.s2 * self.in_emb_size, self.out_emb_size)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward method for Patch Merging."""
         # The input tensor is shape (B, num_tokens, embedding_dim)
-        B, L, C = x.shape
+        _, L, _ = x.shape
 
         # NOTE: The number of tokens is assumed to be L=H*W
         assert L == self.H * self.W
@@ -153,7 +156,8 @@ class PatchExpand(nn.Module):
         patch_grid_size: (int, int) = (64, 64),
         s1: int = 2,
         s2: int = 2,
-    ):
+    ) -> None:
+        """Initialize patch expansion."""
         super().__init__()
 
         # Check size compatibilities
@@ -197,9 +201,10 @@ class PatchExpand(nn.Module):
         # Linear re-embedding
         self.linear = nn.Linear(self.emb_size, self.emb_factor * self.emb_size)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward method for patch expansion."""
         # The input tensor is shape (B, num_tokens, embedding_dim)
-        B, L, C = x.shape
+        _, L, _ = x.shape
 
         # NOTE: The number of tokens is assumed to be L=H*W
         assert L == self.H * self.W
@@ -223,6 +228,8 @@ class PatchExpand(nn.Module):
 class Unpatchify(nn.Module):
     """Expansion from patches to variables and images used in the ClimaX model.
 
+    This layer performs the remap:
+
     (B, H*W,  V*p_h*p_w) ->[rearrange] (B, V, H*p_h, W*p_w)
 
     Based on the paper, **ClimaX: A foundation model for weather and
@@ -241,7 +248,8 @@ class Unpatchify(nn.Module):
         total_num_vars: int = 5,
         patch_grid_size: (int, int) = (64, 64),
         patch_size: (int, int) = (8, 8),
-    ):
+    ) -> None:
+        """Initialization for Unpatchify."""
         super().__init__()
 
         # Total number of variables
@@ -255,9 +263,10 @@ class Unpatchify(nn.Module):
         self.p_h = patch_size[0]
         self.p_w = patch_size[1]
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward method for Unpatchify."""
         # The input tensor is shape (B, num_tokens, embedding_dim)
-        B, L, C = x.shape
+        _, L, C = x.shape
 
         # Make sure shape requirements are met
         assert L == self.H * self.W

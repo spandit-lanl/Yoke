@@ -1,5 +1,7 @@
-"""nn.Module allowing processing of variable channel image input through a
-SWIN-V2 U-Net architecture then re-embedded as a variable channel image.
+"""Module for BomberMan network structures.
+
+nn.Module allowing processing of variable channel image input through a SWIN-V2
+U-Net architecture then re-embedded as a variable channel image.
 
 This network architecture will serve as the foundation for a hydro-code
 emulator.
@@ -22,7 +24,9 @@ from yoke.models.vit.embedding_encoders import (
 
 
 class LodeRunner(nn.Module):
-    """Parallel-patch embedding with SWIN U-Net backbone and
+    """LodeRunner neural network.
+
+    Parallel-patch embedding with SWIN U-Net backbone and
     unpatchification. This module will take in a variable-channel image format
     and output an equivalent variable-channel image formate. This will serves
     as a prototype foundational architecture for multi-material, multi-physics,
@@ -31,10 +35,10 @@ class LodeRunner(nn.Module):
     Args:
         default_vars (list[str]): List of default variables to be used for training
         image_size (tuple[int, int]): Height and width, in pixels, of input image.
-        patch_size (tuple[int, int]): Height and width pixel dimensions of patch in 
+        patch_size (tuple[int, int]): Height and width pixel dimensions of patch in
                                       initial embedding.
         emb_dim (int): Initial embedding dimension.
-        emb_factor (int): Scale of embedding in each patch merge/exand.
+        emb_factor (int): Scale of embedding in each patch merge/expand.
         num_heads (int): Number of heads in the MSA layers.
         block_structure (int, int, int, int): Tuple specifying the number of SWIN
                                               encoders in each block structure
@@ -49,7 +53,7 @@ class LodeRunner(nn.Module):
 
     def __init__(
         self,
-        default_vars,
+        default_vars: list[str],
         image_size: (int, int) = (1120, 800),
         patch_size: (int, int) = (10, 10),
         embed_dim: int = 128,
@@ -68,7 +72,8 @@ class LodeRunner(nn.Module):
             (2, 2),
         ],
         verbose: bool = False,
-    ):
+    ) -> None:
+        """Initialization for class."""
         super().__init__()
 
         self.default_vars = default_vars
@@ -136,17 +141,18 @@ class LodeRunner(nn.Module):
         )
 
     def forward(
-            self,
-            x: torch.Tensor,
-            in_vars: torch.Tensor,
-            out_vars: torch.Tensor,
-            lead_times: torch.Tensor):
-
+        self,
+        x: torch.Tensor,
+        in_vars: torch.Tensor,
+        out_vars: torch.Tensor,
+        lead_times: torch.Tensor,
+    ) -> torch.Tensor:
+        """Forward method for LodeRunner."""
         # WARNING!: Most likely the `in_vars` and `out_vars` need to be tensors
         # of integers corresponding to variables in the `default_vars` list.
 
         # First embed input
-        #varIDXs = self.var_embed_layer.get_var_ids(tuple(in_vars), x.device)
+        # varIDXs = self.var_embed_layer.get_var_ids(tuple(in_vars), x.device)
         x = self.parallel_embed(x, in_vars)
 
         # Encode variables
@@ -171,7 +177,7 @@ class LodeRunner(nn.Module):
         x = self.unpatch(x)
 
         # Select only entries corresponding to out_vars for loss
-        #out_var_ids = self.var_embed_layer.get_var_ids(tuple(out_vars), x.device)
+        # out_var_ids = self.var_embed_layer.get_var_ids(tuple(out_vars), x.device)
         preds = x[:, out_vars]
 
         return preds
@@ -180,9 +186,8 @@ class LodeRunner(nn.Module):
 if __name__ == "__main__":
     from yoke.torch_training_utils import count_torch_params
 
-    
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    
+
     default_vars = [
         "cu_pressure",
         "cu_density",
@@ -213,8 +218,8 @@ if __name__ == "__main__":
     lead_times = torch.rand(5).to(device)  # Lead time for each entry in batch
     # x_vars = ["cu_density", "ss_density", "ply_density", "air_density"]
     x_vars = torch.tensor([1, 7, 10, 13]).to(device)
-    
-    #out_vars = ["cu_density", "ss_density", "ply_density", "air_density"]
+
+    # out_vars = ["cu_density", "ss_density", "ply_density", "air_density"]
     out_vars = torch.tensor([1, 7, 10, 13]).to(device)
 
     # Common model setup for LodeRunner
@@ -227,7 +232,7 @@ if __name__ == "__main__":
     num_heads = 8
     window_sizes = [(8, 8), (8, 8), (4, 4), (2, 2)]
     patch_merge_scales = [(2, 2), (2, 2), (2, 2)]
-    
+
     # Tiny size
     embed_dim = 96
     block_structure = (1, 1, 3, 1)
@@ -267,13 +272,12 @@ if __name__ == "__main__":
         verbose=False,
     ).to(device)
     print(
-        "LodeRunner-small parameters:",
-        count_torch_params(lode_runner, trainable=True)
+        "LodeRunner-small parameters:", count_torch_params(lode_runner, trainable=True)
     )
 
     # Big size
     embed_dim = 128
-    block_structure=(1, 1, 9, 1)
+    block_structure = (1, 1, 9, 1)
 
     lode_runner = LodeRunner(
         default_vars=default_vars,
@@ -287,14 +291,11 @@ if __name__ == "__main__":
         patch_merge_scales=patch_merge_scales,
         verbose=False,
     ).to(device)
-    print(
-        "LodeRunner-big parameters:",
-        count_torch_params(lode_runner, trainable=True)
-    )
+    print("LodeRunner-big parameters:", count_torch_params(lode_runner, trainable=True))
 
     # Large size
     embed_dim = 192
-    block_structure=(1, 1, 9, 1)
+    block_structure = (1, 1, 9, 1)
 
     lode_runner = LodeRunner(
         default_vars=default_vars,
@@ -309,13 +310,12 @@ if __name__ == "__main__":
         verbose=False,
     ).to(device)
     print(
-        "LodeRunner-large parameters:",
-        count_torch_params(lode_runner, trainable=True)
+        "LodeRunner-large parameters:", count_torch_params(lode_runner, trainable=True)
     )
 
     # Huge size
     embed_dim = 352
-    block_structure=(1, 1, 9, 1)
+    block_structure = (1, 1, 9, 1)
 
     lode_runner = LodeRunner(
         default_vars=default_vars,
@@ -329,14 +329,11 @@ if __name__ == "__main__":
         patch_merge_scales=patch_merge_scales,
         verbose=False,
     ).to(device)
-    print(
-        "LodeRunner-huge parameters:",
-        count_torch_params(lode_runner, trainable=True)
-    )
-    
+    print("LodeRunner-huge parameters:", count_torch_params(lode_runner, trainable=True))
+
     # Giant size
     embed_dim = 512
-    block_structure=(1, 1, 11, 2)
+    block_structure = (1, 1, 11, 2)
 
     lode_runner = LodeRunner(
         default_vars=default_vars,
@@ -351,6 +348,5 @@ if __name__ == "__main__":
         verbose=False,
     ).to(device)
     print(
-        "LodeRunner-giant parameters:",
-        count_torch_params(lode_runner, trainable=True)
+        "LodeRunner-giant parameters:", count_torch_params(lode_runner, trainable=True)
     )

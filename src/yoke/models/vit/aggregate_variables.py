@@ -1,5 +1,7 @@
-"""nn.Modules to carry out *variable aggregation* after patch
-embedding. Variable aggregation eliminates the variable dimension.
+"""Variable Aggregation module.
+
+nn.Modules to carry out *variable aggregation* after patch embedding. Variable
+aggregation eliminates the variable dimension.
 
 """
 
@@ -10,26 +12,34 @@ from einops import rearrange
 
 
 class ClimaX_AggVars(nn.Module):
-    def __init__(self, embed_dim, num_heads):
-        """Variable aggregation performed through a learnable Query vector and
-        a re-mapping of the tensor dimensions.
+    """ClimaX variable aggregation.
 
-        The goal is to get some quantity representative of cross-attention
-        across all the variables. This eliminates the variable dimension which
-        is important if the number of variables is large or possibly not fixed.
+    Variable aggregation performed through a learnable Query vector and a
+    re-mapping of the tensor dimensions.
 
-        Based on the paper, **ClimaX: A foundation model for weather and
-        climate.**
+    The goal is to get some quantity representative of cross-attention across
+    all the variables. This eliminates the variable dimension which is
+    important if the number of variables is large or possibly not fixed.
 
-        """
+    Based on the paper, **ClimaX: A foundation model for weather and climate.**
+
+    Args:
+        embed_dim (int): Initial embedding dimension.
+        num_heads (int): Number of heads in the MSA layers.
+
+    """
+
+    def __init__(self, embed_dim: int, num_heads: int) -> None:
+        """Initialization for ClimaX variable aggregation."""
         super().__init__()
 
         self.var_query = nn.Parameter(torch.zeros(1, 1, embed_dim), requires_grad=True)
         self.var_agg = nn.MultiheadAttention(embed_dim, num_heads, batch_first=True)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward method for ClimaX variable aggregation."""
         # The input tensor is shape (B, NumVars, NumTokens, embed_dim)
-        B, V, L, D = x.shape
+        B, _, L, _ = x.shape
 
         x = rearrange(x, "b v l d -> (b l) v d")  # BxL, V, D
 

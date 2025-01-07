@@ -1,9 +1,10 @@
-"""Module containing torch nn.Module classes forming CNNs mapping vectors of
-scalar inputs to images.
+"""Vector to Image CNN nn.Modules.
+
+PyTorch nn.Module classes forming CNNs mapping vectors of scalar inputs to
+images.
 
 """
 
-from typing import List
 from collections import OrderedDict
 
 import torch
@@ -13,36 +14,40 @@ from yoke.torch_training_utils import count_torch_params
 
 
 class jekelCNNsurrogate(nn.Module):
+    """Vector-to-image CNN.
+
+    Convolutional Neural Network Module that creates a scalar-to-image
+    surrogate using a sequence of ConvTranspose2D, Batch Normalization, and
+    Activation layers.
+
+    This architecture is meant to reproduce the architecture described in
+    Jekel et. al. 2022 *Using conservation laws to infer deep learning
+    model accuracy of Richtmyer-Meshkov instabilities.*
+
+    Args:
+        input_size (int): Size of input
+        linear_features (tuple[int, int]): Window size scalar parameters are
+                                           originally mapped into
+        kernel (tuple[int, int]): Size of transpose-convolutional kernel
+        nfeature_list (list[int]): List of number of features in each
+                                   T-convolutional layer
+        output_image_size (tuple[int, int]): Image size to output, (H, W).
+                                             Channels are automatically inherited.
+        act_layer(nn.modules.activation): torch neural network layer class
+                                          to use as activation
+
+    """
+
     def __init__(
         self,
         input_size: int = 29,
         linear_features: tuple[int, int] = (4, 4),
         kernel: tuple[int, int] = (3, 3),
-        nfeature_list: List[int] = [512, 512, 512, 512, 256, 128, 64, 32],
+        nfeature_list: list[int] = [512, 512, 512, 512, 256, 128, 64, 32],
         output_image_size: tuple[int, int] = (1120, 800),
-        act_layer=nn.GELU,
-    ):
-        """Convolutional Neural Network Module that creates a scalar-to-image
-        surrogate using a sequence of ConvTranspose2D, Batch Normalization, and
-        Activation layers.
-
-        This architecture is meant to reproduce the architecture described in
-        Jekel et. al. 2022 *Using conservation laws to infer deep learning
-        model accuracy of Richtmyer-Meshkov instabilities.*
-
-        Args:
-            input_size (int): Size of input
-            linear_features (tuple[int, int]): Window size scalar parameters are
-                                               originally mapped into
-            kernel (tuple[int, int]): Size of transpose-convolutional kernel
-            nfeature_list (List[int]): List of number of features in each
-                                       T-convolutional layer
-            output_image_size (tuple[int, int]): Image size to output, (H, W).
-                                                 Channels are automatically inherited.
-            act_layer(nn.modules.activation): torch neural network layer class
-                                              to use as activation
-
-        """
+        act_layer: nn.Moduel = nn.GELU,
+    ) -> None:
+        """Initialization for Jekel t-CNN."""
         super().__init__()
 
         self.input_size = input_size
@@ -110,15 +115,8 @@ class jekelCNNsurrogate(nn.Module):
         # Else...
         self.final_act = nn.Identity()
 
-        # NOTE: Upsample layer is alternative to resizing image using
-        # nn.functional.interpolate. However, pytorch claims the interpolate
-        # method is better for general resizing.
-        #
-        # Upsample layer to get image size correct
-        # self.upsample = nn.Upsample(size=self.output_image_size,
-        #                            mode='bilinear')
-
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward method for Jekel t-CNN."""
         # Input Layers
         x = self.dense_expand(x)
         # Reshape to a 2D block with channels
@@ -143,10 +141,6 @@ class jekelCNNsurrogate(nn.Module):
         x = self.final_act(x)
         # print('After final convT shape:', x.shape)
 
-        # Reshape to output image size.
-        # print('Pre-Upsample shape:', x.shape)
-        # x = self.upsample(x)
-
         # Alternate resize
         x = nn.functional.interpolate(
             x, size=self.output_image_size, mode="bilinear", antialias=True
@@ -157,6 +151,44 @@ class jekelCNNsurrogate(nn.Module):
 
 
 class tCNNsurrogate(nn.Module):
+    """Vector-to-Image CNN.
+
+    Convolutional Neural Network Module that creates a scalar-to-image
+    surrogate using a sequence of ConvTranspose2D, Batch Normalization, and
+    Activation layers.
+
+    This architecture is meant to reproduce the architecture described in
+    Jekel et. al. 2022 *Using conservation laws to infer deep learning
+    model accuracy of Richtmyer-Meshkov instabilities.*
+
+    However, image sizes are not always square powers of 2. Therefore, we
+    allow a transpose convolution with specified parameters to resize the
+    initial image stack to something that can be upsized to the output
+    image size by multiplying by a power of 2. Unlike the jekelCNNsurrogate
+    class which dealt with resizing by interpolation in the last layer. It
+    is confusing because it is...
+
+    Args:
+        input_size (int): Size of input
+        linear_features (tuple[int, int, int]): Window size and number of features
+                                                scalar parameters are originally
+                                                mapped into
+        initial_tconv_kernel (tuple[int, int]): Kernel size of initial tconv2d
+        initial_tconv_stride (tuple[int, int]): Stride size of initial tconv2d
+        initial_tconv_padding (tuple[int, int]): Padding size of initial tconv2d
+        initial_tconv_outpadding (tuple[int, int]): Outout padding size of
+                                                    initial tconv2d
+        initial_tconv_dilation (tuple[int, int]): Dilation size of initial tconv2d
+        kernel (tuple[int, int]): Size of transpose-convolutional kernel
+        nfeature_list (list[int]): List of number of features in each
+                                   T-convolutional layer
+        output_image_size (tuple[int, int]): Image size to output, (H, W).
+        output_image_channels (int): Number of output image channels.
+        act_layer(nn.modules.activation): torch neural network layer class
+                                          to use as activation
+
+    """
+
     def __init__(
         self,
         input_size: int = 29,
@@ -167,48 +199,17 @@ class tCNNsurrogate(nn.Module):
         initial_tconv_outpadding: tuple[int, int] = (0, 0),
         initial_tconv_dilation: tuple[int, int] = (1, 1),
         kernel: tuple[int, int] = (3, 3),
-        nfeature_list: List[int] = [256, 256, 256, 128, 64, 64, 32],
+        nfeature_list: list[int] = [256, 256, 256, 128, 64, 64, 32],
         output_image_size: tuple[int, int] = (1120, 800),
-        act_layer=nn.GELU,
-    ):
-        """Convolutional Neural Network Module that creates a scalar-to-image
-        surrogate using a sequence of ConvTranspose2D, Batch Normalization, and
-        Activation layers.
-
-        This architecture is meant to reproduce the architecture described in
-        Jekel et. al. 2022 *Using conservation laws to infer deep learning
-        model accuracy of Richtmyer-Meshkov instabilities.*
-
-        However, image sizes are not always square powers of 2. Therefore, we
-        allow a transpose convolution with specified parameters to resize the
-        initial image stack to something that can be upsized to the output
-        image size by multiplying by a power of 2. Unlike the jekelCNNsurrogate
-        class which dealt with resizing by interpolation in the last layer. It
-        is confusing because it is...
-
-        Args:
-            input_size (int): Size of input
-            linear_features (tuple[int, int, int]): Window size and number of features
-                                                    scalar parameters are originally
-                                                    mapped into
-            initial_tconv_kernel (tuple[int, int]): Kernel size of initial tconv2d
-            initial_tconv_stride (tuple[int, int]): Stride size of initial tconv2d
-            initial_tconv_padding (tuple[int, int]): Padding size of initial tconv2d
-            initial_tconv_outpadding (tuple[int, int]): Outout padding size of initial tconv2d
-            initial_tconv_dilation (tuple[int, int]): Dilation size of initial tconv2d
-            kernel (tuple[int, int]): Size of transpose-convolutional kernel
-            nfeature_list (List[int]): List of number of features in each
-                                       T-convolutional layer
-            output_image_size (tuple[int, int]): Image size to output, (H, W).
-                                                 Channels are automatically inherited.
-            act_layer(nn.modules.activation): torch neural network layer class
-                                              to use as activation
-
-        """
+        output_image_channels: int = 1,
+        act_layer: nn.Module = nn.GELU,
+    ) -> None:
+        """Initialization for the t-CNN surrogate."""
         super().__init__()
 
         self.input_size = input_size
         self.output_image_size = output_image_size
+        self.output_image_channels = output_image_channels
         self.linear_features = linear_features
         self.initial_tconv_kernel = initial_tconv_kernel
         self.initial_tconv_stride = initial_tconv_stride
@@ -254,9 +255,6 @@ class tCNNsurrogate(nn.Module):
         self.initTconvActivation = act_layer()
 
         # Module list to hold transpose convolutions
-        # self.TConvList = nn.ModuleList()
-        # self.BnormList = nn.ModuleList()
-        # self.ActList = nn.ModuleList()
         self.CompoundConvTList = nn.ModuleList()
         # Create transpose convolutional layer for each entry in feature list.
         for i in range(self.nConvT - 1):
@@ -270,14 +268,9 @@ class tCNNsurrogate(nn.Module):
                 bias=False,
             )
 
-            # self.TConvList.append(tconv)
-
             normLayer = nn.BatchNorm2d(self.nfeature_list[i + 1])
             nn.init.constant_(normLayer.weight, 1)
             normLayer.weight.requires_grad = False
-
-            # self.BnormList.append(normLayer)
-            # self.ActList.append(act_layer())
 
             # Make list of small sequential modules. Then we'll use enumerate
             # in forward method.
@@ -293,7 +286,7 @@ class tCNNsurrogate(nn.Module):
         # Final Transpose Conv layer followed by hyperbolic tanh activation
         self.final_tconv = nn.ConvTranspose2d(
             in_channels=self.nfeature_list[-1],
-            out_channels=1,
+            out_channels=self.output_image_channels,
             kernel_size=self.kernel,
             stride=2,
             padding=1,
@@ -307,7 +300,8 @@ class tCNNsurrogate(nn.Module):
         # Else...
         self.final_act = nn.Identity()
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward method for the t-CNN surrogate."""
         # Input Layers
         x = self.dense_expand(x)
         # Reshape to a 2D block with channels
@@ -325,14 +319,6 @@ class tCNNsurrogate(nn.Module):
         x = self.initTconvNorm(x)
         x = self.initTconvActivation(x)
         # print('After initTconv shape:', x.shape)
-
-        # ConvT layers
-        # NOTE: This block interferes with `torch.jit.script`
-        # for i in range(self.nConvT-1):
-        #     x = self.TConvList[i](x)
-        #     x = self.BnormList[i](x)
-        #     x = self.ActList[i](x)
-        #     #print(f'After convT{i:d} shape:', x.shape)
 
         # enumeration of nn.moduleList is supported under `torch.jit.script`
         for i, cmpdTconv in enumerate(self.CompoundConvTList):

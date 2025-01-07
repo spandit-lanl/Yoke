@@ -1,9 +1,9 @@
-"""Module containing classes for *variable embeddings*, *position embeddings*,
+"""Various embeddings for ViT networks.
+
+Module containing classes for *variable embeddings*, *position embeddings*,
 *temporal embeddings*.
 
 """
-
-from functools import lru_cache
 
 import numpy as np
 
@@ -11,7 +11,9 @@ import torch
 import torch.nn as nn
 
 
-def get_1d_sincos_pos_embed_from_grid(embed_dim, position):
+def get_1d_sincos_pos_embed_from_grid(
+    embed_dim: int, position: np.ndarray
+) -> np.ndarray:
     """1D Sine/Cosine embedding.
 
     Args:
@@ -50,7 +52,7 @@ def get_1d_sincos_pos_embed_from_grid(embed_dim, position):
     return emb
 
 
-def get_2d_sincos_pos_embed_from_grid(embed_dim, grid):
+def get_2d_sincos_pos_embed_from_grid(embed_dim: int, grid: np.ndarray) -> np.ndarray:
     """2D Sine/Cosine embedding using grid array.
 
     Args:
@@ -79,7 +81,9 @@ def get_2d_sincos_pos_embed_from_grid(embed_dim, grid):
     return emb
 
 
-def get_2d_sincos_pos_embed(embed_dim, grid_size_h, grid_size_w, cls_token=False):
+def get_2d_sincos_pos_embed(
+    embed_dim: int, grid_size_h: int, grid_size_w: int, cls_token: bool = False
+) -> np.ndarray:
     """2D Sine/Cosine embedding on a index-grid of specified dimensions.
 
     Args:
@@ -116,10 +120,12 @@ def get_2d_sincos_pos_embed(embed_dim, grid_size_h, grid_size_w, cls_token=False
 
 
 class ClimaX_VarEmbed(nn.Module):
-    """Variable encoding/embedding to denote which variable each token belongs
-    to. Helps in tracking variables through variable aggregation layer. Prior
-    to variable aggregation, embedding is added to parallel patch embedding
-    output to tag variable entries.
+    """ClimaX variable encoding/embedding.
+
+    Encodes information regarding which variable each token belongs to. Helps
+    in tracking variables through variable aggregation layer. Prior to variable
+    aggregation, embedding is added to parallel patch embedding output to tag
+    variable entries.
 
     This embedding consists of learnable weights but the weights are
     initialized with a sin/cos embedding.
@@ -133,7 +139,8 @@ class ClimaX_VarEmbed(nn.Module):
 
     """
 
-    def __init__(self, default_vars, embed_dim):
+    def __init__(self, default_vars: list[str], embed_dim: int) -> None:
+        """Initialization for ClimaX Variable Embedding."""
         super().__init__()
 
         self.default_vars = default_vars
@@ -147,7 +154,7 @@ class ClimaX_VarEmbed(nn.Module):
         # Initialize var_embed with sincos embedding
         self.initialize_weights()
 
-    def create_var_embedding(self, dim):
+    def create_var_embedding(self, dim: int) -> tuple[torch.Tensor, dict]:
         """Create variable embedding.
 
         Returns a variable embedding tensor of the correct size along with a
@@ -156,8 +163,7 @@ class ClimaX_VarEmbed(nn.Module):
 
         """
         var_embed = nn.Parameter(
-            torch.zeros(1, len(self.default_vars), dim),
-            requires_grad=True
+            torch.zeros(1, len(self.default_vars), dim), requires_grad=True
         )
         # TODO: create a mapping from var --> idx
         var_map = {}
@@ -169,7 +175,8 @@ class ClimaX_VarEmbed(nn.Module):
 
         return var_embed, var_map
 
-    def initialize_weights(self):
+    def initialize_weights(self) -> None:
+        """Weight initialization for variable embedding."""
         var_embed = get_1d_sincos_pos_embed_from_grid(
             self.var_embed.shape[-1], np.arange(len(self.default_vars))
         )
@@ -184,7 +191,7 @@ class ClimaX_VarEmbed(nn.Module):
     #     ids = self.get_var_ids(vars, var_emb.device)
     #     return var_emb[:, ids, :]
 
-    def forward(self, x, in_vars):
+    def forward(self, x: torch.Tensor, in_vars: torch.Tensor) -> torch.Tensor:
         """Forward method for ClimaX variable embedding.
 
         NOTE: `in_vars` should be a (1, C) tensor of integers where the
@@ -195,11 +202,10 @@ class ClimaX_VarEmbed(nn.Module):
         """
         # The input tensor is shape:
         #  (B, V, L, D)=(B, NumVars, NumTokens, embed_dim)
-        #variables = tuple(vars)
 
         # Variable embedding is (1, V, D)
         var_embed = self.var_embed[:, in_vars, :]
-        #var_embed = self.get_var_emb(self.var_embed, vars)
+        # var_embed = self.get_var_emb(self.var_embed, vars)
 
         # Unsqueeze a dimension after variable dimension...
         #   var_embed -> (1, V, 1, D)
@@ -209,9 +215,12 @@ class ClimaX_VarEmbed(nn.Module):
 
 
 class ClimaX_PosEmbed(nn.Module):
-    """Position encoding/embedding to help track where each patch embedding is
+    """ClimaX position encoding/embedding.
+
+    Position embedding is used to help track where each patch embedding is
     located in relation to the others. After variable aggregation, embedding is
-    added to patch tokens.
+    added to patch tokens. It does not encode information about absolute
+    position of a patch. This makes this position embedding non-Unit-Aware.
 
     This embedding consists of learnable weights but the weights are
     initialized with a 2D-sine/cosine embedding.
@@ -229,7 +238,14 @@ class ClimaX_PosEmbed(nn.Module):
 
     """
 
-    def __init__(self, embed_dim, patch_size, image_size, num_patches):
+    def __init__(
+        self,
+        embed_dim: int,
+        patch_size: tuple[int, int],
+        image_size: tuple[int, int],
+        num_patches: int,
+    ) -> None:
+        """Initialization for ClimaX position embedding."""
         super().__init__()
 
         self.embed_dim = embed_dim
@@ -243,8 +259,8 @@ class ClimaX_PosEmbed(nn.Module):
 
         self.initialize_weights()
 
-    def initialize_weights(self):
-        # Initialize position embedding with Sine/Cosine grid
+    def initialize_weights(self) -> None:
+        """Initialize position embedding weights using Sine/Cosine grid."""
         pos_embed = get_2d_sincos_pos_embed(
             self.pos_embed.shape[-1],
             int(self.image_size[0] / self.patch_size[0]),
@@ -253,7 +269,8 @@ class ClimaX_PosEmbed(nn.Module):
         )
         self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float().unsqueeze(0))
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward method for ClimaX position embedding."""
         # The input tensor is shape:
         #  (B, L, D)=(B, NumTokens[i.e. Patches], embed_dim)
 
@@ -263,9 +280,11 @@ class ClimaX_PosEmbed(nn.Module):
 
 
 class RelativePositionEmbed(nn.Module):
-    """Relative spatial encoding/embedding used in the SWIN windowed
-    multi-headed self-attention layers. In this specialized version we set up a
-    relative position embedding for a rectangular image.
+    """Relative spatial encoding/embedding in SWIN.
+
+    Relative spatial encoding/embedding used in the SWIN windowed multi-headed
+    self-attention layers. In this specialized version we set up a relative
+    position embedding for a rectangular image.
 
 
     Args:
@@ -273,7 +292,8 @@ class RelativePositionEmbed(nn.Module):
 
     """
 
-    def __init__(self, window_size: (int, int) = (8, 4)):
+    def __init__(self, window_size: (int, int) = (8, 4)) -> None:
+        """Initialization for Relative Position Embedding."""
         super().__init__()
 
         # Set window size
@@ -312,7 +332,8 @@ class RelativePositionEmbed(nn.Module):
         self.relative_indices[:, :, 0] += self.window_size[0] - 1
         self.relative_indices[:, :, 1] += self.window_size[1] - 1
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward method for Relative Position Embedding."""
         # The input tensor is shape:
         #  (B, H, Hw, Ww, wh*ww, wh*ww)
         #
@@ -343,9 +364,11 @@ class RelativePositionEmbed(nn.Module):
 
 
 class ClimaX_TimeEmbed(nn.Module):
-    """Temporal encoding/embedding to help track/tag each entry of a batch by
-    it's corresponding lead time. After variable aggregation and position
-    encoding, temporal encoding is added to patch tokens.
+    """ClimaX temporal encoding/embedding.
+
+    This embedding is used to help track/tag each entry of a batch by it's
+    corresponding lead time. After variable aggregation and position encoding,
+    temporal encoding is added to patch tokens.
 
     This embedding consists of a single 1D linear embedding of lead-times per
     sample in the batch to the embedding dimension.
@@ -364,12 +387,14 @@ class ClimaX_TimeEmbed(nn.Module):
 
     """
 
-    def __init__(self, embed_dim):
+    def __init__(self, embed_dim: int) -> None:
+        """Initialization for ClimaX temporal embedding."""
         super().__init__()
 
         self.lead_time_embed = nn.Linear(1, embed_dim)
 
-    def forward(self, x, lead_times: torch.Tensor):
+    def forward(self, x: torch.Tensor, lead_times: torch.Tensor) -> torch.Tensor:
+        """Forward method for ClimaX temporal embedding."""
         # The input tensor is shape:
         #  (B, L, D)=(B, NumTokens, embed_dim)
 
@@ -412,11 +437,11 @@ if __name__ == "__main__":
     # Indices correspond to
     # ["cu_density", "ss_density", "ss_temperature", "r_vel"]
     in_vars = torch.tensor([1, 4, 5, 6]).to(device)
-    
+
     # Prior to variable aggregation: (B, V, L, D)
-    var_emb_model = ClimaX_VarEmbed(
-        default_vars=default_vars,
-        embed_dim=embed_dim).to(device)
+    var_emb_model = ClimaX_VarEmbed(default_vars=default_vars, embed_dim=embed_dim).to(
+        device
+    )
 
     print("Vaiable Encoding Input shape:", x.shape)
     print(

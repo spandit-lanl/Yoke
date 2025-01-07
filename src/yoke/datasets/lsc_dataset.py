@@ -11,11 +11,13 @@ data, *lsc240420*.
 import sys
 from pathlib import Path
 import typing
+from typing import Callable
 import random
 import numpy as np
 import pandas as pd
 import torch
 from torch.utils.data import Dataset
+import itertools
 
 NoneStr = typing.Union[None, str]
 
@@ -117,6 +119,9 @@ class LSC_cntr2rho_DataSet(Dataset):
 
     def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor]:
         """Return a tuple of a batch's input and output data."""
+        # Rotate index if necessary
+        index = index % self.Nsamples
+
         # Get the input image
         filepath = self.filelist[index]
         npz = np.load(self.LSC_NPZ_DIR + filepath)
@@ -208,6 +213,9 @@ class LSCnorm_cntr2rho_DataSet(Dataset):
 
     def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor]:
         """Return a tuple of a batch's input and output data."""
+        # Rotate index if necessary
+        index = index % self.Nsamples
+
         # Get the input image
         filepath = self.filelist[index]
         npz = np.load(self.LSC_NPZ_DIR + filepath)
@@ -290,6 +298,9 @@ class LSC_cntr2hfield_DataSet(Dataset):
 
     def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor]:
         """Return a tuple of a batch's input and output data."""
+        # Rotate index if necessary
+        index = index % self.Nsamples
+
         # Get the input image
         filepath = self.filelist[index]
         npz = np.load(self.LSC_NPZ_DIR + filepath)
@@ -312,6 +323,223 @@ class LSC_cntr2hfield_DataSet(Dataset):
         geom_params = torch.from_numpy(Bspline_nodes).to(torch.float32)
 
         return geom_params, hfield
+
+
+def neg_mse_loss(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+    """Negated MSE loss."""
+    return -torch.nn.functional.mse_loss(x, y)
+
+
+class LSC_hfield_reward_DataSet(Dataset):
+    """Hydro-field discrepancy reward dataset."""
+
+    def __init__(
+        self,
+        LSC_NPZ_DIR: str,
+        filelist: str,
+        design_file: str,
+        field_list: list[str] = ["density_throw"],
+        reward_fn: Callable[[torch.Tensor, torch.Tensor], torch.Tensor] = neg_mse_loss,
+    ) -> None:
+        """Initialization of class.
+
+        The definition of a dataset object for the *Layered Shaped Charge* data
+        which produces tuples `(y', H', H*, -MSE(H', H*))`. `y'` is the vector
+        of B-spline contour-nodes. `H'` is the tensor of hydro-fields at final
+        time corresponding to `y'`. `H*` is a *target* tensor of hydro-fields
+        at final time, chosen randomly from the available training data.
+
+        A *value* network will be pre-trained from this dataset to use in a
+        *proximal policy optimization* (PPO) reinforcement learning algorithm.
+
+        Args:
+            LSC_NPZ_DIR (str): Location of LSC NPZ files. A YOKE env variable.
+            filelist (str): Text file listing file names to read
+            design_file (str): Full-path to .csv file with master design study parameters
+            field_list (list[str]): List of hydro-dynamic fields to include as channels
+                                    in image.
+            reward_fn (Callable): Function taking two torch.tensor and returning a
+                                  scalar reward.
+
+        """
+        # Model Arguments
+        self.LSC_NPZ_DIR = LSC_NPZ_DIR
+        self.filelist = filelist
+        self.design_file = design_file
+        self.hydro_fields = field_list
+        self.reward = reward_fn
+
+        # Create filelist
+        with open(filelist) as f:
+            self.filelist = [line.rstrip() for line in f]
+
+        # Create list of state-target pairs.
+        self.state_target_list = list(itertools.product(self.filelist, self.filelist))
+
+        # Shuffle the list of state-target pairs in-place
+        random.shuffle(self.state_target_list)
+
+        self.Nsamples = len(self.state_target_list)
+
+    def __len__(self) -> int:
+        """Return number of samples in dataset."""
+        return self.Nsamples
+
+    def __getitem__(
+        self, index: int
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Return a tuple of a batch's input and output data."""
+        # Rotate index if necessary
+        index = index % self.Nsamples
+
+        # Get the state-target pair
+        state, target = self.state_target_list[index]
+        state_npz = np.load(self.LSC_NPZ_DIR + state)
+        target_npz = np.load(self.LSC_NPZ_DIR + target)
+
+        state_hfield_list = []
+        target_hfield_list = []
+        for hfield in self.hydro_fields:
+            tmp_img = LSCread_npz(state_npz, hfield)
+            # Remember to replace all NaNs with 0.0
+            tmp_img = np.nan_to_num(tmp_img, nan=0.0)
+            state_hfield_list.append(tmp_img)
+
+            tmp_img = LSCread_npz(target_npz, hfield)
+            # Remember to replace all NaNs with 0.0
+            tmp_img = np.nan_to_num(tmp_img, nan=0.0)
+            target_hfield_list.append(tmp_img)
+
+        # Concatenate images channel first.
+        state_hfield = torch.tensor(np.stack(state_hfield_list, axis=0)).to(
+            torch.float32
+        )
+
+        target_hfield = torch.tensor(np.stack(target_hfield_list, axis=0)).to(
+            torch.float32
+        )
+
+        # Calculate reward.
+        #
+        # Make sure the reward computation isn't part of the torch
+        # computational graph which could happen if the reward function is a
+        # torch Loss.
+        with torch.no_grad():
+            reward = self.reward(state_hfield, target_hfield)
+
+        # Get the state contours
+        sim_key = LSCnpz2key(self.LSC_NPZ_DIR + state)
+        Bspline_nodes = LSCcsv2bspline_pts(self.design_file, sim_key)
+        state_npz.close()
+        target_npz.close()
+
+        state_geom_params = torch.from_numpy(Bspline_nodes).to(torch.float32)
+
+        return state_geom_params, state_hfield, target_hfield, reward
+
+
+class LSC_hfield_policy_DataSet(Dataset):
+    """Hydro-field policy dataset."""
+
+    def __init__(
+        self,
+        LSC_NPZ_DIR: str,
+        filelist: str,
+        design_file: str,
+        field_list: list[str] = ["density_throw"],
+    ) -> None:
+        """Initialization of class.
+
+        The definition of a dataset object for the *Layered Shaped Charge* data
+        which produces tuples `(y', H', H*, x=y*-y')`. `y'` is the vector of
+        B-spline contour-nodes. `H'` is the tensor of hydro-fields at final
+        time corresponding to `y'`. `H*` is a *target* tensor of hydro-fields
+        at final time, chosen randomly from the available training data. The
+        optimal *policy*, `x=y* - y'` is the prediction goal for this dataset.
+
+        A *policy* network will be pre-trained from this dataset to use in a
+        *proximal policy optimization* (PPO) reinforcement learning algorithm.
+
+        Args:
+            LSC_NPZ_DIR (str): Location of LSC NPZ files. A YOKE env variable.
+            filelist (str): Text file listing file names to read
+            design_file (str): Full-path to .csv file with master design study parameters
+            field_list (list[str]): List of hydro-dynamic fields to include as channels
+                                    in image.
+
+        """
+        # Model Arguments
+        self.LSC_NPZ_DIR = LSC_NPZ_DIR
+        self.filelist = filelist
+        self.design_file = design_file
+        self.hydro_fields = field_list
+
+        # Create filelist
+        with open(filelist) as f:
+            self.filelist = [line.rstrip() for line in f]
+
+        # Create list of state-target pairs.
+        self.state_target_list = list(itertools.product(self.filelist, self.filelist))
+
+        # Shuffle the list of state-target pairs in-place
+        random.shuffle(self.state_target_list)
+
+        self.Nsamples = len(self.state_target_list)
+
+    def __len__(self) -> int:
+        """Return number of samples in dataset."""
+        return self.Nsamples
+
+    def __getitem__(
+        self, index: int
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Return a tuple of a batch's input and output data."""
+        # Rotate index if necessary
+        index = index % self.Nsamples
+
+        # Get the state-target pair
+        state, target = self.state_target_list[index]
+        state_npz = np.load(self.LSC_NPZ_DIR + state)
+        target_npz = np.load(self.LSC_NPZ_DIR + target)
+
+        state_hfield_list = []
+        target_hfield_list = []
+        for hfield in self.hydro_fields:
+            tmp_img = LSCread_npz(state_npz, hfield)
+            # Remember to replace all NaNs with 0.0
+            tmp_img = np.nan_to_num(tmp_img, nan=0.0)
+            state_hfield_list.append(tmp_img)
+
+            tmp_img = LSCread_npz(target_npz, hfield)
+            # Remember to replace all NaNs with 0.0
+            tmp_img = np.nan_to_num(tmp_img, nan=0.0)
+            target_hfield_list.append(tmp_img)
+
+        # Concatenate images channel first.
+        state_hfield = torch.tensor(np.stack(state_hfield_list, axis=0)).to(
+            torch.float32
+        )
+
+        target_hfield = torch.tensor(np.stack(target_hfield_list, axis=0)).to(
+            torch.float32
+        )
+
+        # Get the contour parameters
+        sim_key = LSCnpz2key(self.LSC_NPZ_DIR + state)
+        Bspline_nodes = LSCcsv2bspline_pts(self.design_file, sim_key)
+        state_geom_params = torch.from_numpy(Bspline_nodes).to(torch.float32)
+
+        sim_key = LSCnpz2key(self.LSC_NPZ_DIR + target)
+        Bspline_nodes = LSCcsv2bspline_pts(self.design_file, sim_key)
+        target_geom_params = torch.from_numpy(Bspline_nodes).to(torch.float32)
+
+        state_npz.close()
+        target_npz.close()
+
+        # Calculate optimal policy step
+        geom_discrepancy = target_geom_params - state_geom_params
+
+        return state_geom_params, state_hfield, target_hfield, geom_discrepancy
 
 
 class LSC_rho2rho_temporal_DataSet(Dataset):
