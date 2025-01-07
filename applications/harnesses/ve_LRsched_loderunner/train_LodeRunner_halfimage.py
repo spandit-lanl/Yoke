@@ -20,7 +20,7 @@ import torch
 import torch.nn as nn
 
 from yoke.models.vit.swin.bomberman import LodeRunner
-from yoke.datasets.lsc_dataset import LSC_halfimage_DataSet
+from yoke.datasets.lsc_dataset import LSC_rho2rho_temporal_DataSet
 import yoke.torch_training_utils as tr
 from yoke.parallel_utils import LodeRunner_DataParallel
 from yoke.lr_schedulers import CosineWithWarmupScheduler
@@ -426,17 +426,19 @@ if __name__ == "__main__":
     #############################################
     # Initialize Data
     #############################################
-    train_dataset = LSC_halfimage_DataSet(
+    train_dataset = LSC_rho2rho_temporal_DataSet(
         args.LSC_NPZ_DIR,
         file_prefix_list=train_filelist,
         max_timeIDX_offset=2,  # This could be a variable.
         max_file_checks=10,
+        half_image=True,
     )
-    val_dataset = LSC_halfimage_DataSet(
+    val_dataset = LSC_rho2rho_temporal_DataSet(
         args.LSC_NPZ_DIR,
         file_prefix_list=validation_filelist,
         max_timeIDX_offset=2,  # This could be a variable.
         max_file_checks=10,
+        half_image=True,
     )
 
     print("Datasets initialized...")

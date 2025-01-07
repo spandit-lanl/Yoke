@@ -27,7 +27,7 @@ from yoke.lr_schedulers import CosineWithWarmupScheduler
 # Inputs
 #############################################
 descr_str = (
-    "Trains LodeRunner architecture on single-timstep input and output of the "
+    "Trains LodeRunner architecture on single-timestep input and output of the "
     "lsc240420 per-material density fields."
 )
 parser = argparse.ArgumentParser(

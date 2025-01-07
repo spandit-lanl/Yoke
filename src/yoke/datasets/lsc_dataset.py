@@ -551,6 +551,7 @@ class LSC_rho2rho_temporal_DataSet(Dataset):
         file_prefix_list: str,
         max_timeIDX_offset: int,
         max_file_checks: int,
+        half_image: bool = False
     ) -> None:
         """Initialization of timestep dataset.
 
@@ -574,12 +575,15 @@ class LSC_rho2rho_temporal_DataSet(Dataset):
                                    checks if the corresponding files exist. This
                                    argument controls the maximum number of times indices
                                    are generated before throwing an error.
+            half_image (bool): If True then returned images are NOT reflected about axis
+                               of symmetry and half-images are returned instead.
 
         """
         # Model Arguments
         self.LSC_NPZ_DIR = LSC_NPZ_DIR
         self.max_timeIDX_offset = max_timeIDX_offset
         self.max_file_checks = max_file_checks
+        self.half_image = half_image
 
         # Create filelist
         with open(file_prefix_list) as f:
@@ -689,13 +693,15 @@ class LSC_rho2rho_temporal_DataSet(Dataset):
             tmp_img = LSCread_npz(start_npz, hfield)
             # Remember to replace all NaNs with 0.0
             tmp_img = np.nan_to_num(tmp_img, nan=0.0)
-            tmp_img = np.concatenate((np.fliplr(tmp_img), tmp_img), axis=1)
+            if not self.half_image:
+                tmp_img = np.concatenate((np.fliplr(tmp_img), tmp_img), axis=1)
             start_img_list.append(tmp_img)
 
             tmp_img = LSCread_npz(end_npz, hfield)
             # Remember to replace all NaNs with 0.0
             tmp_img = np.nan_to_num(tmp_img, nan=0.0)
-            tmp_img = np.concatenate((np.fliplr(tmp_img), tmp_img), axis=1)
+            if not self.half_image:
+                tmp_img = np.concatenate((np.fliplr(tmp_img), tmp_img), axis=1)
             end_img_list.append(tmp_img)
 
         # Concatenate images channel first.
@@ -704,166 +710,6 @@ class LSC_rho2rho_temporal_DataSet(Dataset):
 
         # Get the time offset
         Dt = 0.25 * (endIDX - startIDX)
-
-        # Close the npzs
-        start_npz.close()
-        end_npz.close()
-
-        return start_img, end_img, Dt
-
-
-class LSC_halfimage_DataSet(Dataset):
-    """Temporal dataset with half-image."""
-    
-    def __init__(
-            self,
-            LSC_NPZ_DIR: str,
-            file_prefix_list: str,
-            max_timeIDX_offset: int,
-            max_file_checks: int,
-    ) -> None:
-        """Initialization.
-
-        This dataset returns multi-channel images at two different times from
-        the *Layered Shaped Charge* simulation. The *maximum time-offset* can
-        be specified. The channels in the images returned are the densities for
-        each material at a given time as well as the (R, Z)-velocity
-        fields. The time-offset between the two images is also returned.
-
-        NOTE: The way time indices are chosen necessitates *max_timeIDX_offset*
-        being less than or equal to 3 in the lsc240420 data.
-
-        Args:
-            LSC_NPZ_DIR (str): Location of LSC NPZ files.
-            file_prefix_list (str): Text file listing unique prefixes corresponding
-                                    to unique simulations.
-            max_timeIDX_offset (int): Maximum timesteps-ahead to attempt
-                                      prediction for. A prediction image will be chosen
-                                      within this timeframe at random.
-            max_file_checks (int): This dataset generates two random time indices and
-                                   checks if the corresponding files exist. This
-                                   argument controls the maximum number of times indices
-                                   are generated before throwing an error.
-
-        """
-        # Model Arguments
-        self.LSC_NPZ_DIR = LSC_NPZ_DIR
-        self.max_timeIDX_offset = max_timeIDX_offset
-        self.max_file_checks = max_file_checks
-        
-        # Create filelist
-        with open(file_prefix_list) as f:
-            self.file_prefix_list = [line.rstrip() for line in f]
-
-        # Shuffle the list of prefixes in-place
-        random.shuffle(self.file_prefix_list)
-        
-        self.Nsamples = len(self.file_prefix_list)
-
-        # Lists of fields to return images for 
-        self.hydro_fields = ['density_case',
-                             'density_cushion',
-                             'density_maincharge',
-                             'density_outside_air',
-                             'density_striker',
-                             'density_throw',
-                             'Uvelocity',
-                             'Wvelocity']
-        
-        # Initialize random number generator for time index selection
-        self.rng = np.random.default_rng()
-        
-    def __len__(self) -> int:
-        """Return number of samples in dataset."""
-        return self.Nsamples
-
-    def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        """Return a tuple of a batch's input and output."""
-        
-        # Rotate index if necessary
-        index = index % self.Nsamples
-        
-        # Get the input image. Try several indices if necessary.
-        prefix_attempt = 0
-        prefix_loop_break = False
-        while prefix_attempt < 5:
-            file_prefix = self.file_prefix_list[index]
-
-            # Use `while` loop to search until a pair of files which exists is
-            # found.
-            attempt = 0
-            while attempt < self.max_file_checks:
-                # Files have name format
-                # *lsc240420_id01001_pvi_idx00000.npz*. Choose random starting
-                # index 0-96 so the end index will be less than or equal to 99.
-                startIDX = self.rng.integers(0, 97)
-                endIDX = self.rng.integers(1, self.max_timeIDX_offset + 1) + startIDX
-
-                # Construct file names
-                start_file = file_prefix + f'_pvi_idx{startIDX:05d}.npz'
-                end_file = file_prefix + f'_pvi_idx{endIDX:05d}.npz'
-
-                # Check if both files exist
-                start_file_path = Path(self.LSC_NPZ_DIR + start_file)
-                end_file_path = Path(self.LSC_NPZ_DIR + end_file)
-
-                if start_file_path.is_file() and end_file_path.is_file():
-                    prefix_loop_break = True
-                    break
-
-                attempt += 1
-
-            if attempt == self.max_file_checks:
-                fnf_msg = ("In LSC_rho2rho_temporal_DataSet, "
-                           "max_file_checks "
-                           f"reached for prefix: {file_prefix}")
-                print(fnf_msg, file=sys.stderr)
-
-            # Break outer loop if time-pairs were found.
-            if prefix_loop_break:
-                break
-
-            # Try different prefix if no time-pairs are found.
-            print(f"Prefix attempt {prefix_attempt + 1} failed. Trying next prefix.", 
-                  file=sys.stderr)
-            prefix_attempt += 1
-            index = (index + 1) % self.Nsamples  # Rotate index if necessary
-                    
-        # Load NPZ files. Raise exceptions if file is not able to be loaded.
-        try:
-            start_npz = np.load(self.LSC_NPZ_DIR + start_file)
-        except Exception as e:
-            print(f"Error loading start file: {self.LSC_NPZ_DIR + start_file}",
-                  file=sys.stderr)
-            raise e
-
-        try:
-            end_npz = np.load(self.LSC_NPZ_DIR + end_file)
-        except Exception as e:
-            print(f"Error loading end file: {self.LSC_NPZ_DIR + end_file}",
-                  file=sys.stderr)
-            start_npz.close()
-            raise e
-
-        start_img_list = []
-        end_img_list = []
-        for hfield in self.hydro_fields:
-            tmp_img = LSCread_npz(start_npz, hfield)
-            # Remember to replace all NaNs with 0.0
-            tmp_img = np.nan_to_num(tmp_img, nan=0.0)
-            start_img_list.append(tmp_img)
-
-            tmp_img = LSCread_npz(end_npz, hfield)
-            # Remember to replace all NaNs with 0.0
-            tmp_img = np.nan_to_num(tmp_img, nan=0.0)
-            end_img_list.append(tmp_img)
-
-        # Concatenate images channel first.
-        start_img = torch.tensor(np.stack(start_img_list, axis=0)).to(torch.float32)
-        end_img = torch.tensor(np.stack(end_img_list, axis=0)).to(torch.float32)
-
-        # Get the time offset
-        Dt = 0.25*(endIDX - startIDX)
 
         # Close the npzs
         start_npz.close()
