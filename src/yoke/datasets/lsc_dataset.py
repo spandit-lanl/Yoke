@@ -551,7 +551,7 @@ class LSC_rho2rho_temporal_DataSet(Dataset):
         file_prefix_list: str,
         max_timeIDX_offset: int,
         max_file_checks: int,
-        half_image: bool = False
+        half_image: bool = False,
     ) -> None:
         """Initialization of timestep dataset.
 
