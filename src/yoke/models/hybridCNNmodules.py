@@ -15,8 +15,6 @@ from yoke.torch_training_utils import count_torch_params
 from yoke.models.CNNmodules import CNN_Interpretability_Module
 from yoke.models.CNNmodules import CNN_Reduction_Module
 
-from yoke.torch_training_utils import count_torch_params
-    
 
 class generalMLP(nn.Module):
     """A general multi-layer perceptron structure.
@@ -37,12 +35,12 @@ class generalMLP(nn.Module):
     """
 
     def __init__(
-            self,
-            input_dim: int = 64,
-            output_dim: int = 16,
-            hidden_feature_list: list[int] = [16, 32, 32, 16],
-            act_layer: nn.Module = nn.GELU,
-            norm_layer: nn.Module = nn.LayerNorm,
+        self,
+        input_dim: int = 64,
+        output_dim: int = 16,
+        hidden_feature_list: list[int] = [16, 32, 32, 16],
+        act_layer: nn.Module = nn.GELU,
+        norm_layer: nn.Module = nn.LayerNorm,
     ) -> None:
         """Initialization for MLP."""
         super().__init__()
@@ -61,15 +59,14 @@ class generalMLP(nn.Module):
         self.LayerList = nn.ModuleList()
         # Create transpose convolutional layer for each entry in feature list.
         for i in range(len(self.feature_list) - 1):
-            linear = nn.Linear(self.feature_list[i],
-                               self.feature_list[i+1])
+            linear = nn.Linear(self.feature_list[i], self.feature_list[i + 1])
 
-            normalize = self.norm_layer(self.feature_list[i+1])
+            normalize = self.norm_layer(self.feature_list[i + 1])
             activation = self.act_layer()
 
             # Make list of small sequential modules. Then we'll use enumerate
             # in forward method.
-            # 
+            #
             # Don't attach an activation to the final layer
             if i == len(self.feature_list) - 2:
                 cmpd_dict = OrderedDict(
@@ -85,16 +82,15 @@ class generalMLP(nn.Module):
                         (f"act{i}", activation),
                     ]
                 )
-                
+
             self.LayerList.append(nn.Sequential(cmpd_dict))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward method for MLP."""
-
         # enumeration of nn.moduleList is supported under `torch.jit.script`
         for i, ll_layer in enumerate(self.LayerList):
             x = ll_layer(x)
-            
+
         return x
 
 
@@ -105,7 +101,7 @@ class hybrid2vectorCNN(nn.Module):
     vector, R. Here, y is a 1D-tensor, H1 and H2 are 2D-tensors, and R is a
     1D-tensor. Each input is first processed through an independent branch
     before concatenation to a dense network.
-    
+
     Args:
         img_size (tuple[int, int, int]): (C, H, W) dimensions of H1 and H2.
         input_vector_size (int): Size of input vector
@@ -135,7 +131,7 @@ class hybrid2vectorCNN(nn.Module):
         kernel: int = 3,
         img_embed_dim: int = 32,
         vector_embed_dim: int = 32,
-        size_reduce_threshold: tuple[int, int] = (8, 8),            
+        size_reduce_threshold: tuple[int, int] = (8, 8),
         vector_feature_list: list[int] = [32, 32, 64, 64],
         output_feature_list: list[int] = [64, 128, 128, 64],
         act_layer: nn.Module = nn.GELU,
@@ -158,7 +154,7 @@ class hybrid2vectorCNN(nn.Module):
         self.output_dim = output_dim
         self.act_layer = act_layer
         self.norm_layer = norm_layer
-        
+
         # CNN processing branch for H1
         self.interpH1 = CNN_Interpretability_Module(
             img_size=self.img_size,
@@ -232,7 +228,7 @@ class hybrid2vectorCNN(nn.Module):
 
         # Image embed will end with a GELU activation
         self.h2_embed_act = self.act_layer()
-        
+
         # MLP for processing vector input
         self.vector_mlp = generalMLP(
             input_dim=self.input_vector_size,
@@ -257,35 +253,34 @@ class hybrid2vectorCNN(nn.Module):
         )
 
     def forward(
-            self,
-            y: torch.Tensor,
-            h1: torch.Tensor,
-            h2: torch.Tensor,
+        self,
+        y: torch.Tensor,
+        h1: torch.Tensor,
+        h2: torch.Tensor,
     ) -> torch.Tensor:
         """Forward method for hybrid CNN."""
-
         # Process first image
         h1_out = self.interpH1(h1)
         h1_out = self.reduceH1(h1_out)
         h1_out = torch.flatten(h1_out, start_dim=1)
         h1_out = self.lin_embed_h1(h1_out)
         h1_out = self.h2_embed_act(h1_out)
-        
+
         # Process second image
         h2_out = self.interpH2(h2)
         h2_out = self.reduceH2(h2_out)
         h2_out = torch.flatten(h2_out, start_dim=1)
         h2_out = self.lin_embed_h2(h2_out)
         h2_out = self.h2_embed_act(h2_out)
-        
+
         # Process vector
         y_out = self.vector_mlp(y)
         y_out = self.vector_embed_act(y_out)
-        
+
         # Concatenate outputs and send through final MLP layer.
         cat = torch.cat((y_out, h1_out, h2_out), dim=1)
         out = self.final_mlp(cat)
-        
+
         return out
 
 
@@ -303,7 +298,7 @@ if __name__ == "__main__":
     y = torch.rand(batch_size, input_vector_size)
     H1 = torch.rand(batch_size, 1, img_h, img_w)
     H2 = torch.rand(batch_size, 1, img_h, img_w)
-    
+
     value_model = hybrid2vectorCNN(
         img_size=(1, img_h, img_w),
         input_vector_size=input_vector_size,
@@ -314,12 +309,14 @@ if __name__ == "__main__":
         vector_feature_list=[32, 32, 64, 64],
         depth=12,
         kernel=3,
-        size_reduce_threshold=(8, 8),            
+        size_reduce_threshold=(8, 8),
         act_layer=nn.GELU,
     )
 
     value_model.eval()
     value_pred = value_model(y, H1, H2)
     print("value_pred shape:", value_pred.shape)
-    print("Number of trainable parameters in value network:",
-          count_torch_params(value_model, trainable=True))
+    print(
+        "Number of trainable parameters in value network:",
+        count_torch_params(value_model, trainable=True),
+    )
