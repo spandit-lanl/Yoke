@@ -45,7 +45,7 @@ class jekelCNNsurrogate(nn.Module):
         kernel: tuple[int, int] = (3, 3),
         nfeature_list: list[int] = [512, 512, 512, 512, 256, 128, 64, 32],
         output_image_size: tuple[int, int] = (1120, 800),
-        act_layer: nn.Moduel = nn.GELU,
+        act_layer: nn.Module = nn.GELU,
     ) -> None:
         """Initialization for Jekel t-CNN."""
         super().__init__()
