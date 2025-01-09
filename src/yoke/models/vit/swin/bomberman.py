@@ -12,14 +12,14 @@ import torch
 from torch import nn
 
 from yoke.models.vit.swin.unet import SwinUnetBackbone
-from yoke.models.vit.patch_embed import ClimaX_ParallelVarPatchEmbed
+from yoke.models.vit.patch_embed import ParallelVarPatchEmbed
 from yoke.models.vit.patch_manipulation import Unpatchify
 
-from yoke.models.vit.aggregate_variables import ClimaX_AggVars
+from yoke.models.vit.aggregate_variables import AggVars
 from yoke.models.vit.embedding_encoders import (
-    ClimaX_VarEmbed,
-    ClimaX_PosEmbed,
-    ClimaX_TimeEmbed,
+    VarEmbed,
+    PosEmbed,
+    TimeEmbed,
 )
 
 
@@ -89,7 +89,7 @@ class LodeRunner(nn.Module):
 
         # First embed the image as a sequence of tokenized patches. Each
         # channel is embedded independently.
-        self.parallel_embed = ClimaX_ParallelVarPatchEmbed(
+        self.parallel_embed = ParallelVarPatchEmbed(
             max_vars=self.max_vars,
             img_size=self.image_size,
             patch_size=self.patch_size,
@@ -98,15 +98,15 @@ class LodeRunner(nn.Module):
         )
 
         # Encode tokens corresponding to each variable with a learnable tag
-        self.var_embed_layer = ClimaX_VarEmbed(self.default_vars, self.embed_dim)
+        self.var_embed_layer = VarEmbed(self.default_vars, self.embed_dim)
 
         # Aggregate variable tokenizations using an attention mechanism
-        self.agg_vars = ClimaX_AggVars(self.embed_dim, self.num_heads)
+        self.agg_vars = AggVars(self.embed_dim, self.num_heads)
 
         # Encode each patch with position information. Position encoding is
         # only index-aware and does not take into account actual spatial
         # information.
-        self.pos_embed = ClimaX_PosEmbed(
+        self.pos_embed = PosEmbed(
             self.embed_dim,
             self.patch_size,
             self.image_size,
@@ -114,7 +114,7 @@ class LodeRunner(nn.Module):
         )
 
         # Encode temporal-offset information using a linear mapping.
-        self.temporal_encoding = ClimaX_TimeEmbed(self.embed_dim)
+        self.temporal_encoding = TimeEmbed(self.embed_dim)
 
         # Pass encoded patch tokens through a SWIN-Unet structure
         self.unet = SwinUnetBackbone(

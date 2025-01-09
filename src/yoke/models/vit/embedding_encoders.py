@@ -119,8 +119,8 @@ def get_2d_sincos_pos_embed(
     return pos_embed
 
 
-class ClimaX_VarEmbed(nn.Module):
-    """ClimaX variable encoding/embedding.
+class VarEmbed(nn.Module):
+    """Variable encoding/embedding.
 
     Encodes information regarding which variable each token belongs to. Helps
     in tracking variables through variable aggregation layer. Prior to variable
@@ -130,9 +130,6 @@ class ClimaX_VarEmbed(nn.Module):
     This embedding consists of learnable weights but the weights are
     initialized with a sin/cos embedding.
 
-    Based on the paper, **ClimaX: A foundation model for weather and
-    climate.**
-
     Args:
         default_vars (list): list of default variables to be used for training
         embed_dim (int): Embedding dimension
@@ -140,7 +137,7 @@ class ClimaX_VarEmbed(nn.Module):
     """
 
     def __init__(self, default_vars: list[str], embed_dim: int) -> None:
-        """Initialization for ClimaX Variable Embedding."""
+        """Initialization for Variable Embedding."""
         super().__init__()
 
         self.default_vars = default_vars
@@ -192,7 +189,7 @@ class ClimaX_VarEmbed(nn.Module):
     #     return var_emb[:, ids, :]
 
     def forward(self, x: torch.Tensor, in_vars: torch.Tensor) -> torch.Tensor:
-        """Forward method for ClimaX variable embedding.
+        """Forward method for variable embedding.
 
         NOTE: `in_vars` should be a (1, C) tensor of integers where the
         integers correspond to the variables present in the channels of
@@ -214,8 +211,8 @@ class ClimaX_VarEmbed(nn.Module):
         return x
 
 
-class ClimaX_PosEmbed(nn.Module):
-    """ClimaX position encoding/embedding.
+class PosEmbed(nn.Module):
+    """Position encoding/embedding.
 
     Position embedding is used to help track where each patch embedding is
     located in relation to the others. After variable aggregation, embedding is
@@ -226,9 +223,6 @@ class ClimaX_PosEmbed(nn.Module):
     initialized with a 2D-sine/cosine embedding.
 
     NOTE: Entries for image_size and patch_size should divide eachother evenly.
-
-    Based on the paper, **ClimaX: A foundation model for weather and
-    climate.**
 
     Args:
         embed_dim (int): Embedding dimension, must be divisible by 2.
@@ -245,7 +239,7 @@ class ClimaX_PosEmbed(nn.Module):
         image_size: tuple[int, int],
         num_patches: int,
     ) -> None:
-        """Initialization for ClimaX position embedding."""
+        """Initialization for position embedding."""
         super().__init__()
 
         self.embed_dim = embed_dim
@@ -270,7 +264,7 @@ class ClimaX_PosEmbed(nn.Module):
         self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float().unsqueeze(0))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Forward method for ClimaX position embedding."""
+        """Forward method for position embedding."""
         # The input tensor is shape:
         #  (B, L, D)=(B, NumTokens[i.e. Patches], embed_dim)
 
@@ -363,8 +357,8 @@ class RelativePositionEmbed(nn.Module):
         return x
 
 
-class ClimaX_TimeEmbed(nn.Module):
-    """ClimaX temporal encoding/embedding.
+class TimeEmbed(nn.Module):
+    """Temporal encoding/embedding.
 
     This embedding is used to help track/tag each entry of a batch by it's
     corresponding lead time. After variable aggregation and position encoding,
@@ -374,9 +368,6 @@ class ClimaX_TimeEmbed(nn.Module):
     sample in the batch to the embedding dimension.
 
     NOTE: Entries for image_size and patch_size should divide eachother evenly.
-
-    Based on the paper, **ClimaX: A foundation model for weather and
-    climate.**
 
     Args:
         embed_dim (int): Embedding dimension, must be divisible by 2.
@@ -388,13 +379,13 @@ class ClimaX_TimeEmbed(nn.Module):
     """
 
     def __init__(self, embed_dim: int) -> None:
-        """Initialization for ClimaX temporal embedding."""
+        """Initialization for temporal embedding."""
         super().__init__()
 
         self.lead_time_embed = nn.Linear(1, embed_dim)
 
     def forward(self, x: torch.Tensor, lead_times: torch.Tensor) -> torch.Tensor:
-        """Forward method for ClimaX temporal embedding."""
+        """Forward method for temporal embedding."""
         # The input tensor is shape:
         #  (B, L, D)=(B, NumTokens, embed_dim)
 
@@ -439,7 +430,7 @@ if __name__ == "__main__":
     in_vars = torch.tensor([1, 4, 5, 6]).to(device)
 
     # Prior to variable aggregation: (B, V, L, D)
-    var_emb_model = ClimaX_VarEmbed(default_vars=default_vars, embed_dim=embed_dim).to(
+    var_emb_model = VarEmbed(default_vars=default_vars, embed_dim=embed_dim).to(
         device
     )
 
@@ -451,7 +442,7 @@ if __name__ == "__main__":
 
     # After variable aggregation: (B, L, D)
     x = torch.rand(3, 64, 72).to(device)
-    pos_emb_model = ClimaX_PosEmbed(
+    pos_emb_model = PosEmbed(
         embed_dim=embed_dim,
         patch_size=patch_size,
         image_size=image_size,
@@ -464,7 +455,7 @@ if __name__ == "__main__":
     # After position encoding: (B, L, D)
     x = torch.rand(3, 64, 72).to(device)
     lead_times = torch.rand(3).to(device)
-    time_emb_model = ClimaX_TimeEmbed(embed_dim=embed_dim).to(device)
+    time_emb_model = TimeEmbed(embed_dim=embed_dim).to(device)
 
     print("Temporal Encoding input shape:", x.shape)
     print("Temporal Encoding shape:", time_emb_model(x, lead_times).shape)

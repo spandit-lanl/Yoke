@@ -33,15 +33,12 @@ def _get_conv2d_biases(out_channels: int) -> torch.Tensor:
     return bias
 
 
-class ClimaX_ParallelVarPatchEmbed(nn.Module):
-    """ClimaX parallel patch embedding.
+class ParallelVarPatchEmbed(nn.Module):
+    """Parallel patch embedding.
 
     Variable to Patch Embedding with multiple variables in a single kernel. Key
     idea is to use Grouped Convolutions. This allows this layer to embed an
     arbitrary subset of a default list of variables.
-
-    Based on the paper, **ClimaX: A foundation model for weather and
-    climate.**
 
     NOTE: The img_size entries should be divisible by the corresponding
     patch_size entries.
@@ -63,7 +60,7 @@ class ClimaX_ParallelVarPatchEmbed(nn.Module):
         embed_dim: int = 64,
         norm_layer: Optional[nn.Module] = None,
     ) -> None:
-        """Initialization for ClimaX parallel embedding."""
+        """Initialization for parallel embedding."""
         super().__init__()
         # Check size compatibilities
         try:
@@ -250,7 +247,7 @@ if __name__ == "__main__":
     device = "cuda" if torch.cuda.is_available() else "cpu"
     x = x.type(torch.FloatTensor).to(device)
     in_vars = torch.tensor([0, 1, 3, 4]).to(device)
-    PPembed_model = ClimaX_ParallelVarPatchEmbed(
+    PPembed_model = ParallelVarPatchEmbed(
         max_vars=5,
         img_size=(128, 128),
         patch_size=(16, 16),
