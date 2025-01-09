@@ -223,6 +223,9 @@ if __name__ == "__main__":
     out_vars = torch.tensor([1, 7, 10, 13]).to(device)
 
     # Common model setup for LodeRunner
+    #
+    # NOTE: For half-image `image_size = (1120, 400)` can just halve the second
+    # patch_size dimension.
     emb_factor = 2
     patch_size = (10, 10)
     image_size = (1120, 800)

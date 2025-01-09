@@ -1,5 +1,8 @@
 """Cosine LR scheduler training for LodeRunner on LSC material densities.
 
+We use a modified dataset that only loads half of an image. Reducing the memory
+required.
+
 This version of training uses only the lsc240420 data with only per-material
 density along with the velocity field. A single timestep is input, a single
 timestep is predicted. The number of input variables is fixed throughout
@@ -27,7 +30,7 @@ from yoke.lr_schedulers import CosineWithWarmupScheduler
 # Inputs
 #############################################
 descr_str = (
-    "Trains LodeRunner architecture on single-timestep input and output of the "
+    "Trains LodeRunner architecture on single-timstep input and output of the "
     "lsc240420 per-material density fields."
 )
 parser = argparse.ArgumentParser(
@@ -336,8 +339,8 @@ if __name__ == "__main__":
                       'density_throw',
                       'Uvelocity',
                       'Wvelocity'],
-        image_size=(1120, 800),
-        patch_size=(10, 10),
+        image_size=(1120, 400),
+        patch_size=(10, 5),  # Since using half-image, halve patch size.
         embed_dim=embed_dim,
         emb_factor=2,
         num_heads=8,
@@ -428,18 +431,14 @@ if __name__ == "__main__":
         file_prefix_list=train_filelist,
         max_timeIDX_offset=2,  # This could be a variable.
         max_file_checks=10,
+        half_image=True,
     )
     val_dataset = LSC_rho2rho_temporal_DataSet(
         args.LSC_NPZ_DIR,
         file_prefix_list=validation_filelist,
         max_timeIDX_offset=2,  # This could be a variable.
         max_file_checks=10,
-    )
-    test_dataset = LSC_rho2rho_temporal_DataSet(
-        args.LSC_NPZ_DIR,
-        file_prefix_list=test_filelist,
-        max_timeIDX_offset=2,  # This could be a variable.
-        max_file_checks=10,
+        half_image=True,
     )
 
     print("Datasets initialized...")

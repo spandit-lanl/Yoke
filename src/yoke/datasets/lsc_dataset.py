@@ -551,6 +551,7 @@ class LSC_rho2rho_temporal_DataSet(Dataset):
         file_prefix_list: str,
         max_timeIDX_offset: int,
         max_file_checks: int,
+        half_image: bool = False,
     ) -> None:
         """Initialization of timestep dataset.
 
@@ -574,12 +575,15 @@ class LSC_rho2rho_temporal_DataSet(Dataset):
                                    checks if the corresponding files exist. This
                                    argument controls the maximum number of times indices
                                    are generated before throwing an error.
+            half_image (bool): If True then returned images are NOT reflected about axis
+                               of symmetry and half-images are returned instead.
 
         """
         # Model Arguments
         self.LSC_NPZ_DIR = LSC_NPZ_DIR
         self.max_timeIDX_offset = max_timeIDX_offset
         self.max_file_checks = max_file_checks
+        self.half_image = half_image
 
         # Create filelist
         with open(file_prefix_list) as f:
@@ -689,13 +693,15 @@ class LSC_rho2rho_temporal_DataSet(Dataset):
             tmp_img = LSCread_npz(start_npz, hfield)
             # Remember to replace all NaNs with 0.0
             tmp_img = np.nan_to_num(tmp_img, nan=0.0)
-            tmp_img = np.concatenate((np.fliplr(tmp_img), tmp_img), axis=1)
+            if not self.half_image:
+                tmp_img = np.concatenate((np.fliplr(tmp_img), tmp_img), axis=1)
             start_img_list.append(tmp_img)
 
             tmp_img = LSCread_npz(end_npz, hfield)
             # Remember to replace all NaNs with 0.0
             tmp_img = np.nan_to_num(tmp_img, nan=0.0)
-            tmp_img = np.concatenate((np.fliplr(tmp_img), tmp_img), axis=1)
+            if not self.half_image:
+                tmp_img = np.concatenate((np.fliplr(tmp_img), tmp_img), axis=1)
             end_img_list.append(tmp_img)
 
         # Concatenate images channel first.
