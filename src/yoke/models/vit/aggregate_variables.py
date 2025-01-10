@@ -11,8 +11,8 @@ import torch.nn as nn
 from einops import rearrange
 
 
-class ClimaX_AggVars(nn.Module):
-    """ClimaX variable aggregation.
+class AggVars(nn.Module):
+    """Variable aggregation.
 
     Variable aggregation performed through a learnable Query vector and a
     re-mapping of the tensor dimensions.
@@ -21,8 +21,6 @@ class ClimaX_AggVars(nn.Module):
     all the variables. This eliminates the variable dimension which is
     important if the number of variables is large or possibly not fixed.
 
-    Based on the paper, **ClimaX: A foundation model for weather and climate.**
-
     Args:
         embed_dim (int): Initial embedding dimension.
         num_heads (int): Number of heads in the MSA layers.
@@ -30,14 +28,14 @@ class ClimaX_AggVars(nn.Module):
     """
 
     def __init__(self, embed_dim: int, num_heads: int) -> None:
-        """Initialization for ClimaX variable aggregation."""
+        """Initialization for variable aggregation."""
         super().__init__()
 
         self.var_query = nn.Parameter(torch.zeros(1, 1, embed_dim), requires_grad=True)
         self.var_agg = nn.MultiheadAttention(embed_dim, num_heads, batch_first=True)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Forward method for ClimaX variable aggregation."""
+        """Forward method for variable aggregation."""
         # The input tensor is shape (B, NumVars, NumTokens, embed_dim)
         B, _, L, _ = x.shape
 
@@ -69,6 +67,6 @@ if __name__ == "__main__":
     device = "cuda" if torch.cuda.is_available() else "cpu"
     x = x.type(torch.FloatTensor).to(device)
 
-    model = ClimaX_AggVars(embed_dim=32, num_heads=4).to(device)
+    model = AggVars(embed_dim=32, num_heads=4).to(device)
     print("Input shape:", x.shape)
     print("Aggregate shape:", model(x).shape)

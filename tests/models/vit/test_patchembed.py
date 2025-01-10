@@ -3,7 +3,7 @@
 import pytest
 import torch
 import torch.nn as nn
-from yoke.models.vit.patch_embed import ClimaX_ParallelVarPatchEmbed
+from yoke.models.vit.patch_embed import ParallelVarPatchEmbed
 from yoke.models.vit.patch_embed import SwinEmbedding
 from yoke.models.vit.patch_embed import _get_conv2d_weights, _get_conv2d_biases
 
@@ -33,8 +33,8 @@ def test_get_conv2d_biases() -> None:
 
 
 def test_initialization() -> None:
-    """Test initialization of ClimaX_ParallelVarPatchEmbed."""
-    embedder = ClimaX_ParallelVarPatchEmbed(
+    """Test initialization of ParallelVarPatchEmbed."""
+    embedder = ParallelVarPatchEmbed(
         max_vars=3,
         img_size=(128, 128),
         patch_size=(16, 16),
@@ -55,17 +55,17 @@ def test_invalid_image_patch_size() -> None:
     with pytest.raises(
         AssertionError, match="Image height not divisible by patch height!!!"
     ):
-        ClimaX_ParallelVarPatchEmbed(img_size=(130, 128), patch_size=(16, 16))
+        ParallelVarPatchEmbed(img_size=(130, 128), patch_size=(16, 16))
 
     with pytest.raises(
         AssertionError, match="Image width not divisible by patch width!!!"
     ):
-        ClimaX_ParallelVarPatchEmbed(img_size=(128, 130), patch_size=(16, 16))
+        ParallelVarPatchEmbed(img_size=(128, 130), patch_size=(16, 16))
 
 
 def test_forward_shape() -> None:
     """Test the forward pass and output shape."""
-    embedder = ClimaX_ParallelVarPatchEmbed(
+    embedder = ParallelVarPatchEmbed(
         max_vars=3,
         img_size=(128, 128),
         patch_size=(16, 16),
@@ -86,7 +86,7 @@ def test_forward_shape() -> None:
 
 def test_reset_parameters() -> None:
     """Test that reset_parameters initializes weights and biases correctly."""
-    embedder = ClimaX_ParallelVarPatchEmbed(max_vars=3)
+    embedder = ParallelVarPatchEmbed(max_vars=3)
     embedder.reset_parameters()
 
     for idx in range(embedder.max_vars):

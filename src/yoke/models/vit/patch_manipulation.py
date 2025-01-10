@@ -226,14 +226,11 @@ class PatchExpand(nn.Module):
 
 
 class Unpatchify(nn.Module):
-    """Expansion from patches to variables and images used in the ClimaX model.
+    """Expansion from patches to variables and images.
 
     This layer performs the remap:
 
     (B, H*W,  V*p_h*p_w) ->[rearrange] (B, V, H*p_h, W*p_w)
-
-    Based on the paper, **ClimaX: A foundation model for weather and
-    climate.**
 
     Args:
         total_num_vars (int): Total number of variables to be output.

@@ -3,17 +3,17 @@
 import unittest
 import torch
 
-from yoke.models.vit.aggregate_variables import ClimaX_AggVars
+from yoke.models.vit.aggregate_variables import AggVars
 
 
-class TestClimaX_AggVars(unittest.TestCase):
-    """A class to test ClimaX_AggVars."""
+class Test_AggVars(unittest.TestCase):
+    """A class to test AggVars."""
 
     def setUp(self) -> None:
         """Set up common variables for the tests."""
         self.embed_dim = 32
         self.num_heads = 4
-        self.model = ClimaX_AggVars(embed_dim=self.embed_dim, num_heads=self.num_heads)
+        self.model = AggVars(embed_dim=self.embed_dim, num_heads=self.num_heads)
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.model.to(self.device)
 

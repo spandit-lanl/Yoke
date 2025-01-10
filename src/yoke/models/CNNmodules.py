@@ -1,8 +1,7 @@
 """Image to vector CNN modules."""
 
-####################################
-# Packages
-####################################
+from collections import OrderedDict
+
 import torch
 import torch.nn as nn
 
@@ -78,11 +77,8 @@ class CNN_Interpretability_Module(nn.Module):
         self.inNorm = normLayer
         self.inActivation = act_layer()
 
-        # Interpretability Layers
-        self.interpConv = nn.ModuleList()
-        self.interpNorms = nn.ModuleList()
-        self.interpActivations = nn.ModuleList()
-
+        # Module list to hold interpretability layers
+        self.InterpConvList = nn.ModuleList()
         for i in range(self.depth - 1):
             interpLayer = nn.Conv2d(
                 in_channels=self.features,
@@ -95,8 +91,6 @@ class CNN_Interpretability_Module(nn.Module):
                 bias=self.conv_bias,
             )
 
-            self.interpConv.append(interpLayer)
-
             normLayer = nn.BatchNorm2d(features)
 
             # Necessary step to turn off only the scaling.
@@ -104,8 +98,16 @@ class CNN_Interpretability_Module(nn.Module):
                 nn.init.constant_(normLayer.weight, 1)
                 normLayer.weight.requires_grad = False
 
-            self.interpNorms.append(normLayer)
-            self.interpActivations.append(act_layer())
+            # Make list of small sequential modules. Then we'll use enumerate
+            # in forward method.
+            interp_dict = OrderedDict(
+                [
+                    (f"interp{i:02d}", interpLayer),
+                    (f"bnorm{i:02d}", normLayer),
+                    (f"act{i:02d}", act_layer()),
+                ]
+            )
+            self.InterpConvList.append(nn.Sequential(interp_dict))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward method for interpretable CNN."""
@@ -115,10 +117,8 @@ class CNN_Interpretability_Module(nn.Module):
         x = self.inActivation(x)
 
         # Interpretability Layers
-        for i in range(self.depth - 1):
-            x = self.interpConv[i](x)
-            x = self.interpNorms[i](x)
-            x = self.interpActivations[i](x)
+        for i, interp_conv in enumerate(self.InterpConvList):
+            x = interp_conv(x)
 
         return x
 
@@ -210,12 +210,8 @@ class CNN_Reduction_Module(nn.Module):
 
         self.depth += 1
 
-        # Setup Reduction Layers
-        self.reductionConv = nn.ModuleList()
-        self.reductionNorms = nn.ModuleList()
-        self.reductionActivations = nn.ModuleList()
-
-        # Reduction Layers
+        # Module list to hold reduction layers
+        self.ReduceConvList = nn.ModuleList()
         while W > W_lim or H > H_lim:
             # Set Stride & Padding
             if W > W_lim:
@@ -241,22 +237,28 @@ class CNN_Reduction_Module(nn.Module):
                 bias=self.conv_bias,
             )
 
-            self.reductionConv.append(reduceLayer)
             normLayer = nn.BatchNorm2d(features)
 
             if not self.batchnorm_weights:
                 nn.init.constant_(normLayer.weight, 1)
                 normLayer.weight.requires_grad = False
 
-            self.reductionNorms.append(normLayer)
-            self.reductionActivations.append(act_layer())
+            # Make list of small sequential modules. Then we'll use enumerate
+            # in forward method.
+            self.depth += 1
+            reduce_dict = OrderedDict(
+                [
+                    (f"reduce{self.depth:02d}", reduceLayer),
+                    (f"bnorm{self.depth:02d}", normLayer),
+                    (f"act{self.depth:02d}", act_layer()),
+                ]
+            )
+            self.ReduceConvList.append(nn.Sequential(reduce_dict))
 
             # Recalculate Size
             W, H, _ = conv2d_shape(
                 w=W, h=H, k=self.kernel, s_w=w_stride, s_h=h_stride, p_w=w_pad, p_h=h_pad
             )
-
-            self.depth += 1
 
         # Define final size
         self.finalW = W
@@ -269,11 +271,9 @@ class CNN_Reduction_Module(nn.Module):
         x = self.inNorm(x)
         x = self.inActivation(x)
 
-        # Interpretability Layers
-        for i in range(self.depth - 1):
-            x = self.reductionConv[i](x)
-            x = self.reductionNorms[i](x)
-            x = self.reductionActivations[i](x)
+        # Reduction Layers
+        for i, reduce_conv in enumerate(self.ReduceConvList):
+            x = reduce_conv(x)
 
         return x
 
