@@ -430,9 +430,7 @@ if __name__ == "__main__":
     in_vars = torch.tensor([1, 4, 5, 6]).to(device)
 
     # Prior to variable aggregation: (B, V, L, D)
-    var_emb_model = VarEmbed(default_vars=default_vars, embed_dim=embed_dim).to(
-        device
-    )
+    var_emb_model = VarEmbed(default_vars=default_vars, embed_dim=embed_dim).to(device)
 
     print("Vaiable Encoding Input shape:", x.shape)
     print(
