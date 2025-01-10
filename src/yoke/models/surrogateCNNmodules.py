@@ -168,6 +168,15 @@ class tCNNsurrogate(nn.Module):
     class which dealt with resizing by interpolation in the last layer. It
     is confusing because it is...
 
+    WARNING!!!
+
+    If the linear_features, intial convolution parameters, and feature list are
+    not set up carefully then the output will be different than the expected
+    output image size. A helper function should be constructed to aid in
+    checking consistency but is not available now.
+
+    WARNING!!!
+    
     Args:
         input_size (int): Size of input
         linear_features (tuple[int, int, int]): Window size and number of features
@@ -199,7 +208,7 @@ class tCNNsurrogate(nn.Module):
         initial_tconv_outpadding: tuple[int, int] = (0, 0),
         initial_tconv_dilation: tuple[int, int] = (1, 1),
         kernel: tuple[int, int] = (3, 3),
-        nfeature_list: list[int] = [256, 256, 256, 128, 64, 64, 32],
+        nfeature_list: list[int] = [256, 128, 64, 32, 16],
         output_image_size: tuple[int, int] = (1120, 800),
         output_image_channels: int = 1,
         act_layer: nn.Module = nn.GELU,
@@ -208,7 +217,7 @@ class tCNNsurrogate(nn.Module):
         super().__init__()
 
         self.input_size = input_size
-        self.output_image_size = output_image_size
+        self.output_image_size = output_image_size  # This argument is not used currently
         self.output_image_channels = output_image_channels
         self.linear_features = linear_features
         self.initial_tconv_kernel = initial_tconv_kernel

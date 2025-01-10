@@ -12,6 +12,7 @@ def default_model() -> tCNNsurrogate:
     """Fixture for default tCNNsurrogate instance."""
     return tCNNsurrogate()
 
+
 def test_initialization(default_model: tCNNsurrogate) -> None:
     """Test initialization of the model."""
     assert isinstance(default_model, tCNNsurrogate)
@@ -19,6 +20,7 @@ def test_initialization(default_model: tCNNsurrogate) -> None:
     assert isinstance(default_model.initTConv, nn.ConvTranspose2d)
     assert isinstance(default_model.CompoundConvTList, nn.ModuleList)
     assert isinstance(default_model.final_tconv, nn.ConvTranspose2d)
+
 
 def test_forward_output_shape(default_model: tCNNsurrogate) -> None:
     """Test forward method output shape."""
@@ -29,6 +31,7 @@ def test_forward_output_shape(default_model: tCNNsurrogate) -> None:
                       *default_model.output_image_size)
     assert output.shape == expected_shape
 
+
 def test_forward_pass(default_model: tCNNsurrogate) -> None:
     """Test forward pass of the model."""
     batch_size = 4
@@ -37,6 +40,7 @@ def test_forward_pass(default_model: tCNNsurrogate) -> None:
     assert torch.is_tensor(output)
     assert not torch.isnan(output).any()
     assert not torch.isinf(output).any()
+
 
 @pytest.mark.parametrize(
     "input_size,linear_features,kernel,nfeature_list,"
@@ -66,6 +70,7 @@ def test_custom_initialization(
     assert model.nfeature_list == nfeature_list
     assert model.output_image_size == output_image_size
     assert model.output_image_channels == output_image_channels
+
 
 def test_model_gradients(default_model: tCNNsurrogate) -> None:
     """Test gradients during backpropagation."""
