@@ -176,7 +176,7 @@ class tCNNsurrogate(nn.Module):
     checking consistency but is not available now.
 
     WARNING!!!
-    
+
     Args:
         input_size (int): Size of input
         linear_features (tuple[int, int, int]): Window size and number of features
