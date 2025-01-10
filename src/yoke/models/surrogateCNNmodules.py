@@ -285,9 +285,9 @@ class tCNNsurrogate(nn.Module):
             # in forward method.
             cmpd_dict = OrderedDict(
                 [
-                    (f"tconv{i}", tconv),
-                    (f"bnorm{i}", normLayer),
-                    (f"act{i}", act_layer()),
+                    (f"tconv{i:02d}", tconv),
+                    (f"bnorm{i:02d}", normLayer),
+                    (f"act{i:02d}", act_layer()),
                 ]
             )
             self.CompoundConvTList.append(nn.Sequential(cmpd_dict))
