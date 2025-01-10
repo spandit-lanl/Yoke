@@ -27,8 +27,11 @@ def test_forward_output_shape(default_model: tCNNsurrogate) -> None:
     batch_size = 4
     input_tensor = torch.rand(batch_size, default_model.input_size)
     output = default_model(input_tensor)
-    expected_shape = (batch_size, default_model.output_image_channels,
-                      *default_model.output_image_size)
+    expected_shape = (
+        batch_size,
+        default_model.output_image_channels,
+        *default_model.output_image_size,
+    )
     assert output.shape == expected_shape
 
 
@@ -51,9 +54,12 @@ def test_forward_pass(default_model: tCNNsurrogate) -> None:
     ],
 )
 def test_custom_initialization(
-    input_size: int, linear_features: tuple[int, int],
-    kernel: tuple[int, int], nfeature_list: list[int],
-    output_image_size: tuple[int, int], output_image_channels: int,
+    input_size: int,
+    linear_features: tuple[int, int],
+    kernel: tuple[int, int],
+    nfeature_list: list[int],
+    output_image_size: tuple[int, int],
+    output_image_channels: int,
 ) -> None:
     """Test model initialization with custom parameters."""
     model = tCNNsurrogate(

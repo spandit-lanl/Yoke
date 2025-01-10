@@ -107,9 +107,8 @@ def test_hybrid2vector_cnn_gradient_backpropagation(
 
     # Ensure gradients are finite
     assert not torch.isnan(y.grad).any(), "Gradients for vector input contain NaN."
-    assert not torch.isnan(h1.grad).any(), "Gradients for first image input contain NaN."
-    assert not torch.isnan(h2.grad).any(), "Gradients for second image input contain NaN."
+    assert not torch.isnan(h1.grad).any(), "Gradients for 1st image input contain NaN."
+    assert not torch.isnan(h2.grad).any(), "Gradients for 2nd image input contain NaN."
     assert not torch.isinf(y.grad).any(), "Gradients for vector input contain Inf."
-    assert not torch.isinf(h1.grad).any(), "Gradients for first image input contain Inf."
-    assert not torch.isinf(h2.grad).any(), "Gradients for second image input contain Inf."
-
+    assert not torch.isinf(h1.grad).any(), "Gradients for 1st image input contain Inf."
+    assert not torch.isinf(h2.grad).any(), "Gradients for 2nd image input contain Inf."
