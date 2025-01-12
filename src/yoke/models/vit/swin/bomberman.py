@@ -11,6 +11,8 @@ emulator.
 import torch
 from torch import nn
 
+from lightning.pytorch import LightningModule
+
 from yoke.models.vit.swin.unet import SwinUnetBackbone
 from yoke.models.vit.patch_embed import ParallelVarPatchEmbed
 from yoke.models.vit.patch_manipulation import Unpatchify
@@ -181,6 +183,88 @@ class LodeRunner(nn.Module):
         preds = x[:, out_vars]
 
         return preds
+
+
+class Lightning_LodeRunner(LightningModule):
+    """Lightning wrapper for LodeRunner.
+
+    Wrap LodeRunner torch.nn.Module class in a lightning.LightningModule for
+    ease of parallelization and encapsulation of training strategy.
+
+    """
+    def __init__(
+            self, 
+            model,
+            in_vars,
+            out_vars,
+            learning_rate=1e-3,
+            LRscheduler=None,
+            scheduler_params=None,
+    ):
+        super(Lightning_LodeRunner, self).__init__()
+        self.model = model  # Wrap the custom model
+        self.in_vars = in_vars
+        self.out_vars = out_vars
+        self.learning_rate = learning_rate
+        self.LRscheduler = LRscheduler
+        self.scheduler_params = scheduler_params or {}
+        self.loss_fn = nn.MSELoss(reduction="none")
+
+    def forward(self, X, lead_times):
+        # Forward pass through the custom model
+        return self.model(X, self.in_vars, self.out_vars, lead_times)
+
+    def training_step(self, batch, batch_idx):
+        # Assume batch includes all required inputs
+        start_img, end_img, lead_times = batch  # Unpack batch
+        preds = self(start_img, lead_times)  # Forward pass
+
+        # Per-sample MSE
+        losses = self.loss_fn(preds, end_img)
+        self.log("train_loss_per_sample",
+                 losses,
+                 on_epoch=True,
+                 on_step=True)
+
+        batch_loss = losses.mean()
+        self.log("train_loss", batch_loss)
+
+        return batch_loss
+
+    def validation_step(self, batch, batch_idx):
+        start_img, end_img, lead_times = batch  # Unpack batch
+        preds = self(start_img, lead_times)  # Forward pass
+        # Per-sample MSE
+        losses = self.loss_fn(preds, end_img)
+        self.log("val_loss_per_sample",
+                 losses,
+                 on_epoch=True,
+                 on_step=True)
+
+        batch_loss = losses.mean()
+        self.log("val_loss", batch_loss)
+
+    def configure_optimizers(self):
+        # Optimizer setup
+        optimizer = torch.optim.AdamW(
+            self.model.parameters(),
+            lr=self.learning_rate,
+            betas=(0.9, 0.999),
+            eps=1e-08,
+            weight_decay=0.01,
+        )
+
+        if self.LRscheduler:
+            # Initialize LR scheduler
+            scheduler = self.LRscheduler(optimizer, **self.scheduler_params)
+            return {
+                "optimizer": optimizer,
+                "lr_scheduler": {
+                    "scheduler": scheduler,
+                },
+            }
+
+        return optimizer
 
 
 if __name__ == "__main__":
