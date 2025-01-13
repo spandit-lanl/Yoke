@@ -19,7 +19,7 @@ import argparse
 import torch
 import torch.nn as nn
 
-from yoke.models.vit.swin.bomberman import LodeRunner
+from yoke.models.vit.swin.bomberman import LodeRunner, Lightning_LodeRunner
 from yoke.datasets.lsc_dataset import LSC_rho2rho_temporal_DataSet
 import yoke.torch_training_utils as tr
 from yoke.parallel_utils import LodeRunner_DataParallel
@@ -405,7 +405,7 @@ if __name__ == "__main__":
                 state[k] = v.to(device)
 
     #############################################
-    # LR scheduler
+    # Lightning wrap
     #############################################
     # We will take a scheduler step every back-prop step so the number of steps
     # is the number of previous batches.
@@ -413,16 +413,24 @@ if __name__ == "__main__":
         last_epoch = -1
     else:
         last_epoch = train_batches * (starting_epoch - 1)
-    LRsched = CosineWithWarmupScheduler(
-        optimizer,
-        anchor_lr=anchor_lr,
-        terminal_steps=terminal_steps,
-        warmup_steps=warmup_steps,
-        num_cycles=num_cycles,
-        min_fraction=min_fraction,
-        last_epoch=last_epoch,
+
+    in_vars = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7])
+    out_vars = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7])
+    L_loderunner = Lightning_LodeRunner(
+        model,
+        in_vars=in_vars,
+        out_vars=out_vars,
+        LRscheduler=CosineWithWarmupScheduler,
+        scheduler_params={
+            "warmup_steps": warmup_steps,
+            "anchor_lr": anchor_lr,
+            "terminal_steps": terminal_steps,
+            "num_cycles": num_cycles,
+            "min_fraction": min_fraction,
+            "last_epoch": last_epoch,
+        },
     )
-    
+
     #############################################
     # Initialize Data
     #############################################
