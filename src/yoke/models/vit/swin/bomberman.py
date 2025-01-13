@@ -237,10 +237,12 @@ class Lightning_LodeRunner(LightningModule):
 
         # Per-sample MSE
         losses = self.loss_fn(preds, end_img)
-        self.log("train_loss_per_sample", losses, on_epoch=True, on_step=True)
+        if hasattr(self, "Trainer"):  # Only log if there is a Trainer
+            self.log("train_loss_per_sample", losses, on_epoch=True, on_step=True)
 
         batch_loss = losses.mean()
-        self.log("train_loss", batch_loss)
+        if hasattr(self, "Trainer"):  # Only log if there is a Trainer
+            self.log("train_loss", batch_loss)
 
         return batch_loss
 
@@ -248,12 +250,15 @@ class Lightning_LodeRunner(LightningModule):
         """Execute validation step."""
         start_img, end_img, lead_times = batch  # Unpack batch
         preds = self(start_img, lead_times)  # Forward pass
+
         # Per-sample MSE
         losses = self.loss_fn(preds, end_img)
-        self.log("val_loss_per_sample", losses, on_epoch=True, on_step=True)
+        if hasattr(self, "Trainer"):  # Only log if there is a Trainer
+            self.log("val_loss_per_sample", losses, on_epoch=True, on_step=True)
 
         batch_loss = losses.mean()
-        self.log("val_loss", batch_loss)
+        if hasattr(self, "Trainer"):  # Only log if there is a Trainer
+            self.log("val_loss", batch_loss)
 
     def configure_optimizers(self) -> torch.optim.Optimizer:
         """Setup optimizer with scheduler."""
