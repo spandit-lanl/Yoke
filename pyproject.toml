@@ -30,7 +30,7 @@ dependencies = [
     "pytest",
     "ruff",
     "einops",
-    "lightning"
+    "lightning",
     ]
 requires-python = ">=3.9"
 readme = "README.md"
