@@ -200,7 +200,7 @@ class Lightning_LodeRunner(LightningModule):
         out_vars (torch.Tensor): Output channels to train LodeRunner on
         learning_rate (float): Initial learning rate for optimizer. Ignored if a
                                scheduler is used.
-        LRscheduler (_LRScheduler): Learning-rate scheduler to use with optimizer
+        lrscheduler (_LRScheduler): Learning-rate scheduler to use with optimizer
         scheduler_params (dict): Keyword arguments to initialize scheduler
 
     """
@@ -211,7 +211,7 @@ class Lightning_LodeRunner(LightningModule):
         in_vars: torch.Tensor = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7]),
         out_vars: torch.Tensor = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7]),
         learning_rate: float = 1e-3,
-        LRscheduler: _LRScheduler = CosineWithWarmupScheduler,
+        lrscheduler: _LRScheduler = None,
         scheduler_params: dict = None,
     ) -> None:
         """Initialization for Lightning wrapper."""
@@ -220,7 +220,7 @@ class Lightning_LodeRunner(LightningModule):
         self.in_vars = in_vars
         self.out_vars = out_vars
         self.learning_rate = learning_rate
-        self.LRscheduler = LRscheduler
+        self.lrscheduler = lrscheduler
         self.scheduler_params = scheduler_params or {}
         self.loss_fn = nn.MSELoss(reduction="none")
 
