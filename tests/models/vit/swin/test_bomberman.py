@@ -44,7 +44,7 @@ def lightning_model(loderunner_model: LodeRunner) -> Lightning_LodeRunner:
         in_vars=torch.tensor([0, 1, 2]),
         out_vars=torch.tensor([0, 1]),
         learning_rate=1e-3,
-        LRscheduler=MockScheduler,
+        lrscheduler=MockScheduler,
         scheduler_params={"dummy_param": 1},
     )
 
