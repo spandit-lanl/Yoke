@@ -202,19 +202,20 @@ class Lightning_LodeRunner(LightningModule):
                                scheduler is used.
         LRscheduler (_LRScheduler): Learning-rate scheduler to use with optimizer
         scheduler_params (dict): Keyword arguments to initialize scheduler
-    
+
     """
+
     def __init__(
-            self, 
-            model: nn.Module,
-            in_vars: torch.Tensor = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7]),
-            out_vars: torch.Tensor = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7]),
-            learning_rate: float = 1e-3,
-            LRscheduler: _LRScheduler = CosineWithWarmupScheduler,
-            scheduler_params: dict = None,
+        self,
+        model: nn.Module,
+        in_vars: torch.Tensor = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7]),
+        out_vars: torch.Tensor = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7]),
+        learning_rate: float = 1e-3,
+        LRscheduler: _LRScheduler = CosineWithWarmupScheduler,
+        scheduler_params: dict = None,
     ) -> None:
-        """Initialization for Lightning wrapper"""
-        super(Lightning_LodeRunner, self).__init__()
+        """Initialization for Lightning wrapper."""
+        super().__init__()
         self.model = model
         self.in_vars = in_vars
         self.out_vars = out_vars
@@ -224,22 +225,19 @@ class Lightning_LodeRunner(LightningModule):
         self.loss_fn = nn.MSELoss(reduction="none")
 
     def forward(self, X: torch.Tensor, lead_times: torch.Tensor) -> torch.Tensor:
-        """Forward method for Lightning wrapper"""
+        """Forward method for Lightning wrapper."""
         # Forward pass through the custom model
         return self.model(X, self.in_vars, self.out_vars, lead_times)
 
     def training_step(self, batch: torch.Tensor, batch_idx: int) -> torch.Tensor:
-        """Execute training step"""
+        """Execute training step."""
         # Assume batch includes all required inputs
         start_img, end_img, lead_times = batch  # Unpack batch
         preds = self(start_img, lead_times)  # Forward pass
 
         # Per-sample MSE
         losses = self.loss_fn(preds, end_img)
-        self.log("train_loss_per_sample",
-                 losses,
-                 on_epoch=True,
-                 on_step=True)
+        self.log("train_loss_per_sample", losses, on_epoch=True, on_step=True)
 
         batch_loss = losses.mean()
         self.log("train_loss", batch_loss)
@@ -247,15 +245,12 @@ class Lightning_LodeRunner(LightningModule):
         return batch_loss
 
     def validation_step(self, batch: torch.Tensor, batch_idx: int) -> None:
-        """Execute validation step"""
+        """Execute validation step."""
         start_img, end_img, lead_times = batch  # Unpack batch
         preds = self(start_img, lead_times)  # Forward pass
         # Per-sample MSE
         losses = self.loss_fn(preds, end_img)
-        self.log("val_loss_per_sample",
-                 losses,
-                 on_epoch=True,
-                 on_step=True)
+        self.log("val_loss_per_sample", losses, on_epoch=True, on_step=True)
 
         batch_loss = losses.mean()
         self.log("val_loss", batch_loss)
@@ -362,17 +357,18 @@ if __name__ == "__main__":
         in_vars=x_vars,
         out_vars=out_vars,
         LRscheduler=CosineWithWarmupScheduler,
-        scheduler_params={'warmup_steps': 500,
-                          'anchor_lr': 1e-3,
-                          'terminal_steps': 1000,
-                          'num_cycles': 0.5,
-                          'min_fraction': 0.5,
-                          'last_epoch': 0,
-                          },
+        scheduler_params={
+            "warmup_steps": 500,
+            "anchor_lr": 1e-3,
+            "terminal_steps": 1000,
+            "num_cycles": 0.5,
+            "min_fraction": 0.5,
+            "last_epoch": 0,
+        },
     )
     L_loderunner_out = L_loderunner(x, lead_times)
     print("Lightning LodeRunner-tiny output shape:", L_loderunner_out.shape)
-    
+
     # Small size
     embed_dim = 96
     block_structure = (1, 1, 9, 1)
