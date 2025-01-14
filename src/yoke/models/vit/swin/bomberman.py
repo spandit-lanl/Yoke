@@ -26,6 +26,8 @@ from yoke.models.vit.embedding_encoders import (
 )
 
 from yoke.lr_schedulers import CosineWithWarmupScheduler
+from yoke.torch_training_utils import save_model_and_optimizer_hdf5
+from yoke.torch_training_utils import load_model_and_optimizer_hdf5
 
 
 class LodeRunner(nn.Module):
@@ -283,6 +285,22 @@ class Lightning_LodeRunner(LightningModule):
 
         return optimizer
 
+    def on_save_checkpoint(self, checkpoint: dict) -> None:
+        """Custom save checkpoint."""
+        _ = save_model_and_optimizer_hdf5(
+                self.model,
+                self.optimizers(),
+                epoch=checkpoint["epoch"],
+                filepath=checkpoint["h5_filename"]
+            )
+
+    def on_load_checkpoint(self, checkpoint: dict) -> None:
+        """Custom load checkpoint."""
+        load_model_and_optimizer_hdf5(
+            self.model,
+            self.optimizers(),
+            filepath=checkpoint["h5_filename"]
+            )
 
 if __name__ == "__main__":
     from yoke.torch_training_utils import count_torch_params

@@ -1,12 +1,4 @@
-"""Training for Lightning-wrapped LodeRunner on LSC material densities.
-
-This version of training uses only the lsc240420 data with only per-material
-density along with the velocity field. A single timestep is input, a single
-timestep is predicted. The number of input variables is fixed throughout
-training.
-
-`lightning` is used to train a LightningModule wrapper for LodeRunner to allow
-multi-node, multi-GPU, distributed data-parallel training.
+"""Use Fabric to do DDP training with LodeRunner.
 
 """
 
@@ -18,9 +10,9 @@ import time
 import argparse
 import torch
 import torch.nn as nn
-import lightning.pytorch as L
+from lightning.fabric import Fabric
 
-from yoke.models.vit.swin.bomberman import LodeRunner, Lightning_LodeRunner
+from yoke.models.vit.swin.bomberman import LodeRunner
 from yoke.datasets.lsc_dataset import LSC_rho2rho_temporal_DataSet
 import yoke.torch_training_utils as tr
 from yoke.parallel_utils import LodeRunner_DataParallel
@@ -31,13 +23,16 @@ from yoke.lr_schedulers import CosineWithWarmupScheduler
 # Inputs
 #############################################
 descr_str = (
-    "Trains lightning-wrapped LodeRunner on single-timstep input and output of the "
+    "Trains LodeRunner architecture on single-timstep input and output of the "
     "lsc240420 per-material density fields."
 )
 parser = argparse.ArgumentParser(
     prog="Initial LodeRunner Training", description=descr_str, fromfile_prefix_chars="@"
 )
 
+#############################################
+# Data Parallelism
+#############################################
 #############################################
 # Data Parallelism
 #############################################
@@ -398,7 +393,16 @@ if __name__ == "__main__":
     print("Model initialized.")
 
     #############################################
-    # Lightning wrap
+    # Load Model for Continuation
+    #############################################
+    if CONTINUATION:
+        starting_epoch = tr.load_model_and_optimizer_hdf5(model, optimizer, checkpoint)
+        print("Model state loaded for continuation.")
+    else:
+        starting_epoch = 0
+
+    #############################################
+    # LR scheduler
     #############################################
     # We will take a scheduler step every back-prop step so the number of steps
     # is the number of previous batches.
@@ -406,24 +410,26 @@ if __name__ == "__main__":
         last_epoch = -1
     else:
         last_epoch = train_batches * (starting_epoch - 1)
-
-    in_vars = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7])
-    out_vars = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7])
-    L_loderunner = Lightning_LodeRunner(
-        model,
-        in_vars=in_vars,
-        out_vars=out_vars,
-        LRscheduler=CosineWithWarmupScheduler,
-        scheduler_params={
-            "warmup_steps": warmup_steps,
-            "anchor_lr": anchor_lr,
-            "terminal_steps": terminal_steps,
-            "num_cycles": num_cycles,
-            "min_fraction": min_fraction,
-            "last_epoch": last_epoch,
-        },
+    LRsched = CosineWithWarmupScheduler(
+        optimizer,
+        anchor_lr=anchor_lr,
+        terminal_steps=terminal_steps,
+        warmup_steps=warmup_steps,
+        num_cycles=num_cycles,
+        min_fraction=min_fraction,
+        last_epoch=last_epoch,
     )
 
+    #############################################
+    # Setup Fabric
+    #############################################
+    fabric = Fabric(
+        accelerator="gpu",
+        devices=Ngpus,
+        num_nodes=Knodes,
+        )
+    model, optimizer = fabric.setup(model, optimizer)
+    
     #############################################
     # Initialize Data
     #############################################
@@ -449,6 +455,8 @@ if __name__ == "__main__":
     #############################################
     # Train Model
     print("Training Model . . .")
+    starting_epoch += 1
+    ending_epoch = min(starting_epoch + cycle_epochs, total_epochs + 1)
 
     # Setup Dataloaders
     train_dataloader = tr.make_dataloader(
@@ -466,46 +474,51 @@ if __name__ == "__main__":
         prefetch_factor=prefetch_factor
     )
     print("DataLoaders initialized...")
-
-    # Use lightning Trainer, Logger, and fit.
-    cycle_epochs = min(cycle_epochs, total_epochs - starting_epoch + 1)
-
-    if CONTINUATION:
-        starting_epoch = tr.load_model_and_optimizer_hdf5(model, optimizer, checkpoint)
-        print("Model state loaded for continuation.")
-    else:
-        starting_epoch = 0
-
-    logger = L.CSVLogger(
-        save_dir='./',
-        prefix=f'{starting_epoch:03d}_',
-        flush_logs_every_n_steps=100,
-        )
-    trainer = L.Trainer(
-        max_epochs=starting_epoch + cycle_epochs,
-        limit_train_batches=train_batches,
-        check_val_every_n_epoch=train_per_val,
-        limit_val_batches=val_batches,
-        accelerator='gpu',
-        devices=Ngpus,  # Number of GPUs per node
-        num_nodes=Knodes,
-        strategy='ddp',
-        enable_progress_bar=False,
-        logger=logger
-        )
-
-    trainer.fit(
-        L_loderunner,
-        train_dataloader=train_dataloader,
-        val_dataloader=val_dataloader,
-        )
     
+    for epochIDX in range(starting_epoch, ending_epoch):
+        # Time each epoch and print to stdout
+        startTime = time.time()
+
+        # Train an Epoch
+        tr.train_fabric_loderunner_epoch(
+            fabric,
+            training_data=train_dataloader,
+            validation_data=val_dataloader,
+            model=model,
+            optimizer=optimizer,
+            loss_fn=loss_fn,
+            LRsched=LRsched,
+            epochIDX=epochIDX,
+            train_per_val=train_per_val,
+            train_rcrd_filename=trn_rcrd_filename,
+            val_rcrd_filename=val_rcrd_filename,
+            verbose=False
+        )
+
+        endTime = time.time()
+        epoch_time = (endTime - startTime) / 60
+
+        # Print Summary Results
+        print("Completed epoch " + str(epochIDX) + "...", flush=True)
+        print("Epoch time (minutes):", epoch_time, flush=True)
+
+        # Clear GPU memory after each epoch
+        torch.cuda.empty_cache()
+
     # Save Model Checkpoint
     print("Saving model checkpoint at end of epoch " + str(epochIDX) + ". . .")
 
+    # Move the model back to CPU prior to saving to increase portability
+    model.to("cpu")
+    # Move optimizer state back to CPU
+    for state in optimizer.state.values():
+        for k, v in state.items():
+            if isinstance(v, torch.Tensor):
+                state[k] = v.to("cpu")
 
     # Save model and optimizer state in hdf5
-    new_h5_path = f"./study{studyIDX:03d}_modelState_epoch{epochIDX:04d}.hdf5"
+    h5_name_str = "study{0:03d}_modelState_epoch{1:04d}.hdf5"
+    new_h5_path = os.path.join("./", h5_name_str.format(studyIDX, epochIDX))
     tr.save_model_and_optimizer_hdf5(
         model, optimizer, epochIDX, new_h5_path, compiled=False
     )
