@@ -5,14 +5,13 @@
 
 # NOTE: Number of CPUs per GPU must be an even number since there are
 # 2 threads per core. If an odd number is requested the next higher
-# even number gets used. 
+# even number gets used.
 
 # The following are one set of SBATCH options for the Venado GPU
 # partition. There are optional other constraints.
 
 #SBATCH --job-name=loderunner_vefe_study<studyIDX>
-#SBATCH --account=w25_artimis_g
-#SBATCH --reservation=DAT-253604
+#SBATCH --account=w25_artimis_gh
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=288
 #SBATCH --partition=gpu
