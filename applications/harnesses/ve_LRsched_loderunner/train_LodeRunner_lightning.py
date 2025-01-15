@@ -398,33 +398,6 @@ if __name__ == "__main__":
     print("Model initialized...")
 
     #############################################
-    # Lightning wrap
-    #############################################
-    # We will take a scheduler step every back-prop step so the number of steps
-    # is the number of previous batches.
-    if starting_epoch == 0:
-        last_epoch = -1
-    else:
-        last_epoch = train_batches * (starting_epoch - 1)
-
-    in_vars = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7])
-    out_vars = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7])
-    L_loderunner = Lightning_LodeRunner(
-        model,
-        in_vars=in_vars,
-        out_vars=out_vars,
-        LRscheduler=CosineWithWarmupScheduler,
-        scheduler_params={
-            "warmup_steps": warmup_steps,
-            "anchor_lr": anchor_lr,
-            "terminal_steps": terminal_steps,
-            "num_cycles": num_cycles,
-            "min_fraction": min_fraction,
-            "last_epoch": last_epoch,
-        },
-    )
-
-    #############################################
     # Initialize Data
     #############################################
     train_dataset = LSC_rho2rho_temporal_DataSet(
@@ -467,6 +440,45 @@ if __name__ == "__main__":
     )
     print("DataLoaders initialized...")
 
+    #############################################
+    # Lightning wrap
+    #############################################
+    # Get start_epoch from checkpoint filename
+    # Format: study{studyIDX:03d}_modelState_epoch{final_epoch:04d}.hdf5
+    if CONTINUATION:
+        starting_epoch = checkpoint.split('epoch')[1]
+        starting_epoch = int(start_epoch.split('.')[0])
+        last_epoch = train_batches * (starting_epoch - 1)
+    else:
+        last_epoch = -1
+        starting_epoch = 0
+
+    in_vars = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7])
+    out_vars = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7])
+    L_loderunner = Lightning_LodeRunner(
+        model,
+        in_vars=in_vars,
+        out_vars=out_vars,
+        LRscheduler=CosineWithWarmupScheduler,
+        scheduler_params={
+            "warmup_steps": warmup_steps,
+            "anchor_lr": anchor_lr,
+            "terminal_steps": terminal_steps,
+            "num_cycles": num_cycles,
+            "min_fraction": min_fraction,
+            "last_epoch": last_epoch,
+        },
+    )
+
+    # Have to initialize the optimizer so custom load checkpoint works.
+    optimizers = L_loderunner.configure_optimizers()
+    if isinstance(optimizers, dict):
+        optimizer = optimizers["optimizer"]
+    else:
+        optimizer = optimizers
+
+    L_loderunner._optimizers = [optimizer]
+    
     # Use lightning Trainer, Logger, and fit.
     if CONTINUATION:
         L_loderunner.load_h5_chkpt = checkpoint
