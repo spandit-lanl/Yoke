@@ -226,6 +226,10 @@ class Lightning_LodeRunner(LightningModule):
         self.scheduler_params = scheduler_params or {}
         self.loss_fn = nn.MSELoss(reduction="none")
 
+        # These attributes will be dynamically set during training
+        self.load_h5_chkpt = "./dummy_load.hdf5"
+        self.save_h5_chkpt = "./dummy_save.hdf5"
+
     def forward(self, X: torch.Tensor, lead_times: torch.Tensor) -> torch.Tensor:
         """Forward method for Lightning wrapper."""
         # Forward pass through the custom model
@@ -280,6 +284,8 @@ class Lightning_LodeRunner(LightningModule):
                 "optimizer": optimizer,
                 "lr_scheduler": {
                     "scheduler": scheduler,
+                    "interval": "step",  # Step scheduler every batch.
+                    "frequency": 1,  # Step every batch (default for "step")
                 },
             }
 
@@ -287,20 +293,30 @@ class Lightning_LodeRunner(LightningModule):
 
     def on_save_checkpoint(self, checkpoint: dict) -> None:
         """Custom save checkpoint."""
-        _ = save_model_and_optimizer_hdf5(
-                self.model,
-                self.optimizers(),
-                epoch=checkpoint["epoch"],
-                filepath=checkpoint["h5_filename"]
-            )
-
-    def on_load_checkpoint(self, checkpoint: dict) -> None:
-        """Custom load checkpoint."""
-        load_model_and_optimizer_hdf5(
+        epoch = checkpoint.get("epoch", 0)  # Returns 0 if 'epoch' key doesn't exist.
+        filepath = self.save_h5_chkpt
+        save_model_and_optimizer_hdf5(
             self.model,
-            self.optimizers(),
-            filepath=checkpoint["h5_filename"]
+            self.optimizers()[0],
+            epoch=epoch,
+            filepath=filepath,
+        )
+        self.print(f"Saved HDF5 checkpoint: {filepath}")
+
+    def on_load_checkpoint(self) -> None:
+        """Custom load checkpoint."""
+        filepath = self.load_h5_chkpt
+        try:
+            loaded_epoch = load_model_and_optimizer_hdf5(
+                self.model,
+                self.optimizers()[0],
+                filepath=filepath,
             )
+            self.current_epoch_override = loaded_epoch
+            self.print(f"Loaded HDF5 checkpoint: {filepath}")
+        except FileNotFoundError:
+            self.print(f"Checkpoint file not found: {filepath}. Starting fresh!")
+
 
 if __name__ == "__main__":
     from yoke.torch_training_utils import count_torch_params

@@ -395,7 +395,7 @@ if __name__ == "__main__":
     # Use `reduction='none'` so loss on each sample in batch can be recorded.
     loss_fn = nn.MSELoss(reduction="none")
 
-    print("Model initialized.")
+    print("Model initialized...")
 
     #############################################
     # Lightning wrap
@@ -468,11 +468,10 @@ if __name__ == "__main__":
     print("DataLoaders initialized...")
 
     # Use lightning Trainer, Logger, and fit.
-    cycle_epochs = min(cycle_epochs, total_epochs - starting_epoch + 1)
-
     if CONTINUATION:
-        starting_epoch = tr.load_model_and_optimizer_hdf5(model, optimizer, checkpoint)
-        print("Model state loaded for continuation.")
+        L_loderunner.load_h5_chkpt = checkpoint
+        L_loderunner.on_load_checkpoint()
+        starting_epoch = L_loderunner.current_epoch_override
     else:
         starting_epoch = 0
 
@@ -481,8 +480,14 @@ if __name__ == "__main__":
         prefix=f'{starting_epoch:03d}_',
         flush_logs_every_n_steps=100,
         )
+
+    cycle_epochs = min(cycle_epochs, total_epochs - starting_epoch + 1)
+    final_epoch = starting_epoch + cycle_epochs - 1
+    save_h5_path = f"./study{studyIDX:03d}_modelState_epoch{final_epoch:04d}.hdf5"
+    L_loderunner.save_h5_chkpt = save_h5_path
+
     trainer = L.Trainer(
-        max_epochs=starting_epoch + cycle_epochs,
+        max_epochs=final_epoch + 1,
         limit_train_batches=train_batches,
         check_val_every_n_epoch=train_per_val,
         limit_val_batches=val_batches,
@@ -500,23 +505,13 @@ if __name__ == "__main__":
         val_dataloader=val_dataloader,
         )
     
-    # Save Model Checkpoint
-    print("Saving model checkpoint at end of epoch " + str(epochIDX) + ". . .")
-
-
-    # Save model and optimizer state in hdf5
-    new_h5_path = f"./study{studyIDX:03d}_modelState_epoch{epochIDX:04d}.hdf5"
-    tr.save_model_and_optimizer_hdf5(
-        model, optimizer, epochIDX, new_h5_path, compiled=False
-    )
-
     #############################################
     # Continue if Necessary
     #############################################
-    FINISHED_TRAINING = epochIDX + 1 > total_epochs
+    FINISHED_TRAINING = final_epoch + 1 > total_epochs
     if not FINISHED_TRAINING:
         new_slurm_file = tr.continuation_setup(
-            new_h5_path, studyIDX, last_epoch=epochIDX
+            save_h5_path, studyIDX, last_epoch=final_epoch
         )
         os.system(f"sbatch {new_slurm_file}")
 
