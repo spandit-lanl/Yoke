@@ -10,10 +10,10 @@
 # The following are one set of SBATCH options for the Venado GPU
 # partition. There are optional other constraints.
 
-#SBATCH --job-name=bm_Fimg_s<studyIDX>_e0001
+#SBATCH --job-name=lr_s<studyIDX>_e0001
 #SBATCH --account=w25_artimis_gh
 #SBATCH --partition=gpu
-#SBATCH --nodes=1
+#SBATCH --nodes=<KNODES>
 #SBATCH --ntasks-per-node=288
 #SBATCH --time=16:00:00
 #SBATCH --output=study<studyIDX>_epoch0001.out

@@ -476,6 +476,81 @@ def train_loderunner_datastep(
     return end_img, pred_img, per_sample_loss
 
 
+def train_loderunner_fabric_datastep(
+        fabric,
+        data: tuple,
+        model,
+        optimizer,
+        loss_fn):
+    """A training step for which the data is of multi-input, multi-output type.
+
+    This is currently a proto-type function to get the LodeRunner architecture
+    training on a non-variable set of channels.
+
+    Args:
+        fabric (lightning.fabric.Fabric): Fabric instance.
+        data (tuple): tuple of model input and corresponding ground truth
+        model (loaded pytorch model): model to train
+        optimizer (torch.optim): optimizer for training set
+        loss_fn (torch.nn Loss Function): loss function for training set
+        device (torch.device): device index to select
+
+    Returns:
+        loss (): evaluated loss for the data sample
+
+    """
+    # Set model to train
+    model.train()
+
+    # Distribute with fabric
+    start_img, end_img, Dt = fabric.to_device(data)
+
+    # For our first LodeRunner training on the lsc240420 dataset the input and
+    # output prediction variables are fixed.
+    #
+    # Both in_vars and out_vars correspond to indices for every variable in
+    # this training setup...
+    #
+    # in_vars = ['density_case',
+    #            'density_cushion',
+    #            'density_maincharge',
+    #            'density_outside_air',
+    #            'density_striker',
+    #            'density_throw',
+    #            'Uvelocity',
+    #            'Wvelocity']
+    in_vars = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7])
+    in_vars = fabric.to_device(in_vars)
+    out_vars = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7])
+    out_vars = fabric.to_device(out_vars)
+    
+    # Perform a forward pass
+    # NOTE: If training on GPU model should have already been moved to GPU
+    # prior to initalizing optimizer.
+    pred_img = model(start_img, in_vars, out_vars, Dt)
+
+    # Expecting to use a *reduction="none"* loss function so we can track loss
+    # between individual samples. However, this will make the loss be computed
+    # element-wise so we need to still average over the (channel, height,
+    # width) dimensions to get the per-sample loss.
+    loss = loss_fn(pred_img, end_img)
+    per_sample_loss = loss.mean(dim=[1, 2, 3])  # Shape: (batch_size,)
+
+    # Perform backpropagation and update the weights
+    optimizer.zero_grad(set_to_none=True)  # Possible speed-up
+    fabric.backward(loss.mean())
+    optimizer.step()
+
+    # Delete created tensors to free memory
+    del in_vars
+    del out_vars
+
+    # Clear GPU memory after each deallocation
+    torch.cuda.empty_cache()
+
+    return end_img, pred_img, per_sample_loss
+
+
 ####################################
 # Evaluating on a Datastep
 ####################################
@@ -583,6 +658,74 @@ def eval_loderunner_datastep(
     #            'Wvelocity']
     in_vars = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7]).to(device, non_blocking=True)
     out_vars = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7]).to(device, non_blocking=True)
+    
+    # Perform a forward pass
+    # NOTE: If training on GPU model should have already been moved to GPU
+    # prior to initalizing optimizer.
+    pred_img = model(start_img, in_vars, out_vars, Dt)
+
+    # Expecting to use a *reduction="none"* loss function so we can track loss
+    # between individual samples. However, this will make the loss be computed
+    # element-wise so we need to still average over the (channel, height,
+    # width) dimensions to get the per-sample loss.
+    loss = loss_fn(pred_img, end_img)
+    per_sample_loss = loss.mean(dim=[1, 2, 3])  # Shape: (batch_size,)
+
+    # Delete created tensors to free memory
+    del in_vars
+    del out_vars
+
+    # Clear GPU memory after each deallocation
+    torch.cuda.empty_cache()
+    
+    return end_img, pred_img, per_sample_loss
+
+
+def eval_loderunner_fabric_datastep(
+        fabric,
+        data: tuple,
+        model,
+        loss_fn):
+    """An evaluation step for which the data is of multi-input, multi-output type.
+
+    This is currently a proto-type function to get the LodeRunner architecture
+    training on a non-variable set of channels.
+
+    Args:
+        fabric (lightning.fabric.Fabric): Fabric instance.
+        data (tuple): tuple of model input and corresponding ground truth
+        model (loaded pytorch model): model to train
+        loss_fn (torch.nn Loss Function): loss function for training set
+        device (torch.device): device index to select
+
+    Returns:
+        loss (): evaluated loss for the data sample
+
+    """
+    # Set model to train
+    model.eval()
+
+    # Extract data
+    start_img, end_img, Dt = fabric.to_device(data)
+
+    # For our first LodeRunner training on the lsc240420 dataset the input and
+    # output prediction variables are fixed.
+    #
+    # Both in_vars and out_vars correspond to indices for every variable in
+    # this training setup...
+    #
+    # in_vars = ['density_case',
+    #            'density_cushion',
+    #            'density_maincharge',
+    #            'density_outside_air',
+    #            'density_striker',
+    #            'density_throw',
+    #            'Uvelocity',
+    #            'Wvelocity']
+    in_vars = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7])
+    in_vars = fabric.to_device(in_vars)
+    out_vars = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7])
+    out_vars = fabric.to_device(out_vars)
     
     # Perform a forward pass
     # NOTE: If training on GPU model should have already been moved to GPU
@@ -1075,6 +1218,129 @@ def train_LRsched_loderunner_epoch(
                     valbatch_ID += 1
                     truth, pred, val_loss = eval_loderunner_datastep(
                         valdata, model, loss_fn, device
+                    )
+
+                    # Stack loss record and write using numpy
+                    batch_records = np.column_stack([
+                        np.full(val_batchsize, epochIDX),
+                        np.full(val_batchsize, valbatch_ID),
+                        val_loss.detach().cpu().numpy().flatten()
+                    ])
+
+                    np.savetxt(val_rcrd_file, batch_records, fmt="%d, %d, %.8f")
+
+                    # Explictly delete produced tensors to free memory
+                    del truth
+                    del pred
+                    del val_loss
+
+                    # Clear GPU memory after each batch
+                    torch.cuda.empty_cache()
+
+
+def train_fabric_loderunner_epoch(
+    fabric,
+    training_data,
+    validation_data,
+    model,
+    optimizer,
+    loss_fn,
+    LRsched,
+    epochIDX,
+    train_per_val,
+    train_rcrd_filename: str,
+    val_rcrd_filename: str,
+    verbose: bool=False,
+):
+    """Function to complete a training epoch on the LodeRunner architecture with
+    fixed channels in the input and output. Training and validation information
+    is saved to successive CSV files.
+
+    Args:
+        fabric (lightning.fabric.Fabric): Fabric instance to take care of distributed
+                                          data-parallel training
+        training_data (torch.dataloader): dataloader containing the training samples
+        validation_data (torch.dataloader): dataloader containing the validation samples
+        model (loaded pytorch model): model to train
+        optimizer (torch.optim): optimizer for training set
+        loss_fn (torch.nn Loss Function): loss function for training set
+        LRsched (torch.optim.lr_scheduler): Learning-rate scheduler that will be called
+                                            every training step.
+        epochIDX (int): Index of current training epoch
+        train_per_val (int): Number of Training epochs between each validation
+        train_rcrd_filename (str): Name of CSV file to save training sample stats to
+        val_rcrd_filename (str): Name of CSV file to save validation sample stats to
+        verbose (boolean): Flag to print diagnostic output.
+
+    """
+    # Initialize things to save
+    trainbatches = len(training_data)
+    valbatches = len(validation_data)
+    trainbatch_ID = 0
+    valbatch_ID = 0
+
+    train_batchsize = training_data.batch_size
+    val_batchsize = validation_data.batch_size
+
+    train_rcrd_filename = train_rcrd_filename.replace("<epochIDX>", f"{epochIDX:04d}")
+    # Train on all training samples
+    with open(train_rcrd_filename, "a") as train_rcrd_file:
+        for traindata in training_data:
+            trainbatch_ID += 1
+
+            # Time each epoch and print to stdout
+            if verbose:
+                startTime = time.time()
+
+            truth, pred, train_loss = train_loderunner_fabric_datastep(
+                fabric, traindata, model, optimizer, loss_fn,
+            )
+
+            # Increment the learning-rate scheduler
+            LRsched.step()
+                
+            if verbose:
+                endTime = time.time()
+                batch_time = endTime - startTime
+                print(f"Batch {trainbatch_ID} time (seconds): {batch_time:.5f}",
+                      flush=True)
+
+            if verbose:
+                startTime = time.time()
+
+            # Stack loss record and write using numpy
+            batch_records = np.column_stack([
+                np.full(train_batchsize, epochIDX),
+                np.full(train_batchsize, trainbatch_ID),
+                train_loss.detach().cpu().numpy().flatten()
+            ])
+
+            np.savetxt(train_rcrd_file, batch_records, fmt="%d, %d, %.8f")
+
+            if verbose:
+                endTime = time.time()
+                record_time = endTime - startTime
+                print(f"Batch {trainbatch_ID} record time: {record_time:.5f}",
+                      flush=True)
+
+            # Explictly delete produced tensors to free memory
+            del truth
+            del pred
+            del train_loss
+
+            # Clear GPU memory after each batch
+            torch.cuda.empty_cache()
+            
+    # Evaluate on all validation samples
+    if epochIDX % train_per_val == 0:
+        print("Validating...", epochIDX)
+        val_rcrd_filename = val_rcrd_filename.replace("<epochIDX>", f"{epochIDX:04d}")
+        with open(val_rcrd_filename, "a") as val_rcrd_file:
+            with torch.no_grad():
+                for valdata in validation_data:
+                    valbatch_ID += 1
+                    truth, pred, val_loss = eval_loderunner_fabric_datastep(
+                        fabric, valdata, model, loss_fn,
                     )
 
                     # Stack loss record and write using numpy

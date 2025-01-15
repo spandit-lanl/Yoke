@@ -10,6 +10,9 @@ emulator.
 
 import torch
 from torch import nn
+from torch.optim.lr_scheduler import _LRScheduler
+
+from lightning.pytorch import LightningModule
 
 from yoke.models.vit.swin.unet import SwinUnetBackbone
 from yoke.models.vit.patch_embed import ParallelVarPatchEmbed
@@ -21,6 +24,10 @@ from yoke.models.vit.embedding_encoders import (
     PosEmbed,
     TimeEmbed,
 )
+
+from yoke.lr_schedulers import CosineWithWarmupScheduler
+from yoke.torch_training_utils import save_model_and_optimizer_hdf5
+from yoke.torch_training_utils import load_model_and_optimizer_hdf5
 
 
 class LodeRunner(nn.Module):
@@ -183,6 +190,134 @@ class LodeRunner(nn.Module):
         return preds
 
 
+class Lightning_LodeRunner(LightningModule):
+    """Lightning wrapper for LodeRunner.
+
+    Wrap LodeRunner torch.nn.Module class in a lightning.LightningModule for
+    ease of parallelization and encapsulation of training strategy.
+
+    Args:
+        model (nn.Module): Pre-initialized nn.Module to wrap
+        in_vars (torch.Tensor): Input channels to train LodeRunner on
+        out_vars (torch.Tensor): Output channels to train LodeRunner on
+        learning_rate (float): Initial learning rate for optimizer. Ignored if a
+                               scheduler is used.
+        lrscheduler (_LRScheduler): Learning-rate scheduler to use with optimizer
+        scheduler_params (dict): Keyword arguments to initialize scheduler
+
+    """
+
+    def __init__(
+        self,
+        model: nn.Module,
+        in_vars: torch.Tensor = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7]),
+        out_vars: torch.Tensor = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7]),
+        learning_rate: float = 1e-3,
+        lrscheduler: _LRScheduler = None,
+        scheduler_params: dict = None,
+    ) -> None:
+        """Initialization for Lightning wrapper."""
+        super().__init__()
+        self.model = model
+        self.in_vars = in_vars
+        self.out_vars = out_vars
+        self.learning_rate = learning_rate
+        self.lrscheduler = lrscheduler
+        self.scheduler_params = scheduler_params or {}
+        self.loss_fn = nn.MSELoss(reduction="none")
+
+        # These attributes will be dynamically set during training
+        self.load_h5_chkpt = "./dummy_load.hdf5"
+        self.save_h5_chkpt = "./dummy_save.hdf5"
+
+    def forward(self, X: torch.Tensor, lead_times: torch.Tensor) -> torch.Tensor:
+        """Forward method for Lightning wrapper."""
+        # Forward pass through the custom model
+        return self.model(X, self.in_vars, self.out_vars, lead_times)
+
+    def training_step(self, batch: torch.Tensor, batch_idx: int) -> torch.Tensor:
+        """Execute training step."""
+        # Assume batch includes all required inputs
+        start_img, end_img, lead_times = batch  # Unpack batch
+        preds = self(start_img, lead_times)  # Forward pass
+
+        # Per-sample MSE
+        losses = self.loss_fn(preds, end_img)
+        if hasattr(self, "Trainer"):  # Only log if there is a Trainer
+            self.log("train_loss_per_sample", losses, on_epoch=True, on_step=True)
+
+        batch_loss = losses.mean()
+        if hasattr(self, "Trainer"):  # Only log if there is a Trainer
+            self.log("train_loss", batch_loss)
+
+        return batch_loss
+
+    def validation_step(self, batch: torch.Tensor, batch_idx: int) -> None:
+        """Execute validation step."""
+        start_img, end_img, lead_times = batch  # Unpack batch
+        preds = self(start_img, lead_times)  # Forward pass
+
+        # Per-sample MSE
+        losses = self.loss_fn(preds, end_img)
+        if hasattr(self, "Trainer"):  # Only log if there is a Trainer
+            self.log("val_loss_per_sample", losses, on_epoch=True, on_step=True)
+
+        batch_loss = losses.mean()
+        if hasattr(self, "Trainer"):  # Only log if there is a Trainer
+            self.log("val_loss", batch_loss)
+
+    def configure_optimizers(self) -> torch.optim.Optimizer:
+        """Setup optimizer with scheduler."""
+        # Optimizer setup
+        optimizer = torch.optim.AdamW(
+            self.model.parameters(),
+            lr=self.learning_rate,
+            betas=(0.9, 0.999),
+            eps=1e-08,
+            weight_decay=0.01,
+        )
+
+        if self.LRscheduler:
+            # Initialize LR scheduler
+            scheduler = self.LRscheduler(optimizer, **self.scheduler_params)
+            return {
+                "optimizer": optimizer,
+                "lr_scheduler": {
+                    "scheduler": scheduler,
+                    "interval": "step",  # Step scheduler every batch.
+                    "frequency": 1,  # Step every batch (default for "step")
+                },
+            }
+
+        return optimizer
+
+    def on_save_checkpoint(self, checkpoint: dict) -> None:
+        """Custom save checkpoint."""
+        epoch = checkpoint.get("epoch", 0)  # Returns 0 if 'epoch' key doesn't exist.
+        filepath = self.save_h5_chkpt
+        save_model_and_optimizer_hdf5(
+            self.model,
+            self.optimizers()[0],
+            epoch=epoch,
+            filepath=filepath,
+        )
+        self.print(f"Saved HDF5 checkpoint: {filepath}")
+
+    def on_load_checkpoint(self) -> None:
+        """Custom load checkpoint."""
+        filepath = self.load_h5_chkpt
+        try:
+            loaded_epoch = load_model_and_optimizer_hdf5(
+                self.model,
+                self.optimizers()[0],
+                filepath=filepath,
+            )
+            self.current_epoch_override = loaded_epoch
+            self.print(f"Loaded HDF5 checkpoint: {filepath}")
+        except FileNotFoundError:
+            self.print(f"Checkpoint file not found: {filepath}. Starting fresh!")
+
+
 if __name__ == "__main__":
     from yoke.torch_training_utils import count_torch_params
 
@@ -254,6 +389,24 @@ if __name__ == "__main__":
     print("LodeRunner-tiny output shape:", loderunner_out.shape)
     print("LodeRunner-tiny output has NaNs:", torch.isnan(loderunner_out).any())
     print("LodeRunner-tiny parameters:", count_torch_params(lode_runner, trainable=True))
+
+    # Test lightning wrapper initialization.
+    L_loderunner = Lightning_LodeRunner(
+        lode_runner,
+        in_vars=x_vars,
+        out_vars=out_vars,
+        LRscheduler=CosineWithWarmupScheduler,
+        scheduler_params={
+            "warmup_steps": 500,
+            "anchor_lr": 1e-3,
+            "terminal_steps": 1000,
+            "num_cycles": 0.5,
+            "min_fraction": 0.5,
+            "last_epoch": 0,
+        },
+    )
+    L_loderunner_out = L_loderunner(x, lead_times)
+    print("Lightning LodeRunner-tiny output shape:", L_loderunner_out.shape)
 
     # Small size
     embed_dim = 96
