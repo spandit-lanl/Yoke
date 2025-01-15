@@ -37,8 +37,12 @@ lsc240420_prefixes_test_10pct.txt
 <NUM_WORKERS>
 --prefetch_factor
 <PREFETCH_FACTOR>
+--Ngpus
+<NGPUS>
+--Knodes
+<KNODES>
 --total_epochs
-100
+20
 --cycle_epochs
 10
 --train_batches
@@ -47,4 +51,3 @@ lsc240420_prefixes_test_10pct.txt
 <NVAL_BATCH>
 --TRAIN_PER_VAL
 5
---multigpu
