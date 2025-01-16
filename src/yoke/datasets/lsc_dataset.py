@@ -710,7 +710,8 @@ class LSC_rho2rho_temporal_DataSet(Dataset):
 
         # Get the time offset
         Dt = 0.25 * (endIDX - startIDX)
-
+        Dt = Dt.to(torch.float32)
+        
         # Close the npzs
         start_npz.close()
         end_npz.close()
