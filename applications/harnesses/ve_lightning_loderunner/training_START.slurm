@@ -27,6 +27,10 @@
 sinfo  -o "%P %.24G %N"
 srun /usr/bin/echo $CUDA_AVAILABLE_DEVICES
 
+# Debugging distributed data parallel
+export NCCL_DEBUG=INFO
+export PYTHONFAULTHANDLER=1
+
 # Load correct conda environment
 module load python/3.10-anaconda-2023.03
 source activate
@@ -44,13 +48,13 @@ export date00=`date`
 # nvpid=$!
 
 # Start the Code
-python <train_script> @study<studyIDX>_START.input
+#python <train_script> @study<studyIDX>_START.input
 
 # torchrun --nproc_per_node=<NGPUS> --nnodes=<KNODES> --node_rank=0 \
 #          --master_addr="MASTER_NODE_IP" --master_port=12345 \
 #          <train_script> @study<studyIDX>_START.input
 
-# srun python <train_script> @study<studyIDX>_START.input
+srun python <train_script> @study<studyIDX>_START.input
 #pypid=$!
 
 # Kill GPU monitoring after python process finishes

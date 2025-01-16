@@ -11,6 +11,7 @@ import argparse
 import torch
 import torch.nn as nn
 from lightning.fabric import Fabric
+from lightning.pytorch.plugins.environments import SLURMEnvironment
 
 from yoke.models.vit.swin.bomberman import LodeRunner
 from yoke.datasets.lsc_dataset import LSC_rho2rho_temporal_DataSet
@@ -319,6 +320,12 @@ if __name__ == "__main__":
     START = not CONTINUATION
     checkpoint = args.checkpoint
 
+    # Examine the SLURM environment a bit...
+    env = SLURMEnvironment()
+
+    print("SLURM detected:", env.detect())
+    print("Job name:", env.job_name())
+    
     # Setup fabric
     fabric = Fabric(
         accelerator="gpu",
@@ -469,7 +476,7 @@ if __name__ == "__main__":
         num_workers=num_workers,
         prefetch_factor=prefetch_factor
     )
-    #train_dataloader = fabric.setup_dataloaders(train_dataloader)
+    train_dataloader = fabric.setup_dataloaders(train_dataloader)
     val_dataloader = tr.make_dataloader(
         val_dataset,
         batch_size,
@@ -477,7 +484,7 @@ if __name__ == "__main__":
         num_workers=num_workers,
         prefetch_factor=prefetch_factor
     )
-    #val_dataloader = fabric.setup_dataloaders(val_dataloader)
+    val_dataloader = fabric.setup_dataloaders(val_dataloader)
     fabric.print("DataLoaders initialized...")
     
     for epochIDX in range(starting_epoch, ending_epoch):
