@@ -277,9 +277,9 @@ class Lightning_LodeRunner(LightningModule):
             weight_decay=0.01,
         )
 
-        if self.LRscheduler:
+        if self.lrscheduler:
             # Initialize LR scheduler
-            scheduler = self.LRscheduler(optimizer, **self.scheduler_params)
+            scheduler = self.lrscheduler(optimizer, **self.scheduler_params)
             return {
                 "optimizer": optimizer,
                 "lr_scheduler": {
@@ -395,7 +395,7 @@ if __name__ == "__main__":
         lode_runner,
         in_vars=x_vars,
         out_vars=out_vars,
-        LRscheduler=CosineWithWarmupScheduler,
+        lrscheduler=CosineWithWarmupScheduler,
         scheduler_params={
             "warmup_steps": 500,
             "anchor_lr": 1e-3,
