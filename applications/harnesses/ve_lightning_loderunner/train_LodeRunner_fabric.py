@@ -327,6 +327,7 @@ if __name__ == "__main__":
     print("Job name:", env.job_name())
     
     # Setup fabric
+    torch.set_float32_matmul_precision('medium')  # or `high`
     fabric = Fabric(
         accelerator="gpu",
         devices=Ngpus,
