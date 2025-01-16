@@ -13,8 +13,10 @@
 #SBATCH --job-name=lr_s<studyIDX>_e0001
 #SBATCH --account=w25_artimis_gh
 #SBATCH --partition=gpu
-#SBATCH --nodes=1
-#SBATCH --ntasks-per-node=288
+#SBATCH --nodes=<KNODES>
+#SBATCH --ntasks-per-node=<NGPUS>
+#SBATCH --gpus-per-node=<NGPUS>
+#SBATCH --cpus-per-task=72
 #SBATCH --time=16:00:00
 #SBATCH --output=study<studyIDX>_epoch0001.out
 #SBATCH --error=study<studyIDX>_epoch0001.err
@@ -43,6 +45,12 @@ export date00=`date`
 
 # Start the Code
 python <train_script> @study<studyIDX>_START.input
+
+# torchrun --nproc_per_node=<NGPUS> --nnodes=<KNODES> --node_rank=0 \
+#          --master_addr="MASTER_NODE_IP" --master_port=12345 \
+#          <train_script> @study<studyIDX>_START.input
+
+# srun python <train_script> @study<studyIDX>_START.input
 #pypid=$!
 
 # Kill GPU monitoring after python process finishes

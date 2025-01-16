@@ -1,12 +1,4 @@
-"""Training for Lightning-wrapped LodeRunner on LSC material densities.
-
-This version of training uses only the lsc240420 data with only per-material
-density along with the velocity field. A single timestep is input, a single
-timestep is predicted. The number of input variables is fixed throughout
-training.
-
-`lightning` is used to train a LightningModule wrapper for LodeRunner to allow
-multi-node, multi-GPU, distributed data-parallel training.
+"""Use Fabric to do DDP training with LodeRunner.
 
 """
 
@@ -18,9 +10,9 @@ import time
 import argparse
 import torch
 import torch.nn as nn
-import lightning.pytorch as L
+from lightning.fabric import Fabric
 
-from yoke.models.vit.swin.bomberman import LodeRunner, Lightning_LodeRunner
+from yoke.models.vit.swin.bomberman import LodeRunner
 from yoke.datasets.lsc_dataset import LSC_rho2rho_temporal_DataSet
 import yoke.torch_training_utils as tr
 from yoke.parallel_utils import LodeRunner_DataParallel
@@ -31,7 +23,7 @@ from yoke.lr_schedulers import CosineWithWarmupScheduler
 # Inputs
 #############################################
 descr_str = (
-    "Trains lightning-wrapped LodeRunner on single-timstep input and output of the "
+    "Trains LodeRunner architecture on single-timstep input and output of the "
     "lsc240420 per-material density fields."
 )
 parser = argparse.ArgumentParser(
@@ -275,13 +267,14 @@ parser.add_argument(
     help="Path to checkpoint to continue training from",
 )
 
+
 #############################################
 #############################################
 if __name__ == "__main__":
     #############################################
     # Process Inputs
     #############################################
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    #device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     args = parser.parse_args()
 
     # Study ID
@@ -326,21 +319,31 @@ if __name__ == "__main__":
     START = not CONTINUATION
     checkpoint = args.checkpoint
 
+    # Setup fabric
+    fabric = Fabric(
+        accelerator="gpu",
+        devices=Ngpus,
+        num_nodes=Knodes,
+        strategy="ddp"
+    )
+
+    fabric.launch()
+
     #############################################
     # Check Devices
     #############################################
-    print("\n")
-    print("Slurm & Device Information")
-    print("=========================================")
-    print("Slurm Job ID:", os.environ["SLURM_JOB_ID"])
-    print("Pytorch Cuda Available:", torch.cuda.is_available())
-    print("GPU ID:", os.environ["SLURM_JOB_GPUS"])
-    print("Number of System CPUs:", os.cpu_count())
-    print("Number of CPUs per GPU:", os.environ["SLURM_JOB_CPUS_PER_NODE"])
+    fabric.print("\n")
+    fabric.print("Slurm & Device Information")
+    fabric.print("=========================================")
+    fabric.print("Slurm Job ID:", os.environ["SLURM_JOB_ID"])
+    fabric.print("Pytorch Cuda Available:", torch.cuda.is_available())
+    fabric.print("GPU ID:", os.environ["SLURM_JOB_GPUS"])
+    fabric.print("Number of System CPUs:", os.cpu_count())
+    fabric.print("Number of CPUs per GPU:", os.environ["SLURM_JOB_CPUS_PER_NODE"])
 
-    print("\n")
-    print("Model Training Information")
-    print("=========================================")
+    fabric.print("\n")
+    fabric.print("Model Training Information")
+    fabric.print("=========================================")
 
     #############################################
     # Initialize Model
@@ -373,7 +376,7 @@ if __name__ == "__main__":
         ],
     )
 
-    print("Lode Runner parameters:", tr.count_torch_params(model, trainable=True))
+    fabric.print("Lode Runner parameters:", tr.count_torch_params(model, trainable=True))
     # Wait to move model to GPU until after the checkpoint load. Then
     # explicitly move model and optimizer state to GPU.
 
@@ -395,8 +398,41 @@ if __name__ == "__main__":
     # Use `reduction='none'` so loss on each sample in batch can be recorded.
     loss_fn = nn.MSELoss(reduction="none")
 
-    print("Model initialized...")
+    fabric.print("Model initialized.")
 
+    #############################################
+    # Load Model for Continuation
+    #############################################
+    if CONTINUATION:
+        starting_epoch = tr.load_model_and_optimizer_hdf5(model, optimizer, checkpoint)
+        fabric.print("Model state loaded for continuation.")
+    else:
+        starting_epoch = 0
+
+    #############################################
+    # LR scheduler
+    #############################################
+    # We will take a scheduler step every back-prop step so the number of steps
+    # is the number of previous batches.
+    if starting_epoch == 0:
+        last_epoch = -1
+    else:
+        last_epoch = train_batches * (starting_epoch - 1)
+    LRsched = CosineWithWarmupScheduler(
+        optimizer,
+        anchor_lr=anchor_lr,
+        terminal_steps=terminal_steps,
+        warmup_steps=warmup_steps,
+        num_cycles=num_cycles,
+        min_fraction=min_fraction,
+        last_epoch=last_epoch,
+    )
+
+    #############################################
+    # Setup Fabric
+    #############################################
+    model, optimizer = fabric.setup(model, optimizer)
+    
     #############################################
     # Initialize Data
     #############################################
@@ -415,13 +451,15 @@ if __name__ == "__main__":
         half_image=True,
     )
 
-    print("Datasets initialized...")
+    fabric.print("Datasets initialized...")
 
     #############################################
     # Training Loop
     #############################################
     # Train Model
-    print("Training Model . . .")
+    fabric.print("Training Model . . .")
+    starting_epoch += 1
+    ending_epoch = min(starting_epoch + cycle_epochs, total_epochs + 1)
 
     # Setup Dataloaders
     train_dataloader = tr.make_dataloader(
@@ -431,6 +469,7 @@ if __name__ == "__main__":
         num_workers=num_workers,
         prefetch_factor=prefetch_factor
     )
+    #train_dataloader = fabric.setup_dataloaders(train_dataloader)
     val_dataloader = tr.make_dataloader(
         val_dataset,
         batch_size,
@@ -438,92 +477,64 @@ if __name__ == "__main__":
         num_workers=num_workers,
         prefetch_factor=prefetch_factor
     )
-    print("DataLoaders initialized...")
+    #val_dataloader = fabric.setup_dataloaders(val_dataloader)
+    fabric.print("DataLoaders initialized...")
+    
+    for epochIDX in range(starting_epoch, ending_epoch):
+        # Time each epoch and print to stdout
+        startTime = time.time()
 
-    #############################################
-    # Lightning wrap
-    #############################################
-    # Get start_epoch from checkpoint filename
-    # Format: study{studyIDX:03d}_modelState_epoch{final_epoch:04d}.hdf5
-    if CONTINUATION:
-        starting_epoch = checkpoint.split('epoch')[1]
-        starting_epoch = int(start_epoch.split('.')[0])
-        last_epoch = train_batches * (starting_epoch - 1)
-    else:
-        last_epoch = -1
-        starting_epoch = 0
+        # Train an Epoch
+        tr.train_fabric_loderunner_epoch(
+            fabric,
+            training_data=train_dataloader,
+            validation_data=val_dataloader,
+            model=model,
+            optimizer=optimizer,
+            loss_fn=loss_fn,
+            LRsched=LRsched,
+            epochIDX=epochIDX,
+            train_per_val=train_per_val,
+            train_rcrd_filename=trn_rcrd_filename,
+            val_rcrd_filename=val_rcrd_filename,
+            verbose=False
+        )
 
-    in_vars = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7])
-    out_vars = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7])
-    L_loderunner = Lightning_LodeRunner(
-        model,
-        in_vars=in_vars,
-        out_vars=out_vars,
-        LRscheduler=CosineWithWarmupScheduler,
-        scheduler_params={
-            "warmup_steps": warmup_steps,
-            "anchor_lr": anchor_lr,
-            "terminal_steps": terminal_steps,
-            "num_cycles": num_cycles,
-            "min_fraction": min_fraction,
-            "last_epoch": last_epoch,
-        },
+        endTime = time.time()
+        epoch_time = (endTime - startTime) / 60
+
+        # Print Summary Results
+        fabric.print("Completed epoch " + str(epochIDX) + "...", flush=True)
+        fabric.print("Epoch time (minutes):", epoch_time, flush=True)
+
+        # Clear GPU memory after each epoch
+        #torch.cuda.empty_cache()
+
+    # Save Model Checkpoint
+    fabric.print("Saving model checkpoint at end of epoch " + str(epochIDX) + ". . .")
+
+    # Move the model back to CPU prior to saving to increase portability
+    model.to("cpu")
+    # Move optimizer state back to CPU
+    for state in optimizer.state.values():
+        for k, v in state.items():
+            if isinstance(v, torch.Tensor):
+                state[k] = v.to("cpu")
+
+    # Save model and optimizer state in hdf5
+    h5_name_str = "study{0:03d}_modelState_epoch{1:04d}.hdf5"
+    new_h5_path = os.path.join("./", h5_name_str.format(studyIDX, epochIDX))
+    tr.save_model_and_optimizer_hdf5(
+        model, optimizer, epochIDX, new_h5_path, compiled=False
     )
 
-    # Have to initialize the optimizer so custom load checkpoint works.
-    optimizers = L_loderunner.configure_optimizers()
-    if isinstance(optimizers, dict):
-        optimizer = optimizers["optimizer"]
-    else:
-        optimizer = optimizers
-
-    L_loderunner._optimizers = [optimizer]
-    
-    # Use lightning Trainer, Logger, and fit.
-    if CONTINUATION:
-        L_loderunner.load_h5_chkpt = checkpoint
-        L_loderunner.on_load_checkpoint()
-        starting_epoch = L_loderunner.current_epoch_override
-    else:
-        starting_epoch = 0
-
-    logger = L.CSVLogger(
-        save_dir='./',
-        prefix=f'{starting_epoch:03d}_',
-        flush_logs_every_n_steps=100,
-        )
-
-    cycle_epochs = min(cycle_epochs, total_epochs - starting_epoch + 1)
-    final_epoch = starting_epoch + cycle_epochs - 1
-    save_h5_path = f"./study{studyIDX:03d}_modelState_epoch{final_epoch:04d}.hdf5"
-    L_loderunner.save_h5_chkpt = save_h5_path
-
-    trainer = L.Trainer(
-        max_epochs=final_epoch + 1,
-        limit_train_batches=train_batches,
-        check_val_every_n_epoch=train_per_val,
-        limit_val_batches=val_batches,
-        accelerator='gpu',
-        devices=Ngpus,  # Number of GPUs per node
-        num_nodes=Knodes,
-        strategy='ddp',
-        enable_progress_bar=False,
-        logger=logger
-        )
-
-    trainer.fit(
-        L_loderunner,
-        train_dataloader=train_dataloader,
-        val_dataloader=val_dataloader,
-        )
-    
     #############################################
     # Continue if Necessary
     #############################################
-    FINISHED_TRAINING = final_epoch + 1 > total_epochs
+    FINISHED_TRAINING = epochIDX + 1 > total_epochs
     if not FINISHED_TRAINING:
         new_slurm_file = tr.continuation_setup(
-            save_h5_path, studyIDX, last_epoch=final_epoch
+            new_h5_path, studyIDX, last_epoch=epochIDX
         )
         os.system(f"sbatch {new_slurm_file}")
 

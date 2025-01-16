@@ -10,14 +10,16 @@
 # The following are one set of SBATCH options for the Venado GPU
 # partition. There are optional other constraints.
 
-#SBATCH --job-name=lr_s<studyIDX>_e0001
+#SBATCH --job-name=lr_s<studyIDX>_e<epochIDX>
 #SBATCH --account=w25_artimis_gh
 #SBATCH --partition=gpu
-#SBATCH --nodes=1
-#SBATCH --ntasks-per-node=288
+#SBATCH --nodes=<KNODES>
+#SBATCH --ntasks-per-node=<NGPUS>
+#SBATCH --gpus-per-node=<NGPUS>
+#SBATCH --cpus-per-task=72
 #SBATCH --time=16:00:00
-#SBATCH --output=study<studyIDX>_epoch0001.out
-#SBATCH --error=study<studyIDX>_epoch0001.err
+#SBATCH --output=study<studyIDX>_epoch<epochIDX>.out
+#SBATCH --error=study<studyIDX>_epoch<epochIDX>.err
 #SBATCH -vvv
 
 
@@ -37,12 +39,19 @@ conda activate <YOKE_TORCH_ENV>
 # Get start time
 export date00=`date`
 
-# Start GPU monitoring
-# nvidia-smi --loop 5 --query-gpu=timestamp,gpu_bus_id,memory.used,memory.free,memory.total --format=csv > nvidia_smi_epoch0001.out &
+# # Start GPU monitoring
+# nvidia-smi --loop 5 --query-gpu=timestamp,gpu_bus_id,memory.used,memory.free,memory.total --format=csv > nvidia_smi_epoch<epochIDX>.out &
 # nvpid=$!
 
+# Assumes running from inside harnesses directory
 # Start the Code
-python <train_script> @study<studyIDX>_START.input
+python <train_script> @<INPUTFILE>
+
+# torchrun --nproc_per_node=<NGPUS> --nnodes=<KNODES> --node_rank=0 \
+#          --master_addr="MASTER_NODE_IP" --master_port=12345 \
+#          <train_script> @<INPUTFILE>
+
+# srun python <train_script> @<INPUTFILE>
 #pypid=$!
 
 # Kill GPU monitoring after python process finishes
