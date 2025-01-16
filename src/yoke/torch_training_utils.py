@@ -493,7 +493,6 @@ def train_loderunner_fabric_datastep(
         model (loaded pytorch model): model to train
         optimizer (torch.optim): optimizer for training set
         loss_fn (torch.nn Loss Function): loss function for training set
-        device (torch.device): device index to select
 
     Returns:
         loss (): evaluated loss for the data sample
