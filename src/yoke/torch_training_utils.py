@@ -502,7 +502,7 @@ def train_loderunner_fabric_datastep(
     model.train()
 
     # Distribute with fabric
-    start_img, end_img, Dt = fabric.to_device(data)
+    start_img, end_img, Dt = data
 
     # For our first LodeRunner training on the lsc240420 dataset the input and
     # output prediction variables are fixed.
@@ -705,7 +705,7 @@ def eval_loderunner_fabric_datastep(
     model.eval()
 
     # Extract data
-    start_img, end_img, Dt = fabric.to_device(data)
+    start_img, end_img, Dt = data
 
     # For our first LodeRunner training on the lsc240420 dataset the input and
     # output prediction variables are fixed.
@@ -1031,8 +1031,6 @@ def train_simple_loderunner_epoch(
 
     """
     # Initialize things to save
-    trainbatches = len(training_data)
-    valbatches = len(validation_data)
     trainbatch_ID = 0
     valbatch_ID = 0
 
@@ -1150,8 +1148,6 @@ def train_LRsched_loderunner_epoch(
 
     """
     # Initialize things to save
-    trainbatches = len(training_data)
-    valbatches = len(validation_data)
     trainbatch_ID = 0
     valbatch_ID = 0
 
@@ -1273,8 +1269,6 @@ def train_fabric_loderunner_epoch(
 
     """
     # Initialize things to save
-    trainbatches = len(training_data)
-    valbatches = len(validation_data)
     trainbatch_ID = 0
     valbatch_ID = 0
 
