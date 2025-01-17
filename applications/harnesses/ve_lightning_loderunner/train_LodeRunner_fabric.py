@@ -516,7 +516,7 @@ if __name__ == "__main__":
         fabric.print("Epoch time (minutes):", epoch_time, flush=True)
 
         # Clear GPU memory after each epoch
-        #torch.cuda.empty_cache()
+        torch.cuda.empty_cache()
 
     # Save Model Checkpoint
     fabric.print("Saving model checkpoint at end of epoch " + str(epochIDX) + ". . .")
