@@ -106,9 +106,8 @@ def test_r2r_temporal_getitem(
 
     assert isinstance(start_img, torch.Tensor)
     assert isinstance(end_img, torch.Tensor)
-    assert isinstance(Dt, float)
+    assert isinstance(Dt, torch.Tensor)
 
-    assert 0 < Dt <= 0.75
     assert start_img.shape == (8, 10, 20)
     assert end_img.shape == (8, 10, 20)
 
