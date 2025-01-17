@@ -10,25 +10,38 @@
 # The following are one set of SBATCH options for the Venado GPU
 # partition. There are optional other constraints.
 
-#SBATCH --job-name=lr_s<studyIDX>_e0001
+#SBATCH --job-name=ddp_s<studyIDX>_e0001
 #SBATCH --account=w25_artimis_gh
 #SBATCH --partition=gpu
-#SBATCH --nodes=1
-#SBATCH --ntasks-per-node=288
-#SBATCH --time=16:00:00
+#SBATCH --nodes=<KNODES>
+#SBATCH --ntasks-per-node=<NGPUS>
+#SBATCH --gpus-per-node=<NGPUS>
+#SBATCH --cpus-per-task=70
+#SBATCH --time=4:00:00
 #SBATCH --output=study<studyIDX>_epoch0001.out
 #SBATCH --error=study<studyIDX>_epoch0001.err
 #SBATCH -vvv
 
 
+# Set the master node's address and port
+MASTER_ADDR=$(scontrol show hostnames $SLURM_JOB_NODELIST | head -n 1)
+MASTER_PORT=12345  # Choose an open port
+
 # Check available GPUs
 sinfo  -o "%P %.24G %N"
 srun /usr/bin/echo $CUDA_AVAILABLE_DEVICES
+
+# Debugging distributed data parallel
+export NCCL_DEBUG=INFO
+export PYTHONFAULTHANDLER=1
 
 # Load correct conda environment
 module load python/3.10-anaconda-2023.03
 source activate
 conda activate <YOKE_TORCH_ENV>
+
+# Calculate world size
+WORLD_SIZE=$((SLURM_NNODES * SLURM_NTASKS_PER_NODE))
 
 # Currently need to set an environment variable for MKL
 # threading. Believed to be related to Numpy.
@@ -37,17 +50,15 @@ conda activate <YOKE_TORCH_ENV>
 # Get start time
 export date00=`date`
 
-# Start GPU monitoring
-# nvidia-smi --loop 5 --query-gpu=timestamp,gpu_bus_id,memory.used,memory.free,memory.total --format=csv > nvidia_smi_epoch0001.out &
-# nvpid=$!
-
 # Start the Code
-python <train_script> @study<studyIDX>_START.input
-#pypid=$!
-
-# Kill GPU monitoring after python process finishes
-#wait $pypid
-#kill $nvpid
+# Run the training script using torchrun
+srun torchrun \
+    --nnodes=$SLURM_NNODES \
+    --nproc_per_node=$SLURM_NTASKS_PER_NODE \
+    --rdzv_id=$SLURM_JOB_ID \
+    --rdzv_backend=c10d \
+    --rdzv_endpoint=$MASTER_ADDR:$MASTER_PORT \
+    <train_script> @study<studyIDX>_START.input
 
 # Get end time and print to stdout
 export date01=`date`

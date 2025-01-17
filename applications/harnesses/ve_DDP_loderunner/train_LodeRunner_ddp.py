@@ -1,18 +1,3 @@
-"""Cosine LR scheduler training for LodeRunner on LSC material densities.
-
-We use a modified dataset that only loads half of an image. Reducing the memory
-required.
-
-This version of training uses only the lsc240420 data with only per-material
-density along with the velocity field. A single timestep is input, a single
-timestep is predicted. The number of input variables is fixed throughout
-training.
-
-"""
-
-#############################################
-# Packages
-#############################################
 import os
 import time
 import argparse
@@ -22,7 +7,6 @@ import torch.nn as nn
 from yoke.models.vit.swin.bomberman import LodeRunner
 from yoke.datasets.lsc_dataset import LSC_rho2rho_temporal_DataSet
 import yoke.torch_training_utils as tr
-from yoke.parallel_utils import LodeRunner_DataParallel
 from yoke.lr_schedulers import CosineWithWarmupScheduler
 
 
@@ -30,20 +14,30 @@ from yoke.lr_schedulers import CosineWithWarmupScheduler
 # Inputs
 #############################################
 descr_str = (
-    "Trains LodeRunner architecture on single-timstep input and output of the "
-    "lsc240420 per-material density fields."
+    "Uses DDP to train LodeRunner architecture on single-timstep input and output "
+    "of the lsc240420 per-material density fields."
 )
 parser = argparse.ArgumentParser(
-    prog="Initial LodeRunner Training", description=descr_str, fromfile_prefix_chars="@"
+    prog="DDP LodeRunner Training", description=descr_str, fromfile_prefix_chars="@"
 )
 
 #############################################
 # Data Parallelism
 #############################################
 parser.add_argument(
-    '--multigpu',
-    action='store_true',
-    help='Supports multiple GPUs on a single node.'
+    '--Ngpus',
+    action="store",
+    type=int,
+    default=1,
+    help='Number of GPUs per node.'
+)
+
+parser.add_argument(
+    '--Knodes',
+    action="store",
+    type=int,
+    default=1,
+    help='Number of nodes.'
 )
 
 #############################################
@@ -182,15 +176,6 @@ parser.add_argument(
           "NOTE: If set too big workers will swamp memory!!")
 )
 
-parser.add_argument(
-    "--prefetch_factor",
-    action="store",
-    type=int,
-    default=2,
-    help=("Number of batches each worker preloads ahead of time. "
-          "NOTE: If set too big preload will swamp memory!!")
-)
-
 #############################################
 # Epoch Parameters
 #############################################
@@ -263,18 +248,38 @@ parser.add_argument(
     default="None",
     help="Path to checkpoint to continue training from",
 )
+#############################################
+# Initialize Distributed Training
+#############################################
+import torch.distributed as dist
+from torch.nn.parallel import DistributedDataParallel as DDP
+
+def setup_distributed():
+    """Set up the distributed environment."""
+    rank = int(os.environ["RANK"])  # Global rank of the current process
+    world_size = int(os.environ["WORLD_SIZE"])  # Total number of processes
+    local_rank = int(os.environ["LOCAL_RANK"])  # GPU assigned to this process
+
+    dist.init_process_group("nccl", rank=rank, world_size=world_size)
+    torch.cuda.set_device(local_rank)  # Bind this process to the correct GPU
+    return rank, world_size, local_rank
+
 
 #############################################
+# Main Script
 #############################################
 if __name__ == "__main__":
     #############################################
     # Process Inputs
     #############################################
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     args = parser.parse_args()
 
     # Study ID
     studyIDX = args.studyIDX
+
+    # Resources
+    Ngpus = args.Ngpus
+    Knodes = args.Knodes
 
     # Data Paths
     train_filelist = args.FILELIST_DIR + args.train_filelist
@@ -296,7 +301,6 @@ if __name__ == "__main__":
     # possibly, pre-loaded onto GPUs. If the number of workers is large they
     # will swamp memory and jobs will fail.
     num_workers = args.num_workers
-    prefetch_factor = args.prefetch_factor
 
     # Epoch Parameters
     batch_size = args.batch_size
@@ -312,60 +316,35 @@ if __name__ == "__main__":
     checkpoint = args.checkpoint
 
     #############################################
-    # Check Devices
+    # Setup Distributed Environment
     #############################################
-    print("\n")
-    print("Slurm & Device Information")
-    print("=========================================")
-    print("Slurm Job ID:", os.environ["SLURM_JOB_ID"])
-    print("Pytorch Cuda Available:", torch.cuda.is_available())
-    print("GPU ID:", os.environ["SLURM_JOB_GPUS"])
-    print("Number of System CPUs:", os.cpu_count())
-    print("Number of CPUs per GPU:", os.environ["SLURM_JOB_CPUS_PER_NODE"])
-
-    print("\n")
-    print("Model Training Information")
-    print("=========================================")
-
+    rank, world_size, local_rank = setup_distributed()
+    device = torch.device(f"cuda:{local_rank}")
+    
+    # Only rank 0 logs information to avoid clutter
+    if rank == 0:
+        print("Distributed Training Setup:")
+        print(f"Rank: {rank}, Local Rank: {local_rank}, World Size: {world_size}")
+    
     #############################################
     # Initialize Model
     #############################################
     model = LodeRunner(
-        default_vars=['density_case',
-                      'density_cushion',
-                      'density_maincharge',
-                      'density_outside_air',
-                      'density_striker',
-                      'density_throw',
-                      'Uvelocity',
-                      'Wvelocity'],
+        default_vars=[
+            "density_case", "density_cushion", "density_maincharge",
+            "density_outside_air", "density_striker", "density_throw",
+            "Uvelocity", "Wvelocity"
+        ],
         image_size=(1120, 400),
-        patch_size=(10, 5),  # Since using half-image, halve patch size.
+        patch_size=(10, 5),
         embed_dim=embed_dim,
         emb_factor=2,
         num_heads=8,
         block_structure=block_structure,
-        window_sizes=[
-            (8, 8),
-            (8, 8),
-            (4, 4),
-            (2, 2),
-        ],
-        patch_merge_scales=[
-            (2, 2),
-            (2, 2),
-            (2, 2),
-        ],
-    )
+        window_sizes=[(8, 8), (8, 8), (4, 4), (2, 2)],
+        patch_merge_scales=[(2, 2), (2, 2), (2, 2)],
+    ).to(device)
 
-    print("Lode Runner parameters:", tr.count_torch_params(model, trainable=True))
-    # Wait to move model to GPU until after the checkpoint load. Then
-    # explicitly move model and optimizer state to GPU.
-
-    #############################################
-    # Initialize Optimizer
-    #############################################
-    # Using LR scheduler so optimizer LR is fixed and small.
     optimizer = torch.optim.AdamW(
         model.parameters(),
         lr=1e-6,
@@ -383,32 +362,22 @@ if __name__ == "__main__":
     print("Model initialized.")
 
     #############################################
-    # Load Model for Continuation
+    # Move Model to DistributedDataParallel
     #############################################
-    if CONTINUATION:
-        starting_epoch = tr.load_model_and_optimizer_hdf5(model, optimizer, checkpoint)
+    model = DDP(model, device_ids=[local_rank], output_device=local_rank)
+
+    #############################################
+    # Load Model for Continuation (Rank 0 only)
+    #############################################
+    if CONTINUATION and rank == 0:
+        starting_epoch = tr.load_model_and_optimizer_hdf5(model.module, optimizer, checkpoint)
         print("Model state loaded for continuation.")
     else:
         starting_epoch = 0
 
     #############################################
-    # Move model and optimizer state to GPU
+    # Learning Rate Scheduler
     #############################################
-    if args.multigpu:
-        model = LodeRunner_DataParallel(model)
-
-    model.to(device)
-
-    for state in optimizer.state.values():
-        for k, v in state.items():
-            if isinstance(v, torch.Tensor):
-                state[k] = v.to(device)
-
-    #############################################
-    # LR scheduler
-    #############################################
-    # We will take a scheduler step every back-prop step so the number of steps
-    # is the number of previous batches.
     if starting_epoch == 0:
         last_epoch = -1
     else:
@@ -422,58 +391,48 @@ if __name__ == "__main__":
         min_fraction=min_fraction,
         last_epoch=last_epoch,
     )
-    
+
     #############################################
-    # Initialize Data
+    # Data Initialization (Distributed Dataloader)
     #############################################
     train_dataset = LSC_rho2rho_temporal_DataSet(
         args.LSC_NPZ_DIR,
         file_prefix_list=train_filelist,
-        max_timeIDX_offset=2,  # This could be a variable.
+        max_timeIDX_offset=2,
         max_file_checks=10,
         half_image=True,
     )
     val_dataset = LSC_rho2rho_temporal_DataSet(
         args.LSC_NPZ_DIR,
         file_prefix_list=validation_filelist,
-        max_timeIDX_offset=2,  # This could be a variable.
+        max_timeIDX_offset=2,
         max_file_checks=10,
         half_image=True,
     )
 
-    print("Datasets initialized...")
+    train_dataloader = tr.make_distributed_dataloader(
+        train_dataset, batch_size, shuffle=True,
+        num_workers=num_workers, rank=rank, world_size=world_size
+    )
+    val_dataloader = tr.make_distributed_dataloader(
+        val_dataset, batch_size, shuffle=False,
+        num_workers=num_workers, rank=rank, world_size=world_size
+    )
 
     #############################################
-    # Training Loop
+    # Training Loop (Modified for DDP)
     #############################################
     # Train Model
     print("Training Model . . .")
     starting_epoch += 1
     ending_epoch = min(starting_epoch + cycle_epochs, total_epochs + 1)
 
-    # Setup Dataloaders
-    train_dataloader = tr.make_dataloader(
-        train_dataset,
-        batch_size,
-        train_batches,
-        num_workers=num_workers,
-        prefetch_factor=prefetch_factor
-    )
-    val_dataloader = tr.make_dataloader(
-        val_dataset,
-        batch_size,
-        val_batches,
-        num_workers=num_workers,
-        prefetch_factor=prefetch_factor
-    )
-    print("DataLoaders initialized...")
-    
     for epochIDX in range(starting_epoch, ending_epoch):
-        # Time each epoch and print to stdout
-        startTime = time.time()
+        train_sampler = train_dataloader.sampler
+        train_sampler.set_epoch(epochIDX)
 
-        # Train an Epoch
-        tr.train_LRsched_loderunner_epoch(
+        # Train and Validate
+        tr.train_DDP_loderunner_epoch(
             training_data=train_dataloader,
             validation_data=val_dataloader,
             model=model,
@@ -485,49 +444,36 @@ if __name__ == "__main__":
             train_rcrd_filename=trn_rcrd_filename,
             val_rcrd_filename=val_rcrd_filename,
             device=device,
-            verbose=False
+            rank=rank,
+            world_size=world_size,
+            verbose=False,
         )
 
-        endTime = time.time()
-        epoch_time = (endTime - startTime) / 60
+    # Save model (only rank 0)
+    if rank == 0:
+        model.to("cpu")
 
-        # Print Summary Results
-        print("Completed epoch " + str(epochIDX) + "...", flush=True)
-        print("Epoch time (minutes):", epoch_time, flush=True)
+        for state in optimizer.state.values():
+            for k, v in state.items():
+                if isinstance(v, torch.Tensor):
+                    state[k] = v.to("cpu")
 
-        # Clear GPU memory after each epoch
-        torch.cuda.empty_cache()
-
-    # Save Model Checkpoint
-    print("Saving model checkpoint at end of epoch " + str(epochIDX) + ". . .")
-
-    # Move the model back to CPU prior to saving to increase portability
-    model.to("cpu")
-    # Move optimizer state back to CPU
-    for state in optimizer.state.values():
-        for k, v in state.items():
-            if isinstance(v, torch.Tensor):
-                state[k] = v.to("cpu")
-
-    # Save model and optimizer state in hdf5
-    h5_name_str = "study{0:03d}_modelState_epoch{1:04d}.hdf5"
-    new_h5_path = os.path.join("./", h5_name_str.format(studyIDX, epochIDX))
-    tr.save_model_and_optimizer_hdf5(
-        model, optimizer, epochIDX, new_h5_path, compiled=False
-    )
-
-    #############################################
-    # Continue if Necessary
-    #############################################
-    FINISHED_TRAINING = epochIDX + 1 > total_epochs
-    if not FINISHED_TRAINING:
-        new_slurm_file = tr.continuation_setup(
-            new_h5_path, studyIDX, last_epoch=epochIDX
+        # Save model and optimizer state in hdf5
+        h5_name_str = "study{0:03d}_modelState_epoch{1:04d}.hdf5"
+        new_h5_path = os.path.join("./", h5_name_str.format(studyIDX, epochIDX))
+        tr.save_model_and_optimizer_hdf5(
+            model.module, optimizer, epochIDX, new_h5_path, compiled=False
         )
-        os.system(f"sbatch {new_slurm_file}")
 
-    ###########################################################################
-    # For array prediction, especially large array prediction, the network is
-    # not evaluated on the test set after training. This is performed using
-    # the *evaluation* module as a separate post-analysis step.
-    ###########################################################################
+        #############################################
+        # Continue if Necessary
+        #############################################
+        FINISHED_TRAINING = epochIDX + 1 > total_epochs
+        if not FINISHED_TRAINING:
+            new_slurm_file = tr.continuation_setup(
+                new_h5_path, studyIDX, last_epoch=epochIDX
+            )
+            os.system(f"sbatch {new_slurm_file}")
+
+    # Cleanup
+    dist.destroy_process_group()
