@@ -709,7 +709,7 @@ class LSC_rho2rho_temporal_DataSet(Dataset):
         end_img = torch.tensor(np.stack(end_img_list, axis=0)).to(torch.float32)
 
         # Get the time offset
-        Dt = 0.25 * (endIDX - startIDX)
+        Dt = torch.tensor(0.25 * (endIDX - startIDX), dtype=torch.float32)
 
         # Close the npzs
         start_npz.close()
