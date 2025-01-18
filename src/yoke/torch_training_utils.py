@@ -4,6 +4,7 @@
 # Packages
 ####################################
 import os
+from contextlib import nullcontext
 import time
 import h5py
 import numpy as np

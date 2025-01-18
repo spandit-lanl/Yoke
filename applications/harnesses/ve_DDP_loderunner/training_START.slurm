@@ -25,7 +25,8 @@
 
 # Set the master node's address and port
 MASTER_ADDR=$(scontrol show hostnames $SLURM_JOB_NODELIST | head -n 1)
-MASTER_PORT=12345  # Choose an open port
+MASTER_PORT=$(shuf -i 1024-65535 -n 1)  # Choose a random port
+export MASTER_ADDR MASTER_PORT
 
 # Check available GPUs
 sinfo  -o "%P %.24G %N"
