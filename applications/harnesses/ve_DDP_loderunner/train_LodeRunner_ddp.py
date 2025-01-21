@@ -260,6 +260,11 @@ def setup_distributed():
     world_size = int(os.environ["WORLD_SIZE"])  # Total number of processes
     local_rank = int(os.environ["LOCAL_RANK"])  # GPU assigned to this process
 
+    print("Within setup_distributed:")
+    print("DDP setup, rank:", rank)
+    print("DDP setup, local_rank:", local_rank)
+    print("DDP setup, world_size:", world_size)
+    
     dist.init_process_group("nccl", rank=rank, world_size=world_size)
     torch.cuda.set_device(local_rank)  # Bind this process to the correct GPU
     return rank, world_size, local_rank

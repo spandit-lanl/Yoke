@@ -33,16 +33,35 @@ sinfo  -o "%P %.24G %N"
 srun /usr/bin/echo $CUDA_AVAILABLE_DEVICES
 
 # Debugging distributed data parallel
-export NCCL_DEBUG=INFO
+export NCCL_DEBUG=WARN
+export NCCL_DEBUG_SUBSYS=ALL
 export PYTHONFAULTHANDLER=1
 
 # Load correct conda environment
+#module load cudatoolkit
 module load python/3.10-anaconda-2023.03
 source activate
 conda activate <YOKE_TORCH_ENV>
 
 # Calculate world size
 WORLD_SIZE=$((SLURM_NNODES * SLURM_NTASKS_PER_NODE))
+export WORLD_SIZE
+
+# Echo environment variables
+echo "SLURM_NNNODES:"
+echo $SLURM_NNODES
+
+echo "SLURM_NTASKS_PER_NODE:"
+echo $SLURM_NTASKS_PER_NODE
+
+echo "SLURM_JOB_ID:"
+echo $SLURM_JOB_ID
+
+echo "MASTER_ADDR:"
+echo $MASTER_ADDR
+
+echo "MASTER_PORT:"
+echo $MASTER_PORT
 
 # Currently need to set an environment variable for MKL
 # threading. Believed to be related to Numpy.
@@ -53,7 +72,7 @@ export date00=`date`
 
 # Start the Code
 # Run the training script using torchrun
-srun torchrun \
+torchrun \
     --nnodes=$SLURM_NNODES \
     --nproc_per_node=$SLURM_NTASKS_PER_NODE \
     --rdzv_id=$SLURM_JOB_ID \
