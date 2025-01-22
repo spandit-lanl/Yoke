@@ -3,6 +3,8 @@ import time
 import argparse
 import torch
 import torch.nn as nn
+import torch.distributed as dist
+from torch.nn.parallel import DistributedDataParallel as DDP
 
 from yoke.models.vit.swin.bomberman import LodeRunner
 from yoke.datasets.lsc_dataset import LSC_rho2rho_temporal_DataSet
@@ -19,25 +21,6 @@ descr_str = (
 )
 parser = argparse.ArgumentParser(
     prog="DDP LodeRunner Training", description=descr_str, fromfile_prefix_chars="@"
-)
-
-#############################################
-# Data Parallelism
-#############################################
-parser.add_argument(
-    '--Ngpus',
-    action="store",
-    type=int,
-    default=1,
-    help='Number of GPUs per node.'
-)
-
-parser.add_argument(
-    '--Knodes',
-    action="store",
-    type=int,
-    default=1,
-    help='Number of nodes.'
 )
 
 #############################################
@@ -164,7 +147,7 @@ parser.add_argument(
 #---------------------
 
 parser.add_argument(
-    "--batch_size", action="store", type=int, default=64, help="Batch size"
+    "--batch_size", action="store", type=int, default=64, help="Per-GPU Batch size"
 )
 
 parser.add_argument(
@@ -248,43 +231,52 @@ parser.add_argument(
     default="None",
     help="Path to checkpoint to continue training from",
 )
-#############################################
-# Initialize Distributed Training
-#############################################
-import torch.distributed as dist
-from torch.nn.parallel import DistributedDataParallel as DDP
+
 
 def setup_distributed():
-    """Set up the distributed environment."""
-    rank = int(os.environ["RANK"])  # Global rank of the current process
-    world_size = int(os.environ["WORLD_SIZE"])  # Total number of processes
-    local_rank = int(os.environ["LOCAL_RANK"])  # GPU assigned to this process
-
-    print("Within setup_distributed:")
-    print("DDP setup, rank:", rank)
-    print("DDP setup, local_rank:", local_rank)
-    print("DDP setup, world_size:", world_size)
+    # ----- 1) Basic setup & environment variables -----
+    # Rely on Slurm variables: SLURM_PROCID, SLURM_NTASKS, SLURM_LOCALID, etc.
+    rank = int(os.environ["SLURM_PROCID"])       # global rank
+    world_size = int(os.environ["SLURM_NTASKS"]) # total number of processes
+    local_rank = int(os.environ["SLURM_LOCALID"])# local rank (GPU index on this node)
     
-    dist.init_process_group("nccl", rank=rank, world_size=world_size)
-    torch.cuda.set_device(local_rank)  # Bind this process to the correct GPU
-    return rank, world_size, local_rank
+    master_addr = os.environ["MASTER_ADDR"]
+    master_port = os.environ["MASTER_PORT"]
+
+    print("============================", flush=True)
+    print(f"[Rank {rank}] DDP setup, master_addr: {master_addr}", flush=True)
+    print(f"[Rank {rank}] DDP setup, master_port: {master_port}", flush=True)
+    print(f"[Rank {rank}] DDP setup, rank: {rank}", flush=True)
+    print(f"[Rank {rank}] DDP setup, local_rank: {local_rank}", flush=True)
+    print(f"[Rank {rank}] DDP setup, world_size: {world_size}", flush=True)
+    print("============================", flush=True)
+
+    # ----- 2) Set the current GPU device for this process -----
+    torch.cuda.set_device(local_rank)
+    device = torch.device(f"cuda:{local_rank}")
+    
+    # ----- 3) Initialize the process group -----
+    dist.init_process_group(
+        backend="nccl",
+        init_method=f"tcp://{master_addr}:{master_port}",
+        world_size=world_size,
+        rank=rank
+    )
+
+    return rank, world_size, local_rank, device
 
 
-#############################################
-# Main Script
-#############################################
-if __name__ == "__main__":
+def cleanup_distributed():
+    # ----- 8) Clean up (optional) -----
+    dist.destroy_process_group()
+
+
+def main(args, rank, world_size, local_rank, device):
     #############################################
     # Process Inputs
     #############################################
-    args = parser.parse_args()
-
     # Study ID
     studyIDX = args.studyIDX
-
-    # Resources
-    Ngpus = args.Ngpus
-    Knodes = args.Knodes
 
     # Data Paths
     train_filelist = args.FILELIST_DIR + args.train_filelist
@@ -321,17 +313,6 @@ if __name__ == "__main__":
     checkpoint = args.checkpoint
 
     #############################################
-    # Setup Distributed Environment
-    #############################################
-    rank, world_size, local_rank = setup_distributed()
-    device = torch.device(f"cuda:{local_rank}")
-    
-    # Only rank 0 logs information to avoid clutter
-    if rank == 0:
-        print("Distributed Training Setup:")
-        print(f"Rank: {rank}, Local Rank: {local_rank}, World Size: {world_size}")
-    
-    #############################################
     # Initialize Model
     #############################################
     model = LodeRunner(
@@ -348,7 +329,7 @@ if __name__ == "__main__":
         block_structure=block_structure,
         window_sizes=[(8, 8), (8, 8), (4, 4), (2, 2)],
         patch_merge_scales=[(2, 2), (2, 2), (2, 2)],
-    ).to(device)
+    )
 
     optimizer = torch.optim.AdamW(
         model.parameters(),
@@ -367,18 +348,25 @@ if __name__ == "__main__":
     print("Model initialized.")
 
     #############################################
-    # Move Model to DistributedDataParallel
-    #############################################
-    model = DDP(model, device_ids=[local_rank], output_device=local_rank)
-
-    #############################################
     # Load Model for Continuation (Rank 0 only)
     #############################################
+    # Wait to move model to GPU until after the checkpoint load. Then
+    # explicitly move model and optimizer state to GPU.
     if CONTINUATION and rank == 0:
-        starting_epoch = tr.load_model_and_optimizer_hdf5(model.module, optimizer, checkpoint)
+        starting_epoch = tr.load_model_and_optimizer_hdf5(
+            model.module,
+            optimizer,
+            checkpoint,
+        )
         print("Model state loaded for continuation.")
     else:
         starting_epoch = 0
+
+    #############################################
+    # Move Model to DistributedDataParallel
+    #############################################
+    model.to(device)
+    model = DDP(model, device_ids=[local_rank], output_device=local_rank)
 
     #############################################
     # Learning Rate Scheduler
@@ -387,6 +375,7 @@ if __name__ == "__main__":
         last_epoch = -1
     else:
         last_epoch = train_batches * (starting_epoch - 1)
+        
     LRsched = CosineWithWarmupScheduler(
         optimizer,
         anchor_lr=anchor_lr,
@@ -415,6 +404,7 @@ if __name__ == "__main__":
         half_image=True,
     )
 
+    # NOTE: For DDP the batch_size is the per-GPU batch_size!!!
     train_dataloader = tr.make_distributed_dataloader(
         train_dataset, batch_size, shuffle=True,
         num_workers=num_workers, rank=rank, world_size=world_size
@@ -480,5 +470,12 @@ if __name__ == "__main__":
             )
             os.system(f"sbatch {new_slurm_file}")
 
-    # Cleanup
-    dist.destroy_process_group()
+
+if __name__ == "__main__":
+    args = parser.parse_args()
+    
+    rank, world_size, local_rank, device = setup_distributed()
+    
+    main(args, rank, world_size, local_rank, device)
+
+    cleanup_distributed()
