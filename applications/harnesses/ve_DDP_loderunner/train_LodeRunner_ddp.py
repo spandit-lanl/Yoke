@@ -353,8 +353,9 @@ def main(args, rank, world_size, local_rank, device):
     # Wait to move model to GPU until after the checkpoint load. Then
     # explicitly move model and optimizer state to GPU.
     if CONTINUATION and rank == 0:
+        # At this point the model is not DDP-wrapped so we do not pass `model.module`
         starting_epoch = tr.load_model_and_optimizer_hdf5(
-            model.module,
+            model,
             optimizer,
             checkpoint,
         )
