@@ -186,15 +186,6 @@ parser.add_argument(
           "NOTE: If set too big workers will swamp memory!!")
 )
 
-parser.add_argument(
-    "--prefetch_factor",
-    action="store",
-    type=int,
-    default=2,
-    help=("Number of batches each worker preloads ahead of time. "
-          "NOTE: If set too big preload will swamp memory!!")
-)
-
 #############################################
 # Epoch Parameters
 #############################################
@@ -305,7 +296,6 @@ if __name__ == "__main__":
     # possibly, pre-loaded onto GPUs. If the number of workers is large they
     # will swamp memory and jobs will fail.
     num_workers = args.num_workers
-    prefetch_factor = args.prefetch_factor
 
     # Epoch Parameters
     batch_size = args.batch_size
@@ -321,10 +311,10 @@ if __name__ == "__main__":
     checkpoint = args.checkpoint
 
     # Examine the SLURM environment a bit...
-    env = SLURMEnvironment()
+    # env = SLURMEnvironment()
 
-    print("SLURM detected:", env.detect())
-    print("Job name:", env.job_name())
+    # print("SLURM detected:", env.detect())
+    # print("Job name:", env.job_name())
     
     # Setup fabric
     torch.set_float32_matmul_precision('medium')  # or `high`
@@ -475,7 +465,7 @@ if __name__ == "__main__":
         batch_size,
         train_batches,
         num_workers=num_workers,
-        prefetch_factor=prefetch_factor
+        prefetch_factor=2
     )
     train_dataloader = fabric.setup_dataloaders(train_dataloader)
     val_dataloader = tr.make_dataloader(
@@ -483,7 +473,7 @@ if __name__ == "__main__":
         batch_size,
         val_batches,
         num_workers=num_workers,
-        prefetch_factor=prefetch_factor
+        prefetch_factor=2
     )
     val_dataloader = fabric.setup_dataloaders(val_dataloader)
     fabric.print("DataLoaders initialized...")

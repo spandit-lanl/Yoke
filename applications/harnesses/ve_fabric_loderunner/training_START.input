@@ -35,14 +35,12 @@ lsc240420_prefixes_test_10pct.txt
 <BATCH_SIZE>
 --num_workers
 <NUM_WORKERS>
---prefetch_factor
-<PREFETCH_FACTOR>
 --Ngpus
 <NGPUS>
 --Knodes
 <KNODES>
 --total_epochs
-20
+40
 --cycle_epochs
 10
 --train_batches
