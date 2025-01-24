@@ -645,6 +645,10 @@ def train_loderunner_fabric_datastep(
     fabric.backward(loss.mean())
     optimizer.step()
 
+    # Gather per-sample loss across all processes
+    global_per_sample_loss = fabric.all_gather(per_sample_loss)
+    global_per_sample_loss = global_per_sample_loss.flatten()
+
     # Delete created tensors to free memory
     del in_vars
     del out_vars
@@ -652,7 +656,7 @@ def train_loderunner_fabric_datastep(
     # Clear GPU memory after each deallocation
     torch.cuda.empty_cache()
 
-    return end_img, pred_img, per_sample_loss
+    return end_img, pred_img, global_per_sample_loss
 
 
 ####################################
@@ -900,6 +904,10 @@ def eval_loderunner_fabric_datastep(
     loss = loss_fn(pred_img, end_img)
     per_sample_loss = loss.mean(dim=[1, 2, 3])  # Shape: (batch_size,)
 
+    # Gather per-sample loss across all processes
+    global_per_sample_loss = fabric.all_gather(per_sample_loss)
+    global_per_sample_loss = global_per_sample_loss.flatten()
+
     # Delete created tensors to free memory
     del in_vars
     del out_vars
@@ -907,7 +915,7 @@ def eval_loderunner_fabric_datastep(
     # Clear GPU memory after each deallocation
     torch.cuda.empty_cache()
     
-    return end_img, pred_img, per_sample_loss
+    return end_img, pred_img, global_per_sample_loss
 
 
 ######################################
@@ -1409,7 +1417,6 @@ def train_DDP_loderunner_epoch(
     device: torch.device,
     rank: int,
     world_size: int,
-    verbose: bool = False,
 ):
     """Function to complete a training epoch on the LodeRunner architecture with
     fixed channels in the input and output. Training and validation information
@@ -1430,7 +1437,6 @@ def train_DDP_loderunner_epoch(
         device (torch.device): device index to select
         rank (int): rank of process
         world_size (int): number of total processes
-        verbose (boolean): Flag to print diagnostic output.
 
     """
     # Initialize things to save
@@ -1505,7 +1511,6 @@ def train_fabric_loderunner_epoch(
     train_per_val,
     train_rcrd_filename: str,
     val_rcrd_filename: str,
-    verbose: bool=False,
 ):
     """Function to complete a training epoch on the LodeRunner architecture with
     fixed channels in the input and output. Training and validation information
@@ -1525,7 +1530,6 @@ def train_fabric_loderunner_epoch(
         train_per_val (int): Number of Training epochs between each validation
         train_rcrd_filename (str): Name of CSV file to save training sample stats to
         val_rcrd_filename (str): Name of CSV file to save validation sample stats to
-        verbose (boolean): Flag to print diagnostic output.
 
     """
     # Initialize things to save
@@ -1538,40 +1542,21 @@ def train_fabric_loderunner_epoch(
         for traindata in training_data:
             trainbatch_ID += 1
 
-            # Time each epoch and print to stdout
-            if verbose:
-                startTime = time.time()
-
             truth, pred, train_losses = train_loderunner_fabric_datastep(
                 fabric, traindata, model, optimizer, loss_fn,
             )
 
             # Increment the learning-rate scheduler
             LRsched.step()
-                
-            if verbose:
-                endTime = time.time()
-                batch_time = endTime - startTime
-                print(f"Batch {trainbatch_ID} time (seconds): {batch_time:.5f}",
-                      flush=True)
 
-            if verbose:
-                startTime = time.time()
-
-            # Stack loss record and write using numpy
-            batch_records = np.column_stack([
-                np.full(len(train_losses), epochIDX),
-                np.full(len(train_losses), trainbatch_ID),
-                train_losses.detach().cpu().numpy().flatten()
-            ])
-
-            np.savetxt(train_rcrd_file, batch_records, fmt="%d, %d, %.8f")
-
-            if verbose:
-                endTime = time.time()
-                record_time = endTime - startTime
-                print(f"Batch {trainbatch_ID} record time: {record_time:.5f}",
-                      flush=True)
+            if fabric.global_rank == 0:
+                # Stack loss record and write using numpy
+                batch_records = np.column_stack([
+                    np.full(len(train_losses), epochIDX),
+                    np.full(len(train_losses), trainbatch_ID),
+                    train_losses.detach().cpu().numpy().flatten()
+                ])
+                np.savetxt(train_rcrd_file, batch_records, fmt="%d, %d, %.8f")
 
             # Explictly delete produced tensors to free memory
             del truth
@@ -1593,14 +1578,14 @@ def train_fabric_loderunner_epoch(
                         fabric, valdata, model, loss_fn,
                     )
 
-                    # Stack loss record and write using numpy
-                    batch_records = np.column_stack([
-                        np.full(len(val_losses), epochIDX),
-                        np.full(len(val_losses), valbatch_ID),
-                        val_losses.detach().cpu().numpy().flatten()
-                    ])
-
-                    np.savetxt(val_rcrd_file, batch_records, fmt="%d, %d, %.8f")
+                    if fabric.global_rank == 0:
+                        # Stack loss record and write using numpy
+                        batch_records = np.column_stack([
+                            np.full(len(val_losses), epochIDX),
+                            np.full(len(val_losses), valbatch_ID),
+                            val_losses.detach().cpu().numpy().flatten()
+                        ])
+                        np.savetxt(val_rcrd_file, batch_records, fmt="%d, %d, %.8f")
 
                     # Explictly delete produced tensors to free memory
                     del truth

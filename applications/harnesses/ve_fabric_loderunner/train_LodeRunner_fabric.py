@@ -401,7 +401,7 @@ if __name__ == "__main__":
     #############################################
     # Load Model for Continuation
     #############################################
-    if CONTINUATION:
+    if CONTINUATION and fabric.global_rank == 0::
         starting_epoch = tr.load_model_and_optimizer_hdf5(model, optimizer, checkpoint)
         fabric.print("Model state loaded for continuation.")
     else:
@@ -477,10 +477,16 @@ if __name__ == "__main__":
     )
     val_dataloader = fabric.setup_dataloaders(val_dataloader)
     fabric.print("DataLoaders initialized...")
-    
+
+    TIME_EPOCH = True
     for epochIDX in range(starting_epoch, ending_epoch):
-        # Time each epoch and print to stdout
-        startTime = time.time()
+        # For timing epochs
+        if TIME_EPOCH:
+            # Synchronize before starting the timer
+            fabric.barrier()  # Ensure that all nodes sync
+            torch.cuda.synchronize()  # Ensure GPUs on each node sync
+            # Time each epoch and print to stdout
+            startTime = time.time()
 
         # Train an Epoch
         tr.train_fabric_loderunner_epoch(
@@ -494,50 +500,55 @@ if __name__ == "__main__":
             epochIDX=epochIDX,
             train_per_val=train_per_val,
             train_rcrd_filename=trn_rcrd_filename,
-            val_rcrd_filename=val_rcrd_filename,
-            verbose=False
+            val_rcrd_filename=val_rcrd_filename
         )
 
-        endTime = time.time()
+        if TIME_EPOCH:
+            # Synchronize before starting the timer
+            torch.cuda.synchronize()  # Ensure GPUs on each node sync
+            fabric.barrier()  # Ensure that all nodes sync
+            # Time each epoch and print to stdout
+            endTime = time.time()
+
         epoch_time = (endTime - startTime) / 60
 
         # Print Summary Results
-        fabric.print("Completed epoch " + str(epochIDX) + "...", flush=True)
-        fabric.print("Epoch time (minutes):", epoch_time, flush=True)
+        fabric.print(f"Completed epoch {epochIDX}...")
+        fabric.print(f"Epoch time (minutes): {epoch_time:.2f}")
 
         # Clear GPU memory after each epoch
         torch.cuda.empty_cache()
 
     # Save Model Checkpoint
-    fabric.print("Saving model checkpoint at end of epoch " + str(epochIDX) + ". . .")
-
     # Move the model back to CPU prior to saving to increase portability
-    model.to("cpu")
-    # Move optimizer state back to CPU
-    for state in optimizer.state.values():
-        for k, v in state.items():
-            if isinstance(v, torch.Tensor):
-                state[k] = v.to("cpu")
+    fabric.print(f"Saving model checkpoint at end of epoch {epochIDX}...")
+    if fabric.global_rank == 0:
+        model.to("cpu")
+        # Move optimizer state back to CPU
+        for state in optimizer.state.values():
+            for k, v in state.items():
+                if isinstance(v, torch.Tensor):
+                    state[k] = v.to("cpu")
 
-    # Save model and optimizer state in hdf5
-    h5_name_str = "study{0:03d}_modelState_epoch{1:04d}.hdf5"
-    new_h5_path = os.path.join("./", h5_name_str.format(studyIDX, epochIDX))
-    tr.save_model_and_optimizer_hdf5(
-        model, optimizer, epochIDX, new_h5_path, compiled=False
-    )
-
-    #############################################
-    # Continue if Necessary
-    #############################################
-    FINISHED_TRAINING = epochIDX + 1 > total_epochs
-    if not FINISHED_TRAINING:
-        new_slurm_file = tr.continuation_setup(
-            new_h5_path, studyIDX, last_epoch=epochIDX
+        # Save model and optimizer state in hdf5
+        h5_name_str = "study{0:03d}_modelState_epoch{1:04d}.hdf5"
+        new_h5_path = os.path.join("./", h5_name_str.format(studyIDX, epochIDX))
+        tr.save_model_and_optimizer_hdf5(
+            model.module, optimizer, epochIDX, new_h5_path, compiled=False
         )
-        os.system(f"sbatch {new_slurm_file}")
 
-    ###########################################################################
-    # For array prediction, especially large array prediction, the network is
-    # not evaluated on the test set after training. This is performed using
-    # the *evaluation* module as a separate post-analysis step.
-    ###########################################################################
+        #############################################
+        # Continue if Necessary
+        #############################################
+        FINISHED_TRAINING = epochIDX + 1 > total_epochs
+        if not FINISHED_TRAINING:
+            new_slurm_file = tr.continuation_setup(
+                new_h5_path, studyIDX, last_epoch=epochIDX
+            )
+            os.system(f"sbatch {new_slurm_file}")
+
+        ###########################################################################
+        # For array prediction, especially large array prediction, the network is
+        # not evaluated on the test set after training. This is performed using
+        # the *evaluation* module as a separate post-analysis step.
+        ###########################################################################

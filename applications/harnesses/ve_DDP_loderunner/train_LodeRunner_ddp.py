@@ -423,9 +423,18 @@ def main(args, rank, world_size, local_rank, device):
     starting_epoch += 1
     ending_epoch = min(starting_epoch + cycle_epochs, total_epochs + 1)
 
+    TIME_EPOCH = True
     for epochIDX in range(starting_epoch, ending_epoch):
         train_sampler = train_dataloader.sampler
         train_sampler.set_epoch(epochIDX)
+
+        # For timing epochs
+        if TIME_EPOCH:
+            # Synchronize before starting the timer
+            dist.barrier()  # Ensure that all nodes sync
+            torch.cuda.synchronize(device)  # Ensure GPUs on each node sync
+            # Time each epoch and print to stdout
+            startTime = time.time()
 
         # Train and Validate
         tr.train_DDP_loderunner_epoch(
@@ -441,9 +450,22 @@ def main(args, rank, world_size, local_rank, device):
             val_rcrd_filename=val_rcrd_filename,
             device=device,
             rank=rank,
-            world_size=world_size,
-            verbose=False,
+            world_size=world_size
         )
+
+        if TIME_EPOCH:
+            # Synchronize before starting the timer
+            torch.cuda.synchronize(device)  # Ensure GPUs on each node sync
+            dist.barrier()  # Ensure that all nodes sync
+            # Time each epoch and print to stdout
+            endTime = time.time()
+
+        epoch_time = (endTime - startTime) / 60
+
+        # Print Summary Results
+        if rank == 0:
+            print(f"Completed epoch {epochIDX}...", flush=True)
+            print(f"Epoch time (minutes): {epoch_time:.2f}", flush=True)
 
     # Save model (only rank 0)
     if rank == 0:
