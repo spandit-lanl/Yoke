@@ -401,7 +401,7 @@ if __name__ == "__main__":
     #############################################
     # Load Model for Continuation
     #############################################
-    if CONTINUATION and fabric.global_rank == 0::
+    if CONTINUATION and fabric.global_rank == 0:
         starting_epoch = tr.load_model_and_optimizer_hdf5(model, optimizer, checkpoint)
         fabric.print("Model state loaded for continuation.")
     else:
