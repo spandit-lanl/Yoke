@@ -1561,7 +1561,7 @@ def train_fabric_loderunner_epoch(
             # Explictly delete produced tensors to free memory
             del truth
             del pred
-            del train_loss
+            del train_losses
 
             # Clear GPU memory after each batch
             torch.cuda.empty_cache()
@@ -1590,7 +1590,7 @@ def train_fabric_loderunner_epoch(
                     # Explictly delete produced tensors to free memory
                     del truth
                     del pred
-                    del val_loss
+                    del val_losses
 
                     # Clear GPU memory after each batch
                     torch.cuda.empty_cache()
