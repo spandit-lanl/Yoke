@@ -1532,9 +1532,6 @@ def train_fabric_loderunner_epoch(
     trainbatch_ID = 0
     valbatch_ID = 0
 
-    train_batchsize = training_data.batch_size
-    val_batchsize = validation_data.batch_size
-
     train_rcrd_filename = train_rcrd_filename.replace("<epochIDX>", f"{epochIDX:04d}")
     # Train on all training samples
     with open(train_rcrd_filename, "a") as train_rcrd_file:
@@ -1545,7 +1542,7 @@ def train_fabric_loderunner_epoch(
             if verbose:
                 startTime = time.time()
 
-            truth, pred, train_loss = train_loderunner_fabric_datastep(
+            truth, pred, train_losses = train_loderunner_fabric_datastep(
                 fabric, traindata, model, optimizer, loss_fn,
             )
 
@@ -1563,9 +1560,9 @@ def train_fabric_loderunner_epoch(
 
             # Stack loss record and write using numpy
             batch_records = np.column_stack([
-                np.full(train_batchsize, epochIDX),
-                np.full(train_batchsize, trainbatch_ID),
-                train_loss.detach().cpu().numpy().flatten()
+                np.full(len(train_losses), epochIDX),
+                np.full(len(train_losses), trainbatch_ID),
+                train_losses.detach().cpu().numpy().flatten()
             ])
 
             np.savetxt(train_rcrd_file, batch_records, fmt="%d, %d, %.8f")
@@ -1592,15 +1589,15 @@ def train_fabric_loderunner_epoch(
             with torch.no_grad():
                 for valdata in validation_data:
                     valbatch_ID += 1
-                    truth, pred, val_loss = eval_loderunner_fabric_datastep(
+                    truth, pred, val_losses = eval_loderunner_fabric_datastep(
                         fabric, valdata, model, loss_fn,
                     )
 
                     # Stack loss record and write using numpy
                     batch_records = np.column_stack([
-                        np.full(val_batchsize, epochIDX),
-                        np.full(val_batchsize, valbatch_ID),
-                        val_loss.detach().cpu().numpy().flatten()
+                        np.full(len(val_losses), epochIDX),
+                        np.full(len(val_losses), valbatch_ID),
+                        val_losses.detach().cpu().numpy().flatten()
                     ])
 
                     np.savetxt(val_rcrd_file, batch_records, fmt="%d, %d, %.8f")
