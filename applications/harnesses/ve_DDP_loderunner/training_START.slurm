@@ -17,7 +17,7 @@
 #SBATCH --ntasks-per-node=<NGPUS>
 #SBATCH --gpus-per-node=<NGPUS>
 #SBATCH --cpus-per-task=70
-#SBATCH --time=4:00:00
+#SBATCH --time=16:00:00
 #SBATCH --output=study<studyIDX>_epoch0001.out
 #SBATCH --error=study<studyIDX>_epoch0001.err
 #SBATCH -vvv

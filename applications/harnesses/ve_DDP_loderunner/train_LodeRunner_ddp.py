@@ -24,6 +24,25 @@ parser = argparse.ArgumentParser(
 )
 
 #############################################
+# Data Parallelism
+#############################################
+parser.add_argument(
+    '--Ngpus',
+    action="store",
+    type=int,
+    default=1,
+    help='Number of GPUs per node.'
+)
+
+parser.add_argument(
+    '--Knodes',
+    action="store",
+    type=int,
+    default=1,
+    help='Number of nodes.'
+)
+
+#############################################
 # Learning Problem
 #############################################
 parser.add_argument(
@@ -278,6 +297,10 @@ def main(args, rank, world_size, local_rank, device):
     # Study ID
     studyIDX = args.studyIDX
 
+    # Resources
+    Ngpus = args.Ngpus
+    Knodes = args.Knodes
+
     # Data Paths
     train_filelist = args.FILELIST_DIR + args.train_filelist
     validation_filelist = args.FILELIST_DIR + args.validation_filelist
@@ -376,10 +399,14 @@ def main(args, rank, world_size, local_rank, device):
         last_epoch = -1
     else:
         last_epoch = train_batches * (starting_epoch - 1)
-        
+
+    # Scale the anchor LR by global batchsize
+    lr_scale = np.sqrt(float(Ngpus) * float(Knodes) * float(batch_size))
+    # 16 was original LR study global batch size
+    ddp_anchor_lr = anchor_lr * lr_scale / 16.0
     LRsched = CosineWithWarmupScheduler(
         optimizer,
-        anchor_lr=anchor_lr,
+        anchor_lr=ddp_anchor_lr,
         terminal_steps=terminal_steps,
         warmup_steps=warmup_steps,
         num_cycles=num_cycles,
