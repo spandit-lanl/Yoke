@@ -1,22 +1,14 @@
-"""Use Fabric to do DDP training with LodeRunner.
-
-"""
-
-#############################################
-# Packages
-#############################################
 import os
 import time
 import argparse
 import torch
 import torch.nn as nn
-from lightning.fabric import Fabric
-from lightning.pytorch.plugins.environments import SLURMEnvironment
+import torch.distributed as dist
+from torch.nn.parallel import DistributedDataParallel as DDP
 
 from yoke.models.vit.swin.bomberman import LodeRunner
 from yoke.datasets.lsc_dataset import LSC_rho2rho_temporal_DataSet
 import yoke.torch_training_utils as tr
-from yoke.parallel_utils import LodeRunner_DataParallel
 from yoke.lr_schedulers import CosineWithWarmupScheduler
 
 
@@ -24,30 +16,11 @@ from yoke.lr_schedulers import CosineWithWarmupScheduler
 # Inputs
 #############################################
 descr_str = (
-    "Trains LodeRunner architecture on single-timstep input and output of the "
-    "lsc240420 per-material density fields."
+    "Uses DDP to train LodeRunner architecture on single-timstep input and output "
+    "of the lsc240420 per-material density fields."
 )
 parser = argparse.ArgumentParser(
-    prog="Initial LodeRunner Training", description=descr_str, fromfile_prefix_chars="@"
-)
-
-#############################################
-# Data Parallelism
-#############################################
-parser.add_argument(
-    '--Ngpus',
-    action="store",
-    type=int,
-    default=1,
-    help='Number of GPUs per node.'
-)
-
-parser.add_argument(
-    '--Knodes',
-    action="store",
-    type=int,
-    default=1,
-    help='Number of nodes.'
+    prog="DDP LodeRunner Training", description=descr_str, fromfile_prefix_chars="@"
 )
 
 #############################################
@@ -174,7 +147,7 @@ parser.add_argument(
 #---------------------
 
 parser.add_argument(
-    "--batch_size", action="store", type=int, default=64, help="Batch size"
+    "--batch_size", action="store", type=int, default=64, help="Per-GPU Batch size"
 )
 
 parser.add_argument(
@@ -184,15 +157,6 @@ parser.add_argument(
     default=4,
     help=("Number of processes simultaneously loading batches of data. "
           "NOTE: If set too big workers will swamp memory!!")
-)
-
-parser.add_argument(
-    "--prefetch_factor",
-    action="store",
-    type=int,
-    default=2,
-    help=("Number of batches each worker preloads ahead of time. "
-          "NOTE: If set too big preload will swamp memory!!")
 )
 
 #############################################
@@ -269,21 +233,50 @@ parser.add_argument(
 )
 
 
-#############################################
-#############################################
-if __name__ == "__main__":
+def setup_distributed():
+    # ----- 1) Basic setup & environment variables -----
+    # Rely on Slurm variables: SLURM_PROCID, SLURM_NTASKS, SLURM_LOCALID, etc.
+    rank = int(os.environ["SLURM_PROCID"])       # global rank
+    world_size = int(os.environ["SLURM_NTASKS"]) # total number of processes
+    local_rank = int(os.environ["SLURM_LOCALID"])# local rank (GPU index on this node)
+    
+    master_addr = os.environ["MASTER_ADDR"]
+    master_port = os.environ["MASTER_PORT"]
+
+    print("============================", flush=True)
+    print(f"[Rank {rank}] DDP setup, master_addr: {master_addr}", flush=True)
+    print(f"[Rank {rank}] DDP setup, master_port: {master_port}", flush=True)
+    print(f"[Rank {rank}] DDP setup, rank: {rank}", flush=True)
+    print(f"[Rank {rank}] DDP setup, local_rank: {local_rank}", flush=True)
+    print(f"[Rank {rank}] DDP setup, world_size: {world_size}", flush=True)
+    print("============================", flush=True)
+
+    # ----- 2) Set the current GPU device for this process -----
+    torch.cuda.set_device(local_rank)
+    device = torch.device(f"cuda:{local_rank}")
+    
+    # ----- 3) Initialize the process group -----
+    dist.init_process_group(
+        backend="nccl",
+        init_method=f"tcp://{master_addr}:{master_port}",
+        world_size=world_size,
+        rank=rank
+    )
+
+    return rank, world_size, local_rank, device
+
+
+def cleanup_distributed():
+    # ----- 8) Clean up (optional) -----
+    dist.destroy_process_group()
+
+
+def main(args, rank, world_size, local_rank, device):
     #############################################
     # Process Inputs
     #############################################
-    #device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    args = parser.parse_args()
-
     # Study ID
     studyIDX = args.studyIDX
-
-    # Resources
-    Ngpus = args.Ngpus
-    Knodes = args.Knodes
 
     # Data Paths
     train_filelist = args.FILELIST_DIR + args.train_filelist
@@ -305,7 +298,6 @@ if __name__ == "__main__":
     # possibly, pre-loaded onto GPUs. If the number of workers is large they
     # will swamp memory and jobs will fail.
     num_workers = args.num_workers
-    prefetch_factor = args.prefetch_factor
 
     # Epoch Parameters
     batch_size = args.batch_size
@@ -320,78 +312,25 @@ if __name__ == "__main__":
     START = not CONTINUATION
     checkpoint = args.checkpoint
 
-    # Examine the SLURM environment a bit...
-    env = SLURMEnvironment()
-
-    print("SLURM detected:", env.detect())
-    print("Job name:", env.job_name())
-    
-    # Setup fabric
-    torch.set_float32_matmul_precision('medium')  # or `high`
-    fabric = Fabric(
-        accelerator="gpu",
-        devices=Ngpus,
-        num_nodes=Knodes,
-        strategy="ddp"
-    )
-
-    fabric.launch()
-
-    #############################################
-    # Check Devices
-    #############################################
-    fabric.print("\n")
-    fabric.print("Slurm & Device Information")
-    fabric.print("=========================================")
-    fabric.print("Slurm Job ID:", os.environ["SLURM_JOB_ID"])
-    fabric.print("Pytorch Cuda Available:", torch.cuda.is_available())
-    fabric.print("GPU ID:", os.environ["SLURM_JOB_GPUS"])
-    fabric.print("Number of System CPUs:", os.cpu_count())
-    fabric.print("Number of CPUs per GPU:", os.environ["SLURM_JOB_CPUS_PER_NODE"])
-
-    fabric.print("\n")
-    fabric.print("Model Training Information")
-    fabric.print("=========================================")
-
     #############################################
     # Initialize Model
     #############################################
     model = LodeRunner(
-        default_vars=['density_case',
-                      'density_cushion',
-                      'density_maincharge',
-                      'density_outside_air',
-                      'density_striker',
-                      'density_throw',
-                      'Uvelocity',
-                      'Wvelocity'],
+        default_vars=[
+            "density_case", "density_cushion", "density_maincharge",
+            "density_outside_air", "density_striker", "density_throw",
+            "Uvelocity", "Wvelocity"
+        ],
         image_size=(1120, 400),
-        patch_size=(10, 5),  # Since using half-image, halve patch size.
+        patch_size=(10, 5),
         embed_dim=embed_dim,
         emb_factor=2,
         num_heads=8,
         block_structure=block_structure,
-        window_sizes=[
-            (8, 8),
-            (8, 8),
-            (4, 4),
-            (2, 2),
-        ],
-        patch_merge_scales=[
-            (2, 2),
-            (2, 2),
-            (2, 2),
-        ],
+        window_sizes=[(8, 8), (8, 8), (4, 4), (2, 2)],
+        patch_merge_scales=[(2, 2), (2, 2), (2, 2)],
     )
 
-    fabric.print("Lode Runner parameters:", tr.count_torch_params(model, trainable=True))
-    # Wait to move model to GPU until after the checkpoint load. Then
-    # explicitly move model and optimizer state to GPU.
-
-    #############################################
-    # Initialize Optimizer
-    #############################################
-    # Using LR scheduler so optimizer LR is fixed and small.
     optimizer = torch.optim.AdamW(
         model.parameters(),
         lr=1e-6,
@@ -406,26 +345,38 @@ if __name__ == "__main__":
     # Use `reduction='none'` so loss on each sample in batch can be recorded.
     loss_fn = nn.MSELoss(reduction="none")
 
-    fabric.print("Model initialized.")
+    print("Model initialized.")
 
     #############################################
-    # Load Model for Continuation
+    # Load Model for Continuation (Rank 0 only)
     #############################################
-    if CONTINUATION:
-        starting_epoch = tr.load_model_and_optimizer_hdf5(model, optimizer, checkpoint)
-        fabric.print("Model state loaded for continuation.")
+    # Wait to move model to GPU until after the checkpoint load. Then
+    # explicitly move model and optimizer state to GPU.
+    if CONTINUATION and rank == 0:
+        # At this point the model is not DDP-wrapped so we do not pass `model.module`
+        starting_epoch = tr.load_model_and_optimizer_hdf5(
+            model,
+            optimizer,
+            checkpoint,
+        )
+        print("Model state loaded for continuation.")
     else:
         starting_epoch = 0
 
     #############################################
-    # LR scheduler
+    # Move Model to DistributedDataParallel
     #############################################
-    # We will take a scheduler step every back-prop step so the number of steps
-    # is the number of previous batches.
+    model.to(device)
+    model = DDP(model, device_ids=[local_rank], output_device=local_rank)
+
+    #############################################
+    # Learning Rate Scheduler
+    #############################################
     if starting_epoch == 0:
         last_epoch = -1
     else:
         last_epoch = train_batches * (starting_epoch - 1)
+        
     LRsched = CosineWithWarmupScheduler(
         optimizer,
         anchor_lr=anchor_lr,
@@ -437,64 +388,56 @@ if __name__ == "__main__":
     )
 
     #############################################
-    # Setup Fabric
-    #############################################
-    model, optimizer = fabric.setup(model, optimizer)
-    
-    #############################################
-    # Initialize Data
+    # Data Initialization (Distributed Dataloader)
     #############################################
     train_dataset = LSC_rho2rho_temporal_DataSet(
         args.LSC_NPZ_DIR,
         file_prefix_list=train_filelist,
-        max_timeIDX_offset=2,  # This could be a variable.
+        max_timeIDX_offset=2,
         max_file_checks=10,
         half_image=True,
     )
     val_dataset = LSC_rho2rho_temporal_DataSet(
         args.LSC_NPZ_DIR,
         file_prefix_list=validation_filelist,
-        max_timeIDX_offset=2,  # This could be a variable.
+        max_timeIDX_offset=2,
         max_file_checks=10,
         half_image=True,
     )
 
-    fabric.print("Datasets initialized...")
+    # NOTE: For DDP the batch_size is the per-GPU batch_size!!!
+    train_dataloader = tr.make_distributed_dataloader(
+        train_dataset, batch_size, shuffle=True,
+        num_workers=num_workers, rank=rank, world_size=world_size
+    )
+    val_dataloader = tr.make_distributed_dataloader(
+        val_dataset, batch_size, shuffle=False,
+        num_workers=num_workers, rank=rank, world_size=world_size
+    )
 
     #############################################
-    # Training Loop
+    # Training Loop (Modified for DDP)
     #############################################
     # Train Model
-    fabric.print("Training Model . . .")
+    print("Training Model . . .")
     starting_epoch += 1
     ending_epoch = min(starting_epoch + cycle_epochs, total_epochs + 1)
 
-    # Setup Dataloaders
-    train_dataloader = tr.make_dataloader(
-        train_dataset,
-        batch_size,
-        train_batches,
-        num_workers=num_workers,
-        prefetch_factor=prefetch_factor
-    )
-    train_dataloader = fabric.setup_dataloaders(train_dataloader)
-    val_dataloader = tr.make_dataloader(
-        val_dataset,
-        batch_size,
-        val_batches,
-        num_workers=num_workers,
-        prefetch_factor=prefetch_factor
-    )
-    val_dataloader = fabric.setup_dataloaders(val_dataloader)
-    fabric.print("DataLoaders initialized...")
-    
+    TIME_EPOCH = True
     for epochIDX in range(starting_epoch, ending_epoch):
-        # Time each epoch and print to stdout
-        startTime = time.time()
+        train_sampler = train_dataloader.sampler
+        train_sampler.set_epoch(epochIDX)
 
-        # Train an Epoch
-        tr.train_fabric_loderunner_epoch(
-            fabric,
+        # For timing epochs
+        if TIME_EPOCH:
+            # Synchronize before starting the timer
+            dist.barrier()  # Ensure that all nodes sync
+            torch.cuda.synchronize(device)  # Ensure GPUs on each node sync
+            # Time each epoch and print to stdout
+            startTime = time.time()
+
+        # Train and Validate
+        tr.train_DDP_loderunner_epoch(
             training_data=train_dataloader,
             validation_data=val_dataloader,
             model=model,
@@ -505,49 +448,57 @@ if __name__ == "__main__":
             train_per_val=train_per_val,
             train_rcrd_filename=trn_rcrd_filename,
             val_rcrd_filename=val_rcrd_filename,
-            verbose=False
+            device=device,
+            rank=rank,
+            world_size=world_size
         )
 
-        endTime = time.time()
+        if TIME_EPOCH:
+            # Synchronize before starting the timer
+            torch.cuda.synchronize(device)  # Ensure GPUs on each node sync
+            dist.barrier()  # Ensure that all nodes sync
+            # Time each epoch and print to stdout
+            endTime = time.time()
+
         epoch_time = (endTime - startTime) / 60
 
         # Print Summary Results
-        fabric.print("Completed epoch " + str(epochIDX) + "...", flush=True)
-        fabric.print("Epoch time (minutes):", epoch_time, flush=True)
+        if rank == 0:
+            print(f"Completed epoch {epochIDX}...", flush=True)
+            print(f"Epoch time (minutes): {epoch_time:.2f}", flush=True)
 
-        # Clear GPU memory after each epoch
-        torch.cuda.empty_cache()
+    # Save model (only rank 0)
+    if rank == 0:
+        model.to("cpu")
 
-    # Save Model Checkpoint
-    fabric.print("Saving model checkpoint at end of epoch " + str(epochIDX) + ". . .")
+        for state in optimizer.state.values():
+            for k, v in state.items():
+                if isinstance(v, torch.Tensor):
+                    state[k] = v.to("cpu")
 
-    # Move the model back to CPU prior to saving to increase portability
-    model.to("cpu")
-    # Move optimizer state back to CPU
-    for state in optimizer.state.values():
-        for k, v in state.items():
-            if isinstance(v, torch.Tensor):
-                state[k] = v.to("cpu")
-
-    # Save model and optimizer state in hdf5
-    h5_name_str = "study{0:03d}_modelState_epoch{1:04d}.hdf5"
-    new_h5_path = os.path.join("./", h5_name_str.format(studyIDX, epochIDX))
-    tr.save_model_and_optimizer_hdf5(
-        model, optimizer, epochIDX, new_h5_path, compiled=False
-    )
-
-    #############################################
-    # Continue if Necessary
-    #############################################
-    FINISHED_TRAINING = epochIDX + 1 > total_epochs
-    if not FINISHED_TRAINING:
-        new_slurm_file = tr.continuation_setup(
-            new_h5_path, studyIDX, last_epoch=epochIDX
+        # Save model and optimizer state in hdf5
+        h5_name_str = "study{0:03d}_modelState_epoch{1:04d}.hdf5"
+        new_h5_path = os.path.join("./", h5_name_str.format(studyIDX, epochIDX))
+        tr.save_model_and_optimizer_hdf5(
+            model.module, optimizer, epochIDX, new_h5_path, compiled=False
         )
-        os.system(f"sbatch {new_slurm_file}")
 
-    ###########################################################################
-    # For array prediction, especially large array prediction, the network is
-    # not evaluated on the test set after training. This is performed using
-    # the *evaluation* module as a separate post-analysis step.
-    ###########################################################################
+        #############################################
+        # Continue if Necessary
+        #############################################
+        FINISHED_TRAINING = epochIDX + 1 > total_epochs
+        if not FINISHED_TRAINING:
+            new_slurm_file = tr.continuation_setup(
+                new_h5_path, studyIDX, last_epoch=epochIDX
+            )
+            os.system(f"sbatch {new_slurm_file}")
+
+
+if __name__ == "__main__":
+    args = parser.parse_args()
+    
+    rank, world_size, local_rank, device = setup_distributed()
+    
+    main(args, rank, world_size, local_rank, device)
+
+    cleanup_distributed()
