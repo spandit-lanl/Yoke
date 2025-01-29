@@ -17,14 +17,16 @@ for models developed under the **ArtIMis: Multi-physics/Multi-material
 Applications** and **ASC-PEM-EADA(Enabling Agile Design and Assessment)**
 projects.
 
-The Yoke module is divided into submodules, installed in a python environment:
+The YOKE module is divided into submodules, installed in a python environment:
 
+- datasets/
+- models/
+- metrics/
 - torch_training_utils.py
-- datasets
-- models
-- metrics
+- lr_schedulers.py
+- parallel_utils.py
 
-Helper utilities and examples:
+Helper utilities and examples are under `applications`:
 
 - harnesses
 - makefilelists.py
@@ -41,33 +43,36 @@ specified through command-line arguments passed to the programs in
 Installation:
 -------------
 
-The python environment is specified through a Anaconda *environment
-files*. There are two in this repo...
+The python environment is specified through the `pyproject.toml`
+file. YOKE is meant to be installed using `flit` in a minimal python
+environment.
 
-- `sample_environment.yml`
-- `osx_environment.yml`
-
-On OSX you should be able to edit the `osx_environment.yml` to replace
-the `<YYMMDD>` token with the relevant date. Then...
+Setup your base environment and activate it (we use conda):
 
 ```
->> conda env create -f osx_environment.yml
->> conda activate yoke_OSX_<YYMMDD>
+>> conda create -n <yoke_env_name> python=3.9 flit
+>> conda activate <yoke_env_name>
 ```
 
-For **developers**, you can install a **development version** of your
-`yoke` checkout using...
+For **developers**, you can install a **development version** of
+`YOKE` checkout using...
 
 ```
 >> flit install --user --symlink
 ```
 
-For **non-developers**, you can install `yoke` in your own environment
-using...
+For **non-developers**, you can install `YOKE` using...
 
 ```
 >> flit install
 ```
+
+> **WARNING**
+> 
+> This install process does not guarantee that PyTorch is installed to
+> utilize your GPUs. If you want to ensure that PyTorch is installed to
+> make optimal use of your hardware we suggest manually installing
+> `torch` prior to installing `YOKE` with `flit`.
 
 Testing:
 --------
@@ -83,7 +88,7 @@ To run the tests use...
 Linting:
 --------
 
-The `ruff` linter is used in `Yoke` to enforce coding and formatting
+The `ruff` linter is used in `YOKE` to enforce coding and formatting
 standards. To run the linter do
 
 ```
@@ -94,7 +99,8 @@ standards. To run the linter do
 You can make `ruff` fix automatic standards using
 
 ```
->> ruff check fix
+>> ruff check --fix
+>> ruff check --preview --fix
 ```
 
 Use `ruff` to then check your code formatting and show you what would
@@ -104,15 +110,3 @@ be adjusted, then fix formatting
 >> ruff format --check --diff
 >> ruff format
 ```
-
-
-Create Environment Specification:
----------------------------------
-
-Conda environment file was created using
-
-```
->> conda env export > environment.yml
-```
-
-and then removing the final hashes from each package specification.
