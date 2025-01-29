@@ -1,6 +1,7 @@
 import os
 import time
 import argparse
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.distributed as dist
