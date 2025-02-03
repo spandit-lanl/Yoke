@@ -181,11 +181,11 @@ def load_model_and_optimizer_hdf5(model, optimizer, filepath):
 # Make Dataloader form DataSet
 ####################################
 def make_distributed_dataloader(
-        dataset, 
-        batch_size, 
-        shuffle, 
-        num_workers, 
-        rank, 
+        dataset,
+        batch_size,
+        shuffle,
+        num_workers,
+        rank,
         world_size
     ) -> torch.utils.data.DataLoader:
     """Creates a DataLoader with a DistributedSampler.
@@ -203,12 +203,12 @@ def make_distributed_dataloader(
 
     """
     sampler = DistributedSampler(
-        dataset, 
-        num_replicas=world_size, 
-        rank=rank, 
+        dataset,
+        num_replicas=world_size,
+        rank=rank,
         shuffle=shuffle,
         )
-    
+
     return torch.utils.data.DataLoader(
         dataset,
         batch_size=batch_size,
@@ -447,7 +447,9 @@ def train_loderunner_datastep(
         model,
         optimizer,
         loss_fn,
-        device: torch.device):
+        device: torch.device,
+        channel_map: list
+        ):
     """A training step for which the data is of multi-input, multi-output type.
 
     This is currently a proto-type function to get the LodeRunner architecture
@@ -469,7 +471,7 @@ def train_loderunner_datastep(
 
     # Extract data
     (start_img, end_img, Dt) = data
-    
+
     start_img = start_img.to(device, non_blocking=True)
     Dt = Dt.to(torch.float32).to(device, non_blocking=True)
     end_img = end_img.to(device, non_blocking=True)
@@ -488,9 +490,9 @@ def train_loderunner_datastep(
     #            'density_throw',
     #            'Uvelocity',
     #            'Wvelocity']
-    in_vars = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7]).to(device, non_blocking=True)
-    out_vars = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7]).to(device, non_blocking=True)
-    
+    in_vars = torch.tensor(channel_map).to(device, non_blocking=True)
+    out_vars = torch.tensor(channel_map).to(device, non_blocking=True)
+
     # Perform a forward pass
     # NOTE: If training on GPU model should have already been moved to GPU
     # prior to initalizing optimizer.
@@ -528,14 +530,14 @@ def train_DDP_loderunner_datastep(
     world_size: int,
 ):
     """A DDP-compatible training step for multi-input, multi-output data.
-    
+
         Args:
         data (tuple): tuple of model input and corresponding ground truth
         model (loaded pytorch model): model to train
         optimizer (torch.optim): optimizer for training set
         loss_fn (torch.nn Loss Function): loss function for training set
         device (torch.device): device index to select
-        rank (int): Rank of device 
+        rank (int): Rank of device
         world_size (int): Number of total DDP processes
 
     """
@@ -627,7 +629,7 @@ def train_loderunner_fabric_datastep(
     in_vars = fabric.to_device(in_vars)
     out_vars = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7])
     out_vars = fabric.to_device(out_vars)
-    
+
     # Perform a forward pass
     # NOTE: If training on GPU model should have already been moved to GPU
     # prior to initalizing optimizer.
@@ -724,7 +726,8 @@ def eval_loderunner_datastep(
         data: tuple,
         model,
         loss_fn,
-        device: torch.device):
+        device: torch.device,
+        channel_map: list):
     """An evaluation step for which the data is of multi-input, multi-output type.
 
     This is currently a proto-type function to get the LodeRunner architecture
@@ -764,9 +767,9 @@ def eval_loderunner_datastep(
     #            'density_throw',
     #            'Uvelocity',
     #            'Wvelocity']
-    in_vars = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7]).to(device, non_blocking=True)
-    out_vars = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7]).to(device, non_blocking=True)
-    
+    in_vars = torch.tensor(channel_map).to(device, non_blocking=True)
+    out_vars = torch.tensor(channel_map).to(device, non_blocking=True)
+
     # Perform a forward pass
     # NOTE: If training on GPU model should have already been moved to GPU
     # prior to initalizing optimizer.
@@ -785,7 +788,7 @@ def eval_loderunner_datastep(
 
     # Clear GPU memory after each deallocation
     torch.cuda.empty_cache()
-    
+
     return end_img, pred_img, per_sample_loss
 
 
@@ -798,7 +801,7 @@ def eval_DDP_loderunner_datastep(
     world_size: int,
 ):
     """A DDP-compatible evaluation step.
-    
+
     Args:
         data (tuple): tuple of model input and corresponding ground truth
         model (loaded pytorch model): model to train
@@ -891,7 +894,7 @@ def eval_loderunner_fabric_datastep(
     in_vars = fabric.to_device(in_vars)
     out_vars = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7])
     out_vars = fabric.to_device(out_vars)
-    
+
     # Perform a forward pass
     # NOTE: If training on GPU model should have already been moved to GPU
     # prior to initalizing optimizer.
@@ -914,7 +917,7 @@ def eval_loderunner_fabric_datastep(
 
     # Clear GPU memory after each deallocation
     torch.cuda.empty_cache()
-    
+
     return end_img, pred_img, global_per_sample_loss
 
 
@@ -1170,6 +1173,7 @@ def train_array_csv_epoch(
 
 
 def train_simple_loderunner_epoch(
+    channel_map: list,
     training_data,
     validation_data,
     model,
@@ -1218,7 +1222,7 @@ def train_simple_loderunner_epoch(
                 startTime = time.time()
 
             truth, pred, train_loss = train_loderunner_datastep(
-                traindata, model, optimizer, loss_fn, device
+                traindata, model, optimizer, loss_fn, device, channel_map
             )
 
             if verbose:
@@ -1262,7 +1266,7 @@ def train_simple_loderunner_epoch(
                 for valdata in validation_data:
                     valbatch_ID += 1
                     truth, pred, val_loss = eval_loderunner_datastep(
-                        valdata, model, loss_fn, device
+                        valdata, model, loss_fn, device, channel_map
                     )
 
                     # Stack loss record and write using numpy
@@ -1282,8 +1286,9 @@ def train_simple_loderunner_epoch(
                     # Clear GPU memory after each batch
                     torch.cuda.empty_cache()
 
-                    
+
 def train_LRsched_loderunner_epoch(
+    channel_map: list,
     training_data,
     validation_data,
     model,
@@ -1335,12 +1340,12 @@ def train_LRsched_loderunner_epoch(
                 startTime = time.time()
 
             truth, pred, train_loss = train_loderunner_datastep(
-                traindata, model, optimizer, loss_fn, device
+                traindata, model, optimizer, loss_fn, device, channel_map
             )
 
             # Increment the learning-rate scheduler
             LRsched.step()
-                
+
             if verbose:
                 endTime = time.time()
                 batch_time = endTime - startTime
@@ -1372,7 +1377,7 @@ def train_LRsched_loderunner_epoch(
 
             # Clear GPU memory after each batch
             torch.cuda.empty_cache()
-            
+
     # Evaluate on all validation samples
     if epochIDX % train_per_val == 0:
         print("Validating...", epochIDX)
@@ -1382,7 +1387,7 @@ def train_LRsched_loderunner_epoch(
                 for valdata in validation_data:
                     valbatch_ID += 1
                     truth, pred, val_loss = eval_loderunner_datastep(
-                        valdata, model, loss_fn, device
+                        valdata, model, loss_fn, device, channel_map
                     )
 
                     # Stack loss record and write using numpy
@@ -1565,7 +1570,7 @@ def train_fabric_loderunner_epoch(
 
             # Clear GPU memory after each batch
             torch.cuda.empty_cache()
-            
+
     # Evaluate on all validation samples
     if epochIDX % train_per_val == 0:
         print("Validating...", epochIDX)
