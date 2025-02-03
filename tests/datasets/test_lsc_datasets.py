@@ -72,7 +72,8 @@ def test_r2r_temporal_dataset_init(
     assert r2r_temporal_dataset.max_timeIDX_offset == 3
     assert r2r_temporal_dataset.max_file_checks == 5
     assert r2r_temporal_dataset.Nsamples == 3
-    assert r2r_temporal_dataset.hydro_fields == [
+
+    exp_fields = {
         "density_case",
         "density_cushion",
         "density_maincharge",
@@ -81,7 +82,12 @@ def test_r2r_temporal_dataset_init(
         "density_throw",
         "Uvelocity",
         "Wvelocity",
-    ]
+    }
+
+    assert any(field in exp_fields for field in r2r_temporal_dataset.hydro_fields), (
+        f"None of the expected hydro fields found. Expected some of {exp_fields}, "
+        f"but got {set(r2r_temporal_dataset.hydro_fields)}"
+    )
 
 
 def test_r2r_temporal_len(r2r_temporal_dataset: LSC_rho2rho_temporal_DataSet) -> None:

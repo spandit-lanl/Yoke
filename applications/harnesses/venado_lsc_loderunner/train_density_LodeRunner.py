@@ -15,12 +15,15 @@ import time
 import argparse
 import torch
 import torch.nn as nn
+import random
+import logging
+import numpy as np
 
 from yoke.models.vit.swin.bomberman import LodeRunner
 from yoke.datasets.lsc_dataset import LSC_rho2rho_temporal_DataSet
 import yoke.torch_training_utils as tr
 from yoke.parallel_utils import LodeRunner_DataParallel
-            
+import yoke.utils.logger as yl
 
 #############################################
 # Inputs
@@ -31,6 +34,17 @@ descr_str = (
 )
 parser = argparse.ArgumentParser(
     prog="Initial LodeRunner Training", description=descr_str, fromfile_prefix_chars="@"
+)
+
+#############################################
+# Channel Subset Study Param
+#############################################
+parser.add_argument(
+    "--channel_map_size",
+    action="store",
+    type=int,
+    default=0,
+    help="Index into the list of tuple of input and output channel subsets",
 )
 
 #############################################
@@ -234,12 +248,33 @@ parser.add_argument(
     help="Path to checkpoint to continue training from",
 )
 
-#############################################
-#############################################
+
+############################################
+# Select n channles randomly for an epoch
+############################################
+def rand_channel_map(
+        max_number_channels: int,
+        num_subchannels: int,
+        seed: int = None,
+        _seed_set: list[bool] = [False]
+) -> list:
+    """Choose list of subsampled channels."""
+    if num_subchannels > max_number_channels:
+        raise ValueError("Subsampled channels cannot be greater than maximum channels.")
+
+    if seed is not None and not _seed_set[0]:
+        random.seed(seed)
+        _seed_set[0] = True  # Mark the seed as set
+
+    return sorted(random.sample(range(0, N), n))
+
+
 if __name__ == "__main__":
     #############################################
     # Process Inputs
     #############################################
+    yl.configure_logger("yoke_logger", level=logging.INFO)
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     args = parser.parse_args()
 
@@ -254,7 +289,7 @@ if __name__ == "__main__":
     # Model Parameters
     embed_dim = args.embed_dim
     block_structure = tuple(args.block_structure)
-    
+
     # Training Parameters
     initial_learningrate = args.init_learnrate
     LRepoch_per_step = args.LRepoch_per_step
@@ -298,15 +333,19 @@ if __name__ == "__main__":
     #############################################
     # Initialize Model
     #############################################
+    hydro_fields =[
+        'density_case',
+        'density_cushion',
+        'density_maincharge',
+        'density_outside_air',
+        'density_striker',
+        'density_throw',
+        'Uvelocity',
+        'Wvelocity',
+    ]
+
     model = LodeRunner(
-        default_vars=['density_case',
-                      'density_cushion',
-                      'density_maincharge',
-                      'density_outside_air',
-                      'density_striker',
-                      'density_throw',
-                      'Uvelocity',
-                      'Wvelocity'],
+        default_vars=hydro_fields,
         image_size=(1120, 800),
         patch_size=(10, 10),
         embed_dim=embed_dim,
@@ -380,30 +419,6 @@ if __name__ == "__main__":
         gamma=LRdecay,
         last_epoch=starting_epoch - 1,
     )
-    
-    #############################################
-    # Initialize Data
-    #############################################
-    train_dataset = LSC_rho2rho_temporal_DataSet(
-        args.LSC_NPZ_DIR,
-        file_prefix_list=train_filelist,
-        max_timeIDX_offset=2,  # This could be a variable.
-        max_file_checks=10,
-    )
-    val_dataset = LSC_rho2rho_temporal_DataSet(
-        args.LSC_NPZ_DIR,
-        file_prefix_list=validation_filelist,
-        max_timeIDX_offset=2,  # This could be a variable.
-        max_file_checks=10,
-    )
-    test_dataset = LSC_rho2rho_temporal_DataSet(
-        args.LSC_NPZ_DIR,
-        file_prefix_list=test_filelist,
-        max_timeIDX_offset=2,  # This could be a variable.
-        max_file_checks=10,
-    )
-
-    print("Datasets initialized...")
 
     #############################################
     # Training Loop
@@ -413,29 +428,80 @@ if __name__ == "__main__":
     starting_epoch += 1
     ending_epoch = min(starting_epoch + cycle_epochs, total_epochs + 1)
 
-    # Setup Dataloaders
-    train_dataloader = tr.make_dataloader(
-        train_dataset,
-        batch_size,
-        train_batches,
-        num_workers=num_workers,
-        prefetch_factor=prefetch_factor
-    )
-    val_dataloader = tr.make_dataloader(
-        val_dataset,
-        batch_size,
-        val_batches,
-        num_workers=num_workers,
-        prefetch_factor=prefetch_factor
-    )
-    print("DataLoaders initialized...")
+    # For reproducibility of channel map per epoch
+    SEED = 42
     
+    max_channels = len(hydro_fields)
+    yl.logger.info(f"Max Channel  : {max_channels}")
+
+    channel_map_size = args.channel_map_size
+    yl.logger.info(f"channel_map_size = {channel_map_size}")
+
+    # Change hydrofields to array to enable slicing with channel map
+    hydro_fields = np.array(hydro_fields)
     for epochIDX in range(starting_epoch, ending_epoch):
+        # Randomly select 'channel_map_size' number of channels from for the epoch
+        channel_map = rand_channel_map(max_channels, channel_map_size, SEED)
+
+        log_str = (
+            f"Epoch {epochIDX:04d}, "
+            f"Nchannels:{channel_map_size:03d}, "
+            f"Channel Map:{channel_map}"
+            )
+        yl.logger.info(log_str)
+
+        #############################################
+        # Initialize Data
+        # For varying channels subset per epoch, the
+        # data must be initialized for each epoch.
+        #############################################
+        train_dataset = LSC_rho2rho_temporal_DataSet(
+            args.LSC_NPZ_DIR,
+            file_prefix_list=train_filelist,
+            max_timeIDX_offset=2,  # This could be a variable.
+            max_file_checks=10,
+            hydro_fields=hydro_fields[channel_map],
+        )
+        val_dataset = LSC_rho2rho_temporal_DataSet(
+            args.LSC_NPZ_DIR,
+            file_prefix_list=validation_filelist,
+            max_timeIDX_offset=2,  # This could be a variable.
+            max_file_checks=10,
+            hydro_fields=hydro_fields[channel_map],
+        )
+        test_dataset = LSC_rho2rho_temporal_DataSet(
+            args.LSC_NPZ_DIR,
+            file_prefix_list=test_filelist,
+            max_timeIDX_offset=2,  # This could be a variable.
+            max_file_checks=10,
+            hydro_fields=hydro_fields[channel_map],
+        )
+
+        print("Datasets initialized...")
+
+        # Setup Dataloaders
+        train_dataloader = tr.make_dataloader(
+            train_dataset,
+            batch_size,
+            train_batches,
+            num_workers=num_workers,
+            prefetch_factor=prefetch_factor
+        )
+        val_dataloader = tr.make_dataloader(
+            val_dataset,
+            batch_size,
+            val_batches,
+            num_workers=num_workers,
+            prefetch_factor=prefetch_factor
+        )
+        print("DataLoaders initialized...")
+
         # Time each epoch and print to stdout
         startTime = time.time()
 
         # Train an Epoch
         tr.train_simple_loderunner_epoch(
+            channel_map,
             training_data=train_dataloader,
             validation_data=val_dataloader,
             model=model,
