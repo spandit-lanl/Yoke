@@ -20,6 +20,8 @@ import torch.nn as nn
 from yoke.models.surrogateCNNmodules import tCNNsurrogate
 from yoke.datasets.lsc_dataset import LSC_cntr2rho_DataSet
 import yoke.torch_training_utils as tr
+from src.yoke.helpers import cli
+
 
 #############################################
 # Inputs
@@ -32,38 +34,11 @@ descr_str = (
 parser = argparse.ArgumentParser(
     prog="LSC Surrogate Training", description=descr_str, fromfile_prefix_chars="@"
 )
-
-#############################################
-# Data Parallelism
-#############################################
-parser.add_argument(
-    '--multigpu',
-    action='store_true',
-    help='Supports multiple GPUs on a single node.'
-)
-
-#############################################
-# Learning Problem
-#############################################
-parser.add_argument(
-    "--studyIDX",
-    action="store",
-    type=int,
-    default=1,
-    help="Study ID number to match hyperparameters",
-)
-
-#############################################
-# File Paths
-#############################################
-parser.add_argument(
-    "--FILELIST_DIR",
-    action="store",
-    type=str,
-    default=os.path.join(os.path.dirname(__file__), "../../filelists/"),
-    help="Directory where filelists are located.",
-)
-
+parser = cli.add_default_args(parser=parser)
+parser = cli.add_filepath_args(parser=parser)
+parser = cli.add_computing_args(parser=parser)
+parser = cli.add_model_args(parser=parser)
+parser = cli.add_training_args(parser=parser)
 parser.add_argument(
     "--LSC_DESIGN_DIR",
     action="store",
@@ -71,7 +46,6 @@ parser.add_argument(
     default=os.path.join(os.path.dirname(__file__), "../../../data_examples/"),
     help="Directory in which LSC design.txt file lives.",
 )
-
 parser.add_argument(
     "--design_file",
     action="store",
@@ -79,7 +53,6 @@ parser.add_argument(
     default="design_lsc240420_SAMPLE.csv",
     help=".csv file that contains the truth values for data files",
 )
-
 parser.add_argument(
     "--LSC_NPZ_DIR",
     action="store",
@@ -87,7 +60,6 @@ parser.add_argument(
     default=os.path.join(os.path.dirname(__file__), "../../../data_examples/lsc240420/"),
     help="Directory in which LSC *.npz files lives.",
 )
-
 parser.add_argument(
     "--train_filelist",
     action="store",
@@ -95,7 +67,6 @@ parser.add_argument(
     default="lsc240420_train_sample.txt",
     help="Path to list of files to train on.",
 )
-
 parser.add_argument(
     "--validation_filelist",
     action="store",
@@ -103,7 +74,6 @@ parser.add_argument(
     default="lsc240420_val_sample.txt",
     help="Path to list of files to validate on.",
 )
-
 parser.add_argument(
     "--test_filelist",
     action="store",
@@ -112,113 +82,6 @@ parser.add_argument(
     help="Path to list of files to test on.",
 )
 
-#############################################
-# Model Parameters
-#############################################
-parser.add_argument(
-    "--featureList",
-    action="store",
-    type=int,
-    nargs="+",
-    default=[256, 128, 64, 32, 16],
-    help="List of number of features in each T-convolution layer.",
-)
-
-parser.add_argument(
-    "--linearFeatures",
-    action="store",
-    type=int,
-    default=256,
-    help="Number of features scalar inputs are mapped into prior to T-convs.",
-)
-
-#############################################
-# Training Parameters
-#############################################
-parser.add_argument(
-    "--init_learnrate",
-    action="store",
-    type=float,
-    default=1e-3,
-    help="Initial learning rate",
-)
-
-parser.add_argument(
-    "--batch_size", action="store", type=int, default=64, help="Batch size"
-)
-
-#############################################
-# Epoch Parameters
-#############################################
-parser.add_argument(
-    "--total_epochs", action="store", type=int, default=10, help="Total training epochs"
-)
-
-parser.add_argument(
-    "--cycle_epochs",
-    action="store",
-    type=int,
-    default=5,
-    help=(
-        "Number of epochs between saving the model and re-queueing "
-        "training process; must be able to be completed in the "
-        "set wall time"
-    ),
-)
-
-parser.add_argument(
-    "--train_batches",
-    action="store",
-    type=int,
-    default=250,
-    help="Number of batches to train on in a given epoch",
-)
-
-parser.add_argument(
-    "--val_batches",
-    action="store",
-    type=int,
-    default=25,
-    help="Number of batches to validate on in a given epoch",
-)
-
-parser.add_argument(
-    "--TRAIN_PER_VAL",
-    action="store",
-    type=int,
-    default=10,
-    help="Number of training epochs between each validation epoch",
-)
-
-parser.add_argument(
-    "--trn_rcrd_filename",
-    action="store",
-    type=str,
-    default="./default_training.csv",
-    help="Filename for text file of training loss and metrics on each batch",
-)
-
-parser.add_argument(
-    "--val_rcrd_filename",
-    action="store",
-    type=str,
-    default="./default_validation.csv",
-    help="Filename for text file of validation loss and metrics on each batch",
-)
-
-parser.add_argument(
-    "--continuation",
-    action="store_true",
-    help="Indicates if training is being continued or restarted",
-)
-
-parser.add_argument(
-    "--checkpoint",
-    action="store",
-    type=str,
-    default="None",
-    help="Path to checkpoint to continue training from",
-)
 
 #############################################
 #############################################
