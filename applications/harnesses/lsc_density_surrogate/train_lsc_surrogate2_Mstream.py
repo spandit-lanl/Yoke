@@ -39,48 +39,6 @@ parser = cli.add_filepath_args(parser=parser)
 parser = cli.add_computing_args(parser=parser)
 parser = cli.add_model_args(parser=parser)
 parser = cli.add_training_args(parser=parser)
-parser.add_argument(
-    "--LSC_DESIGN_DIR",
-    action="store",
-    type=str,
-    default=os.path.join(os.path.dirname(__file__), "../../../data_examples/"),
-    help="Directory in which LSC design.txt file lives.",
-)
-parser.add_argument(
-    "--design_file",
-    action="store",
-    type=str,
-    default="design_lsc240420_SAMPLE.csv",
-    help=".csv file that contains the truth values for data files",
-)
-parser.add_argument(
-    "--LSC_NPZ_DIR",
-    action="store",
-    type=str,
-    default=os.path.join(os.path.dirname(__file__), "../../../data_examples/lsc240420/"),
-    help="Directory in which LSC *.npz files lives.",
-)
-parser.add_argument(
-    "--train_filelist",
-    action="store",
-    type=str,
-    default="lsc240420_train_sample.txt",
-    help="Path to list of files to train on.",
-)
-parser.add_argument(
-    "--validation_filelist",
-    action="store",
-    type=str,
-    default="lsc240420_val_sample.txt",
-    help="Path to list of files to validate on.",
-)
-parser.add_argument(
-    "--test_filelist",
-    action="store",
-    type=str,
-    default="lsc240420_test_sample.txt",
-    help="Path to list of files to test on.",
-)
 
 
 #############################################
@@ -200,11 +158,11 @@ if __name__ == "__main__":
             if isinstance(v, torch.Tensor):
                 state[k] = v.to(device)
 
-    #############################################
-    # Script and compile model on device
-    #############################################
+        #############################################
+        # Script and compile model on device
+        #############################################
         if args.multigpu:
-            compiled_model = model # jit compilation disabled in multi-gpu scenarios.
+            compiled_model = model  # jit compilation disabled in multi-gpu scenarios.
         else:
             scripted_model = torch.jit.script(model)
 

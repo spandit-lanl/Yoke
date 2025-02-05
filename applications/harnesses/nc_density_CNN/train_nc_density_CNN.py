@@ -29,54 +29,13 @@ parser = cli.add_filepath_args(parser=parser)
 parser = cli.add_computing_args(parser=parser)
 parser = cli.add_training_args(parser=parser)
 
+# Add some arguments unique to this training script.
 parser.add_argument(
     "--input_field",
     action="store",
     type=str,
     default="hr_MOICyl",
     help="Data field the models will train on",
-)
-parser.add_argument(
-    "--NC_DESIGN_DIR",
-    action="store",
-    type=str,
-    default=os.path.join(os.path.dirname(__file__), "../../../data_examples/"),
-    help="Directory in which NC design.txt file lives.",
-)
-parser.add_argument(
-    "--design_file",
-    action="store",
-    type=str,
-    default="design_nc231213_SAMPLE.csv",
-    help=".csv file that contains the truth values for data files",
-)
-parser.add_argument(
-    "--NC_NPZ_DIR",
-    action="store",
-    type=str,
-    default=os.path.join(os.path.dirname(__file__), "../../../data_examples/nc231213/"),
-    help="Directory in which NC *.npz files lives.",
-)
-parser.add_argument(
-    "--train_filelist",
-    action="store",
-    type=str,
-    default="nc231213_train_sample.txt",
-    help="Path to list of files to train on.",
-)
-parser.add_argument(
-    "--validation_filelist",
-    action="store",
-    type=str,
-    default="nc231213_val_sample.txt",
-    help="Path to list of files to validate on.",
-)
-parser.add_argument(
-    "--test_filelist",
-    action="store",
-    type=str,
-    default="nc231213_test_sample.txt",
-    help="Path to list of files to test on.",
 )
 parser.add_argument(
     "--size_threshold_W",
@@ -147,6 +106,14 @@ parser.add_argument(
     help="Number of features (channels) the dense layers",
 )
 
+# Change some default filepaths.
+parser.set_defaults(
+    design_file="design_nc231213_SAMPLE.csv",
+    train_filelist="nc231213_train_sample.txt",
+    validation_filelist="nc231213_val_sample.txt",
+    test_filelist="nc231213_test_sample.txt",
+)
+S
 
 #############################################
 #############################################
@@ -272,7 +239,10 @@ if __name__ == "__main__":
     # Initialize Data
     #############################################
     train_dataset = PVI_SingleField_DataSet(
-        args.NC_NPZ_DIR, train_filelist, input_field=input_field, design_file=design_file
+        args.NC_NPZ_DIR,
+        train_filelist,
+        input_field=input_field,
+        design_file=design_file,
     )
     val_dataset = PVI_SingleField_DataSet(
         args.NC_NPZ_DIR,

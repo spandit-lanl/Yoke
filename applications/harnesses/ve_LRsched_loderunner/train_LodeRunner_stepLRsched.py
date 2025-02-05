@@ -41,38 +41,12 @@ parser = cli.add_model_args(parser=parser)
 parser = cli.add_training_args(parser=parser)
 parser = cli.add_cosine_lr_scheduler_args(parser=parser)
 
-# LSC experiment paths and files:
-parser.add_argument(
-    "--LSC_NPZ_DIR",
-    action="store",
-    type=str,
-    default=os.path.join(
-        os.path.dirname(__file__), "../../../data_examples/lsc240420/"
-    ),
-    help="Directory in which LSC *.npz files live.",
+# Change some default filepaths.
+parser.set_defaults(
+    train_filelist="lsc240420_prefixes_train_80pct.txt",
+    validation_filelist="lsc240420_prefixes_validation_10pct.txt",
+    test_filelist="lsc240420_prefixes_test_10pct.txt",
 )
-parser.add_argument(
-    "--train_filelist",
-    action="store",
-    type=str,
-    default="lsc240420_prefixes_train_80pct.txt",
-    help="Path to list of files to train on.",
-)
-parser.add_argument(
-    "--validation_filelist",
-    action="store",
-    type=str,
-    default="lsc240420_prefixes_validation_10pct.txt",
-    help="Path to list of files to validate on.",
-)
-parser.add_argument(
-    "--test_filelist",
-    action="store",
-    type=str,
-    default="lsc240420_prefixes_test_10pct.txt",
-    help="Path to list of files to test on.",
-)
-
 
 #############################################
 #############################################
