@@ -8,13 +8,15 @@ import shutil
 import argparse
 import pandas as pd
 
-from src.yoke.helpers import cli, strings
+from yoke.helpers import cli, strings
 
 
 ####################################
 # Process Hyperparameters
 ####################################
-parser = argparse.ArgumentParser(prog="HARNESS START", description="Starts execution of training harness")
+parser = argparse.ArgumentParser(
+    prog="HARNESS START", description="Starts execution of training harness"
+)
 parser = cli.add_default_args(parser)
 args = parser.parse_args()
 
@@ -24,7 +26,7 @@ training_START_input = "./training_START.input"
 training_START_slurm = "./training_START.slurm"
 
 # List of files to copy
-with open(args.cpFile, 'r') as cp_text_file:
+with open(args.cpFile, "r") as cp_text_file:
     cp_file_list = [line.strip() for line in cp_text_file]
 
 # Process Hyperparmaeters File
@@ -101,7 +103,11 @@ for k, study in enumerate(studylist):
     # Copy files to study directory from list
     for f in cp_file_list:
         shutil.copy(f, studydirname)
-    
+
     # Submit Job
-    os.system((f"cd {studydirname}; sbatch {START_slurm_name}; "
-               f"cd {os.path.dirname(__file__)}"))
+    os.system(
+        (
+            f"cd {studydirname}; sbatch {START_slurm_name}; "
+            f"cd {os.path.dirname(__file__)}"
+        )
+    )

@@ -12,7 +12,7 @@ import torch.nn as nn
 from yoke.models.CNNmodules import PVI_SingleField_CNN
 from yoke.datasets.nestedcyl_dataset import PVI_SingleField_DataSet
 import yoke.torch_training_utils as tr
-from src.yoke.helpers import cli
+from yoke.helpers import cli
 
 
 #############################################

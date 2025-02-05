@@ -20,7 +20,7 @@ import torch.nn as nn
 from yoke.models.surrogateCNNmodules import tCNNsurrogate
 from yoke.datasets.lsc_dataset import LSC_cntr2rho_DataSet
 import yoke.torch_training_utils as tr
-from src.yoke.helpers import cli
+from yoke.helpers import cli
 
 
 #############################################

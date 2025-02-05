@@ -7,7 +7,7 @@ import os
 import argparse
 import pandas as pd
 
-from src.yoke.helpers import strings
+from yoke.helpers import strings
 
 
 ####################################

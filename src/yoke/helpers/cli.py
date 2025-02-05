@@ -4,6 +4,10 @@ import argparse
 import os
 
 
+# Set the yoke root path relative to this file for usage in defaults below.
+YOKE_PATH = os.path.join(os.path.dirname(__file__), "../../..")
+
+
 def add_default_args(parser: argparse.ArgumentParser = None):
     """
     Prepare a default argparse.ArgumentParser for harnesses in yoke.applications.harnesses
@@ -58,21 +62,21 @@ def add_filepath_args(parser: argparse.ArgumentParser):
         "--FILELIST_DIR",
         action="store",
         type=str,
-        default=os.path.join(os.path.dirname(__file__), "../../filelists/"),
+        default=os.path.join(YOKE_PATH, "applications/filelists/"),
         help="Directory where filelists are located.",
     )
     parser.add_argument(
         "--LSC_DESIGN_DIR",
         action="store",
         type=str,
-        default=os.path.join(os.path.dirname(__file__), "../../../data_examples/"),
+        default=os.path.join(YOKE_PATH, "data_examples/"),
         help="Directory in which LSC design.txt file lives.",
     )
     parser.add_argument(
         "--NC_DESIGN_DIR",
         action="store",
         type=str,
-        default=os.path.join(os.path.dirname(__file__), "../../../data_examples/"),
+        default=os.path.join(YOKE_PATH, "data_examples/"),
         help="Directory in which NC design.txt file lives.",
     )
     parser.add_argument(
@@ -86,18 +90,14 @@ def add_filepath_args(parser: argparse.ArgumentParser):
         "--LSC_NPZ_DIR",
         action="store",
         type=str,
-        default=os.path.join(
-            os.path.dirname(__file__), "../../../data_examples/lsc240420/"
-        ),
+        default=os.path.join(YOKE_PATH, "data_examples/lsc240420/"),
         help="Directory in which LSC *.npz files live.",
     )
     parser.add_argument(
         "--NC_NPZ_DIR",
         action="store",
         type=str,
-        default=os.path.join(
-            os.path.dirname(__file__), "../../../data_examples/nc231213/"
-        ),
+        default=os.path.join(YOKE_PATH, "data_examples/nc231213/"),
         help="Directory in which NC *.npz files lives.",
     )
     parser.add_argument(
