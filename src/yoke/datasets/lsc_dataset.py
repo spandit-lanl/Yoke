@@ -83,9 +83,6 @@ def LSCread_npz(npz: np.lib.npyio.NpzFile, field: str) -> np.ndarray:
     return npz[field]
 
 
-####################################
-# DataSet Classes
-####################################
 class LSC_cntr2rho_DataSet(Dataset):
     """Contour to average density dataset."""
 
@@ -552,6 +549,18 @@ class LSC_rho2rho_temporal_DataSet(Dataset):
         max_timeIDX_offset: int,
         max_file_checks: int,
         half_image: bool = False,
+        hydro_fields: np.array = np.array(
+            [
+                "density_case",
+                "density_cushion",
+                "density_maincharge",
+                "density_outside_air",
+                "density_striker",
+                "density_throw",
+                "uvelocity",
+                "wvelocity",
+            ]
+        ),
     ) -> None:
         """Initialization of timestep dataset.
 
@@ -577,6 +586,18 @@ class LSC_rho2rho_temporal_DataSet(Dataset):
                                    are generated before throwing an error.
             half_image (bool): If True then returned images are NOT reflected about axis
                                of symmetry and half-images are returned instead.
+            hydro_fields (np.array, optional): Array of hydro field names to be included.
+                                               Defaults to:
+                                               [
+                                                   "density_case",
+                                                   "density_cushion",
+                                                   "density_maincharge",
+                                                   "density_outside_air",
+                                                   "density_striker",
+                                                   "density_throw",
+                                                   "uvelocity",
+                                                   "wvelocity",
+                                               ].
 
         """
         # Model Arguments
@@ -594,17 +615,7 @@ class LSC_rho2rho_temporal_DataSet(Dataset):
 
         self.Nsamples = len(self.file_prefix_list)
 
-        # Lists of fields to return images for
-        self.hydro_fields = [
-            "density_case",
-            "density_cushion",
-            "density_maincharge",
-            "density_outside_air",
-            "density_striker",
-            "density_throw",
-            "Uvelocity",
-            "Wvelocity",
-        ]
+        self.hydro_fields = hydro_fields
 
         # Initialize random number generator for time index selection
         self.rng = np.random.default_rng()
