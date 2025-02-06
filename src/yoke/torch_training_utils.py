@@ -9,6 +9,7 @@ import time
 import h5py
 import numpy as np
 import pandas as pd
+import random
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, RandomSampler
@@ -520,6 +521,86 @@ def train_loderunner_datastep(
     return end_img, pred_img, per_sample_loss
 
 
+def train_scheduled_loderunner_datastep(
+        data: tuple,
+        model,
+        optimizer,
+        loss_fn,
+        device: torch.device,
+        scheduled_prob: float):
+    """
+    A training step for the LodeRunner architecture with scheduled sampling
+    using a decayed scheduled_prob.
+
+    Args:
+        data (tuple): Sequence of images in (img_seq, Dt) tuple.
+        model (loaded pytorch model): model to train.
+        optimizer (torch.optim): optimizer for training set.
+        loss_fn (torch.nn Loss Function): loss function for training set.
+        device (torch.device): device index to select.
+        scheduled_prob (float): Probability of using the ground truth as input.
+
+    Returns:
+        tuple: (end_img, pred_seq, per_sample_loss, updated_scheduled_prob)
+    
+    """
+    # Set model to train
+    model.train()
+
+    # Extract data
+    img_seq, Dt = data
+
+    # [B, S, C, H, W] where S=seq-length
+    img_seq = img_seq.to(device, non_blocking=True)
+    # [B, 1]
+    Dt = Dt.to(device, non_blocking=True)
+
+    # Input and output variable indices
+    in_vars = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7]).to(device, non_blocking=True)
+    out_vars = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7]).to(device, non_blocking=True)
+    
+    # Storage for predictions at each timestep
+    pred_seq = []
+
+    # Unbind and iterate over slices in sequence-length dimension
+    for k, k_img in enumerate(torch.unbind(img_seq, dim=1)):
+        if k == 0:
+            # Forward pass for the initial step
+            pred_img = model(k_img, in_vars, out_vars, Dt)
+        else:
+            # Apply scheduled sampling
+            if random.random() < scheduled_prob:
+                current_input = k_img
+            else:
+                current_input = pred_img
+                
+            pred_img = model(current_input, in_vars, out_vars, Dt)
+
+        # Store the prediction
+        pred_seq.append(pred_img)
+
+    # Combine predictions into a tensor of shape [B, SeqLength, C, H, W]
+    pred_seq = torch.stack(pred_seq, dim=0)
+
+    # Compute loss
+    loss = loss_fn(pred_seq, img_seq[:, 1:, :, :, :])
+    per_sample_loss = loss.mean(dim=[1, 2, 3, 4])  # Shape: (batch_size,)
+
+    # Perform backpropagation and update the weights
+    optimizer.zero_grad(set_to_none=True)  # Possible speed-up
+    loss.mean().backward()
+    optimizer.step()
+
+    # Delete created tensors to free memory
+    del in_vars
+    del out_vars
+
+    # Clear GPU memory after each deallocation
+    torch.cuda.empty_cache()
+
+    return img_seq[:, 1:, :, :, :], pred_seq, per_sample_loss
+
+
 def train_DDP_loderunner_datastep(
     data: tuple,
     model,
@@ -790,6 +871,81 @@ def eval_loderunner_datastep(
     torch.cuda.empty_cache()
 
     return end_img, pred_img, per_sample_loss
+
+
+def eval_scheduled_loderunner_datastep(
+        data: tuple,
+        model,
+        optimizer,
+        loss_fn,
+        device: torch.device,
+        scheduled_prob: float):
+    """
+    A training step for the LodeRunner architecture with scheduled sampling
+    using a decayed scheduled_prob.
+
+    Args:
+        data (tuple): Sequence of images in (img_seq, Dt) tuple.
+        model (loaded pytorch model): model to train.
+        optimizer (torch.optim): optimizer for training set.
+        loss_fn (torch.nn Loss Function): loss function for training set.
+        device (torch.device): device index to select.
+        scheduled_prob (float): Probability of using the ground truth as input.
+
+    Returns:
+        tuple: (end_img, pred_seq, per_sample_loss, updated_scheduled_prob)
+    
+    """
+    # Set model to evaluation
+    model.eval()
+
+    # Extract data
+    img_seq, Dt = data
+
+    # [B, S, C, H, W] where S=seq-length
+    img_seq = img_seq.to(device, non_blocking=True)
+    # [B, 1]
+    Dt = Dt.to(device, non_blocking=True)
+
+    # Input and output variable indices
+    in_vars = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7]).to(device, non_blocking=True)
+    out_vars = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7]).to(device, non_blocking=True)
+    
+    # Storage for predictions at each timestep
+    pred_seq = []
+
+    # Unbind and iterate over slices in sequence-length dimension
+    for k, k_img in enumerate(torch.unbind(img_seq, dim=1)):
+        if k == 0:
+            # Forward pass for the initial step
+            pred_img = model(k_img, in_vars, out_vars, Dt)
+        else:
+            # Apply scheduled sampling
+            if random.random() < scheduled_prob:
+                current_input = k_img
+            else:
+                current_input = pred_img
+                
+            pred_img = model(current_input, in_vars, out_vars, Dt)
+
+        # Store the prediction
+        pred_seq.append(pred_img)
+
+    # Combine predictions into a tensor of shape [B, SeqLength, C, H, W]
+    pred_seq = torch.stack(pred_seq, dim=0)
+
+    # Compute loss
+    loss = loss_fn(pred_seq, img_seq[:, 1:, :, :, :])
+    per_sample_loss = loss.mean(dim=[1, 2, 3, 4])  # Shape: (batch_size,)
+
+    # Delete created tensors to free memory
+    del in_vars
+    del out_vars
+
+    # Clear GPU memory after each deallocation
+    torch.cuda.empty_cache()
+
+    return img_seq[:, 1:, :, :, :], pred_seq, per_sample_loss
 
 
 def eval_DDP_loderunner_datastep(
@@ -1287,6 +1443,103 @@ def train_simple_loderunner_epoch(
                     torch.cuda.empty_cache()
 
 
+def train_scheduled_loderunner_epoch(
+    training_data,
+    validation_data,
+    model,
+    optimizer,
+    loss_fn,
+    epochIDX,
+    train_per_val,
+    train_rcrd_filename: str,
+    val_rcrd_filename: str,
+    device: torch.device,
+    scheduled_prob: float,
+):
+    """
+    Function to complete a training epoch on the LodeRunner architecture using
+    scheduled sampling. Updates the scheduled probability over time.
+
+    Args:
+        training_data (torch.dataloader): dataloader containing the training samples.
+        validation_data (torch.dataloader): dataloader containing the validation samples.
+        model (loaded pytorch model): model to train.
+        optimizer (torch.optim): optimizer for training set.
+        loss_fn (torch.nn Loss Function): loss function for training set.
+        epochIDX (int): Index of current training epoch.
+        train_per_val (int): Number of training epochs between each validation.
+        train_rcrd_filename (str): Name of CSV file to save training sample stats to.
+        val_rcrd_filename (str): Name of CSV file to save validation sample stats to.
+        device (torch.device): device index to select.
+        scheduled_prob (float): Initial probability of using ground truth as input.
+    
+    """
+    # Initialize variables for tracking batches
+    trainbatch_ID = 0
+    valbatch_ID = 0
+
+    train_rcrd_filename = train_rcrd_filename.replace("<epochIDX>", f"{epochIDX:04d}")
+
+    # Train on all training samples
+    with open(train_rcrd_filename, "a") as train_rcrd_file:
+        for traindata in training_data:
+            trainbatch_ID += 1
+
+            # Training step with scheduled sampling
+            true_seq, pred_seq, train_losses = train_scheduled_loderunner_datastep(
+                data=traindata,
+                model=model,
+                optimizer=optimizer,
+                loss_fn=loss_fn,
+                device=device,
+                scheduled_prob=scheduled_prob
+            )
+
+            # Save batch records to the training record file
+            batch_records = np.column_stack([
+                np.full(len(train_losses), epochIDX),
+                np.full(len(train_losses), trainbatch_ID),
+                train_losses.detach().cpu().numpy().flatten()
+            ])
+            np.savetxt(train_rcrd_file, batch_records, fmt="%d, %d, %.8f")
+
+            # Clear memory
+            del true_seq, pred_seq, train_losses
+            torch.cuda.empty_cache()
+
+    # Evaluate on all validation samples
+    if epochIDX % train_per_val == 0:
+        print("Validating...", epochIDX)
+        val_rcrd_filename = val_rcrd_filename.replace("<epochIDX>", f"{epochIDX:04d}")
+        with open(val_rcrd_filename, "a") as val_rcrd_file:
+            with torch.no_grad():
+                for valdata in validation_data:
+                    valbatch_ID += 1
+                    truth, pred, val_losses = eval_scheduled_loderunner_datastep(
+                        data=valdata,
+                        model=model,
+                        optimizer=optimizer,
+                        loss_fn=loss_fn,
+                        device=device,
+                        scheduled_prob=scheduled_prob
+                    )
+
+                    # Save validation batch records
+                    batch_records = np.column_stack([
+                        np.full(len(val_losses), epochIDX),
+                        np.full(len(val_losses), valbatch_ID),
+                        val_losses.detach().cpu().numpy().flatten()
+                    ])
+                    np.savetxt(val_rcrd_file, batch_records, fmt="%d, %d, %.8f")
+
+                    # Clear memory
+                    del truth, pred, val_losses
+                    torch.cuda.empty_cache()
+
+    # Return the updated scheduled probability
+    return scheduled_prob
+
+                    
 def train_LRsched_loderunner_epoch(
     channel_map: list,
     training_data,
