@@ -54,17 +54,39 @@ Setup your base environment and activate it (we use conda):
 >> conda activate <yoke_env_name>
 ```
 
+> **WARNING!!**
+>
+> Now, at least for some environments `flit`, the install manager for
+> YOKE will not default to installing in the conda environment. To
+> remedy this first checkout your `USER_BASE` and `USER_SITE` variables
+> using
+>
+> ```
+> >> python -m site
+> ```
+>
+> If `USER_BASE` and `USER_SITE` don't appear to be associated with
+> `<yoke_env_name>` then set the `PYTHONUSERBASE` environment variable
+> prior to installing YOKE:
+>
+> ```
+> >> export PYTHONUSERBASE=$CONDA_PREFIX
+> ```
+>
+> Rerun `python -m site` to ensure `USER_BASE` and `USER_SITE` have
+> changed.
+
 For **developers**, you can install a **development version** of
 `YOKE` checkout using...
 
 ```
->> flit install --user --symlink
+>> flit install --user --symlink --deps=all
 ```
 
 For **non-developers**, you can install `YOKE` using...
 
 ```
->> flit install
+>> flit install --deps=all
 ```
 
 > **WARNING**
