@@ -15,36 +15,23 @@ import time
 import argparse
 import torch
 import torch.nn as nn
-import random
-import logging
-import numpy as np
 
 from yoke.models.vit.swin.bomberman import LodeRunner
-from yoke.datasets.lsc_dataset import LSC_rho2rho_temporal_DataSet
+from yoke.datasets.lsc_dataset import LSC_rho2rho_sequential_DataSet
 import yoke.torch_training_utils as tr
 from yoke.parallel_utils import LodeRunner_DataParallel
-import yoke.utils.logger as yl
+
 
 #############################################
 # Inputs
 #############################################
 descr_str = (
-    "Trains LodeRunner architecture on single-timstep input and output of the "
-    "lsc240420 per-material density fields."
+    "Trains LodeRunner architecture using scheduled sampling "
+    "with sequential inputs and outputs. "
+    "This training uses lsc240420 data for per-material density fields."
 )
 parser = argparse.ArgumentParser(
     prog="Initial LodeRunner Training", description=descr_str, fromfile_prefix_chars="@"
-)
-
-#############################################
-# Channel Subset Study Param
-#############################################
-parser.add_argument(
-    "--channel_map_size",
-    action="store",
-    type=int,
-    default=0,
-    help="Index into the list of tuple of input and output channel subsets",
 )
 
 #############################################
@@ -84,6 +71,22 @@ parser.add_argument(
     type=str,
     default=os.path.join(os.path.dirname(__file__), "../../../data_examples/lsc240420/"),
     help="Directory in which LSC *.npz files live.",
+)
+
+parser.add_argument(
+    "--max_timeIDX_offset",
+    action="store",
+    type=int,
+    default=1,
+    help="Maximum time index offset to attempt prediction for in the dataset."
+)
+
+parser.add_argument(
+    "--max_file_checks",
+    action="store",
+    type=int,
+    default=5,
+    help="Maximum number of file existence checks in the dataset."
 )
 
 parser.add_argument(
@@ -176,6 +179,33 @@ parser.add_argument(
 )
 
 #############################################
+# Scheduled Sampling Parameters
+#############################################
+parser.add_argument(
+    "--scheduled_prob",
+    action="store",
+    type=float,
+    default=1.0,  # Initial probability of using ground truth
+    help="Initial probability of using ground truth for scheduled sampling."
+)
+
+parser.add_argument(
+    "--decay_rate",
+    action="store",
+    type=float,
+    default=1.0,  # Decay rate for scheduled_prob
+    help="Schedule probability multiplier after each epoch."
+)
+
+parser.add_argument(
+    "--minimum_schedule_prob",
+    action="store",
+    type=float,
+    default=0.0,  # Initial probability of using ground truth
+    help="Minimum scheduled-sampling probability."
+)
+
+#############################################
 # Epoch Parameters
 #############################################
 parser.add_argument(
@@ -248,36 +278,19 @@ parser.add_argument(
     help="Path to checkpoint to continue training from",
 )
 
-
-############################################
-# Select n channles randomly for an epoch
-############################################
-def rand_channel_map(
-        max_number_channels: int,
-        num_subchannels: int,
-        seed: int = None,
-        _seed_set: list[bool] = [False]
-) -> list:
-    """Choose list of subsampled channels."""
-    if num_subchannels > max_number_channels:
-        raise ValueError("Subsampled channels cannot be greater than maximum channels.")
-
-    if seed is not None and not _seed_set[0]:
-        random.seed(seed)
-        _seed_set[0] = True  # Mark the seed as set
-
-    return sorted(random.sample(range(0, N), n))
-
-
+#############################################
+#############################################
 if __name__ == "__main__":
     #############################################
     # Process Inputs
     #############################################
-    yl.configure_logger("yoke_logger", level=logging.INFO)
-
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     args = parser.parse_args()
 
+    #############
+    num_gpus = torch.cuda.device_count()
+    print(f"Number of GPUs available: {num_gpus}")
+    #############
     # Study ID
     studyIDX = args.studyIDX
 
@@ -289,12 +302,17 @@ if __name__ == "__main__":
     # Model Parameters
     embed_dim = args.embed_dim
     block_structure = tuple(args.block_structure)
-
+    
     # Training Parameters
     initial_learningrate = args.init_learnrate
     LRepoch_per_step = args.LRepoch_per_step
     LRdecay = args.LRdecay
     batch_size = args.batch_size
+	
+    # Scheduled Sampling Parameters
+    scheduled_prob = args.scheduled_prob
+    decay_rate = args.decay_rate
+    minimum_schedule_prob = args.minimum_schedule_prob
 
     # Number of workers controls how batches of data are prefetched and,
     # possibly, pre-loaded onto GPUs. If the number of workers is large they
@@ -333,19 +351,15 @@ if __name__ == "__main__":
     #############################################
     # Initialize Model
     #############################################
-    hydro_fields =[
-        'density_case',
-        'density_cushion',
-        'density_maincharge',
-        'density_outside_air',
-        'density_striker',
-        'density_throw',
-        'Uvelocity',
-        'Wvelocity',
-    ]
-
     model = LodeRunner(
-        default_vars=hydro_fields,
+        default_vars=['density_case',
+                      'density_cushion',
+                      'density_maincharge',
+                      'density_outside_air',
+                      'density_striker',
+                      'density_throw',
+                      'Uvelocity',
+                      'Wvelocity'],
         image_size=(1120, 800),
         patch_size=(10, 10),
         embed_dim=embed_dim,
@@ -419,6 +433,38 @@ if __name__ == "__main__":
         gamma=LRdecay,
         last_epoch=starting_epoch - 1,
     )
+    
+    #############################################
+    # Initialize Data
+    #############################################
+    train_dataset = LSC_rho2rho_sequential_DataSet(
+	    LSC_NPZ_DIR=args.LSC_NPZ_DIR,
+    	file_prefix_list=train_filelist,
+    	max_timeIDX_offset=1,  
+    	max_file_checks=10,     
+    	seq_len=3,             # Sequence length
+    	half_image=True
+	)
+
+    val_dataset = LSC_rho2rho_sequential_DataSet(
+        LSC_NPZ_DIR=args.LSC_NPZ_DIR,
+        file_prefix_list=validation_filelist,
+        max_timeIDX_offset=1,  
+        max_file_checks=10,     	
+        seq_len=3,             # Sequence length
+        half_image=True
+	)
+
+    test_dataset = LSC_rho2rho_sequential_DataSet(
+        LSC_NPZ_DIR=args.LSC_NPZ_DIR,
+        file_prefix_list=test_filelist,
+        max_timeIDX_offset=1,  
+        max_file_checks=10,    
+        seq_len=3,             # Sequence length
+        half_image=True
+	)
+
+    print("Datasets initialized...")
 
     #############################################
     # Training Loop
@@ -428,80 +474,31 @@ if __name__ == "__main__":
     starting_epoch += 1
     ending_epoch = min(starting_epoch + cycle_epochs, total_epochs + 1)
 
-    # For reproducibility of channel map per epoch
-    SEED = 42
+    # Setup Dataloaders
+    train_dataloader = tr.make_dataloader(
+        train_dataset,
+        batch_size,
+        train_batches,
+        num_workers=num_workers,
+        prefetch_factor=prefetch_factor
+    )
+    val_dataloader = tr.make_dataloader(
+        val_dataset,
+        batch_size,
+        val_batches,
+        num_workers=num_workers,
+        prefetch_factor=prefetch_factor
+    )
+    print("DataLoaders initialized...")
     
-    max_channels = len(hydro_fields)
-    yl.logger.info(f"Max Channel  : {max_channels}")
-
-    channel_map_size = args.channel_map_size
-    yl.logger.info(f"channel_map_size = {channel_map_size}")
-
-    # Change hydrofields to array to enable slicing with channel map
-    hydro_fields = np.array(hydro_fields)
     for epochIDX in range(starting_epoch, ending_epoch):
-        # Randomly select 'channel_map_size' number of channels from for the epoch
-        channel_map = rand_channel_map(max_channels, channel_map_size, SEED)
-
-        log_str = (
-            f"Epoch {epochIDX:04d}, "
-            f"Nchannels:{channel_map_size:03d}, "
-            f"Channel Map:{channel_map}"
-            )
-        yl.logger.info(log_str)
-
-        #############################################
-        # Initialize Data
-        # For varying channels subset per epoch, the
-        # data must be initialized for each epoch.
-        #############################################
-        train_dataset = LSC_rho2rho_temporal_DataSet(
-            args.LSC_NPZ_DIR,
-            file_prefix_list=train_filelist,
-            max_timeIDX_offset=2,  # This could be a variable.
-            max_file_checks=10,
-            hydro_fields=hydro_fields[channel_map],
-        )
-        val_dataset = LSC_rho2rho_temporal_DataSet(
-            args.LSC_NPZ_DIR,
-            file_prefix_list=validation_filelist,
-            max_timeIDX_offset=2,  # This could be a variable.
-            max_file_checks=10,
-            hydro_fields=hydro_fields[channel_map],
-        )
-        test_dataset = LSC_rho2rho_temporal_DataSet(
-            args.LSC_NPZ_DIR,
-            file_prefix_list=test_filelist,
-            max_timeIDX_offset=2,  # This could be a variable.
-            max_file_checks=10,
-            hydro_fields=hydro_fields[channel_map],
-        )
-
-        print("Datasets initialized...")
-
-        # Setup Dataloaders
-        train_dataloader = tr.make_dataloader(
-            train_dataset,
-            batch_size,
-            train_batches,
-            num_workers=num_workers,
-            prefetch_factor=prefetch_factor
-        )
-        val_dataloader = tr.make_dataloader(
-            val_dataset,
-            batch_size,
-            val_batches,
-            num_workers=num_workers,
-            prefetch_factor=prefetch_factor
-        )
-        print("DataLoaders initialized...")
-
         # Time each epoch and print to stdout
         startTime = time.time()
 
-        # Train an Epoch
-        tr.train_simple_loderunner_epoch(
-            channel_map,
+        torch.cuda.empty_cache()
+        
+        # Train an epoch with scheduled sampling
+        tr.train_scheduled_loderunner_epoch(
             training_data=train_dataloader,
             validation_data=val_dataloader,
             model=model,
@@ -512,7 +509,7 @@ if __name__ == "__main__":
             train_rcrd_filename=trn_rcrd_filename,
             val_rcrd_filename=val_rcrd_filename,
             device=device,
-            verbose=False
+            scheduled_prob=scheduled_prob,
         )
 
         # Increment LR scheduler
@@ -522,8 +519,12 @@ if __name__ == "__main__":
         epoch_time = (endTime - startTime) / 60
 
         # Print Summary Results
-        print("Completed epoch " + str(epochIDX) + "...", flush=True)
-        print("Epoch time (minutes):", epoch_time, flush=True)
+        print(f"Completed epoch {epochIDX} with scheduled_prob {scheduled_prob:.4f}...",
+              flush=True)
+        print(f"Epoch time (minutes): {epoch_time:.2f}", flush=True)
+
+        # Decay the scheduled probability
+        scheduled_prob = max(scheduled_prob * decay_rate, minimum_schedule_prob)
 
         # Clear GPU memory after each epoch
         torch.cuda.empty_cache()

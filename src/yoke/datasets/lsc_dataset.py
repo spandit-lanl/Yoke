@@ -83,9 +83,20 @@ def LSCread_npz(npz: np.lib.npyio.NpzFile, field: str) -> np.ndarray:
     return npz[field]
 
 
-####################################
-# DataSet Classes
-####################################
+def LSCread_npz_NaN(npz: np.lib.npyio.NpzFile, field: str) -> np.ndarray:
+    """Extract a specific field from a .npz file and replace NaNs with 0.
+
+    Args:
+        npz (np.lib.npyio.NpzFile): Loaded .npz file.
+        field (str): Field name to extract.
+
+    Returns:
+        np.ndarray: Field data with NaNs replaced by 0.
+
+    """
+    return np.nan_to_num(npz[field], nan=0.0)
+
+
 class LSC_cntr2rho_DataSet(Dataset):
     """Contour to average density dataset."""
 
@@ -307,9 +318,7 @@ class LSC_cntr2hfield_DataSet(Dataset):
 
         hfield_list = []
         for hfield in self.hydro_fields:
-            tmp_img = LSCread_npz(npz, hfield)
-            # Remember to replace all NaNs with 0.0
-            tmp_img = np.nan_to_num(tmp_img, nan=0.0)
+            tmp_img = LSCread_npz_NaN(npz, hfield)
             hfield_list.append(tmp_img)
 
         # Concatenate images channel first.
@@ -400,14 +409,10 @@ class LSC_hfield_reward_DataSet(Dataset):
         state_hfield_list = []
         target_hfield_list = []
         for hfield in self.hydro_fields:
-            tmp_img = LSCread_npz(state_npz, hfield)
-            # Remember to replace all NaNs with 0.0
-            tmp_img = np.nan_to_num(tmp_img, nan=0.0)
+            tmp_img = LSCread_npz_NaN(state_npz, hfield)
             state_hfield_list.append(tmp_img)
 
-            tmp_img = LSCread_npz(target_npz, hfield)
-            # Remember to replace all NaNs with 0.0
-            tmp_img = np.nan_to_num(tmp_img, nan=0.0)
+            tmp_img = LSCread_npz_NaN(target_npz, hfield)
             target_hfield_list.append(tmp_img)
 
         # Concatenate images channel first.
@@ -505,14 +510,10 @@ class LSC_hfield_policy_DataSet(Dataset):
         state_hfield_list = []
         target_hfield_list = []
         for hfield in self.hydro_fields:
-            tmp_img = LSCread_npz(state_npz, hfield)
-            # Remember to replace all NaNs with 0.0
-            tmp_img = np.nan_to_num(tmp_img, nan=0.0)
+            tmp_img = LSCread_npz_NaN(state_npz, hfield)
             state_hfield_list.append(tmp_img)
 
-            tmp_img = LSCread_npz(target_npz, hfield)
-            # Remember to replace all NaNs with 0.0
-            tmp_img = np.nan_to_num(tmp_img, nan=0.0)
+            tmp_img = LSCread_npz_NaN(target_npz, hfield)
             target_hfield_list.append(tmp_img)
 
         # Concatenate images channel first.
@@ -551,7 +552,19 @@ class LSC_rho2rho_temporal_DataSet(Dataset):
         file_prefix_list: str,
         max_timeIDX_offset: int,
         max_file_checks: int,
-        half_image: bool = False,
+        half_image: bool = True,
+        hydro_fields: np.array = np.array(
+            [
+                "density_case",
+                "density_cushion",
+                "density_maincharge",
+                "density_outside_air",
+                "density_striker",
+                "density_throw",
+                "Uvelocity",
+                "Wvelocity",
+            ]
+        ),
     ) -> None:
         """Initialization of timestep dataset.
 
@@ -577,6 +590,18 @@ class LSC_rho2rho_temporal_DataSet(Dataset):
                                    are generated before throwing an error.
             half_image (bool): If True then returned images are NOT reflected about axis
                                of symmetry and half-images are returned instead.
+            hydro_fields (np.array, optional): Array of hydro field names to be included.
+                                               Defaults to:
+                                               [
+                                                   "density_case",
+                                                   "density_cushion",
+                                                   "density_maincharge",
+                                                   "density_outside_air",
+                                                   "density_striker",
+                                                   "density_throw",
+                                                   "Uvelocity",
+                                                   "Wvelocity",
+                                               ].
 
         """
         # Model Arguments
@@ -594,17 +619,7 @@ class LSC_rho2rho_temporal_DataSet(Dataset):
 
         self.Nsamples = len(self.file_prefix_list)
 
-        # Lists of fields to return images for
-        self.hydro_fields = [
-            "density_case",
-            "density_cushion",
-            "density_maincharge",
-            "density_outside_air",
-            "density_striker",
-            "density_throw",
-            "Uvelocity",
-            "Wvelocity",
-        ]
+        self.hydro_fields = hydro_fields
 
         # Initialize random number generator for time index selection
         self.rng = np.random.default_rng()
@@ -690,16 +705,12 @@ class LSC_rho2rho_temporal_DataSet(Dataset):
         start_img_list = []
         end_img_list = []
         for hfield in self.hydro_fields:
-            tmp_img = LSCread_npz(start_npz, hfield)
-            # Remember to replace all NaNs with 0.0
-            tmp_img = np.nan_to_num(tmp_img, nan=0.0)
+            tmp_img = LSCread_npz_NaN(start_npz, hfield)
             if not self.half_image:
                 tmp_img = np.concatenate((np.fliplr(tmp_img), tmp_img), axis=1)
             start_img_list.append(tmp_img)
 
-            tmp_img = LSCread_npz(end_npz, hfield)
-            # Remember to replace all NaNs with 0.0
-            tmp_img = np.nan_to_num(tmp_img, nan=0.0)
+            tmp_img = LSCread_npz_NaN(end_npz, hfield)
             if not self.half_image:
                 tmp_img = np.concatenate((np.fliplr(tmp_img), tmp_img), axis=1)
             end_img_list.append(tmp_img)
@@ -716,3 +727,144 @@ class LSC_rho2rho_temporal_DataSet(Dataset):
         end_npz.close()
 
         return start_img, end_img, Dt
+
+
+class LSC_rho2rho_sequential_DataSet(Dataset):
+    """Returns a sequence of consecutive frames from the LSC simulation.
+
+    For example, if seq_len=4, you'll get frames t, t+1, t+2, t+3.
+
+    Args:
+        LSC_NPZ_DIR (str): Location of LSC NPZ files.
+        file_prefix_list (str): Text file listing unique prefixes corresponding
+                                to unique simulations.
+        max_timeIDX_offset (int): Maximum timesteps-ahead to attempt prediction for.
+                                  The sequence will span this many timesteps.
+        max_file_checks (int): Maximum number of attempts to find valid file sequences.
+        seq_len (int): Number of consecutive frames to return. This includes the
+                       starting frame.
+        half_image (bool): If True, returns half-images, otherwise full images.
+
+    """
+
+    def __init__(
+        self,
+        LSC_NPZ_DIR: str,
+        file_prefix_list: str,
+        max_timeIDX_offset: int,
+        max_file_checks: int,
+        seq_len: int,
+        half_image: bool = True,
+    ) -> None:
+        """Initialization for LSC sequential dataset."""
+        dir_path = Path(LSC_NPZ_DIR)
+        # Ensure the directory exists and is indeed a directory
+        if not dir_path.is_dir():
+            raise FileNotFoundError(f"Directory not found: {LSC_NPZ_DIR}")
+
+        self.LSC_NPZ_DIR = LSC_NPZ_DIR
+        self.max_timeIDX_offset = max_timeIDX_offset
+        self.max_file_checks = max_file_checks
+        self.seq_len = seq_len
+        self.half_image = half_image
+
+        # Load the list of file prefixes
+        with open(file_prefix_list) as f:
+            self.file_prefix_list = [line.rstrip() for line in f]
+
+        # Shuffle the prefixes for randomness
+        random.shuffle(self.file_prefix_list)
+        self.Nsamples = len(self.file_prefix_list)
+
+        # Fields to extract from the simulation
+        self.hydro_fields = [
+            "density_case",
+            "density_cushion",
+            "density_maincharge",
+            "density_outside_air",
+            "density_striker",
+            "density_throw",
+            "Uvelocity",
+            "Wvelocity",
+        ]
+
+        # Random number generator
+        self.rng = np.random.default_rng()
+
+    def __len__(self) -> int:
+        """Return the number of samples in the dataset."""
+        return self.Nsamples
+
+    def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Return a sequence of consecutive frames."""
+        # Rotate index if necessary
+        index = index % self.Nsamples
+        file_prefix = self.file_prefix_list[index]
+
+        # Try multiple attempts to find valid files
+        prefix_attempt = 0
+        while prefix_attempt < self.max_file_checks:
+            # Pick a random start index so that the sequence fits within the range
+            startIDX = self.rng.integers(0, 100 - self.seq_len)
+
+            # Construct the sequence of file paths
+            valid_sequence = True
+            file_paths = []
+            for offset in range(self.seq_len):
+                idx = startIDX + offset
+                file_name = f"{file_prefix}_pvi_idx{idx:05d}.npz"
+                file_path = Path(self.LSC_NPZ_DIR, file_name)
+
+                if not file_path.is_file():
+                    valid_sequence = False
+                    break
+
+                file_paths.append(file_path)
+
+            if valid_sequence:
+                break
+
+            # If no valid sequence found, try the next prefix
+            prefix_attempt += 1
+            index = (index + 1) % self.Nsamples  # Rotate index to try another prefix
+
+        if prefix_attempt == self.max_file_checks:
+            err_msg = (
+                f"Failed to find valid sequence for prefix: {file_prefix} "
+                f"after {self.max_file_checks} attempts."
+            )
+            raise RuntimeError(err_msg)
+
+        # Load and process the sequence of frames
+        frames = []
+        for file_path in file_paths:
+            try:
+                data_npz = np.load(file_path)
+            except Exception as e:
+                raise RuntimeError(f"Error loading file: {file_path}") from e
+
+            field_imgs = []
+            for hfield in self.hydro_fields:
+                tmp_img = LSCread_npz_NaN(data_npz, hfield)
+
+                # Reflect image if not half_image
+                if not self.half_image:
+                    tmp_img = np.concatenate((np.fliplr(tmp_img), tmp_img), axis=1)
+
+                field_imgs.append(tmp_img)
+
+            data_npz.close()
+
+            # Stack the fields for this frame
+            field_tensor = torch.tensor(
+                np.stack(field_imgs, axis=0), dtype=torch.float32
+            )
+            frames.append(field_tensor)
+
+        # Combine frames into a single tensor of shape [seq_len, num_fields, H, W]
+        img_seq = torch.stack(frames, dim=0)
+
+        # Fixed time offset
+        Dt = torch.tensor(0.25, dtype=torch.float32)
+
+        return img_seq, Dt
