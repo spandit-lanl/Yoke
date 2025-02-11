@@ -8,7 +8,7 @@ import os
 YOKE_PATH = os.path.join(os.path.dirname(__file__), "../../..")
 
 
-def add_default_args(parser: argparse.ArgumentParser = None):
+def add_default_args(parser: argparse.ArgumentParser = None) -> argparse.ArgumentParser:
     """
     Prepare a default argparse.ArgumentParser for harnesses in yoke.applications.harnesses
     """
@@ -54,7 +54,7 @@ def add_default_args(parser: argparse.ArgumentParser = None):
     return parser
 
 
-def add_filepath_args(parser: argparse.ArgumentParser):
+def add_filepath_args(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
     """
     Add filepath related arguments to parser for harnesses in yoke.applications.harnesses
     """
@@ -124,7 +124,7 @@ def add_filepath_args(parser: argparse.ArgumentParser):
     return parser
 
 
-def add_computing_args(parser: argparse.ArgumentParser):
+def add_computing_args(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
     """
     Add computing-related (e.g., parallel processing) related arguments to parser for harnesses in yoke.applications.harnesses
     """
@@ -143,7 +143,7 @@ def add_computing_args(parser: argparse.ArgumentParser):
     return parser
 
 
-def add_model_args(parser: argparse.ArgumentParser):
+def add_model_args(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
     """
     Add model arguments to parser for harnesses in yoke.applications.harnesses
     """
@@ -181,7 +181,7 @@ def add_model_args(parser: argparse.ArgumentParser):
     return parser
 
 
-def add_training_args(parser: argparse.ArgumentParser):
+def add_training_args(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
     """
     Add training arguments to parser for harnesses in yoke.applications.harnesses
     """
@@ -277,7 +277,9 @@ def add_training_args(parser: argparse.ArgumentParser):
     return parser
 
 
-def add_step_lr_scheduler_args(parser: argparse.ArgumentParser):
+def add_step_lr_scheduler_args(
+    parser: argparse.ArgumentParser,
+) -> argparse.ArgumentParser:
     """
     Add StepLR arguments to parser for harnesses in yoke.applications.harnesses
     """
@@ -302,7 +304,9 @@ def add_step_lr_scheduler_args(parser: argparse.ArgumentParser):
     return parser
 
 
-def add_cosine_lr_scheduler_args(parser: argparse.ArgumentParser):
+def add_cosine_lr_scheduler_args(
+    parser: argparse.ArgumentParser,
+) -> argparse.ArgumentParser:
     """
     Add CosineWithWarmupScheduler arguments to parser for harnesses in yoke.applications.harnesses
     """
