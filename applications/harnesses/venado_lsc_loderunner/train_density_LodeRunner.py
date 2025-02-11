@@ -266,7 +266,7 @@ def rand_channel_map(
         random.seed(seed)
         _seed_set[0] = True  # Mark the seed as set
 
-    return sorted(random.sample(range(0, N), n))
+    return sorted(random.sample(range(0, max_number_channels), num_subchannels))
 
 
 if __name__ == "__main__":
@@ -430,7 +430,7 @@ if __name__ == "__main__":
 
     # For reproducibility of channel map per epoch
     SEED = 42
-    
+
     max_channels = len(hydro_fields)
     yl.logger.info(f"Max Channel  : {max_channels}")
 
