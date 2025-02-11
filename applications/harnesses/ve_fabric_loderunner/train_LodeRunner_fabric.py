@@ -18,6 +18,7 @@ from yoke.datasets.lsc_dataset import LSC_rho2rho_temporal_DataSet
 import yoke.torch_training_utils as tr
 from yoke.parallel_utils import LodeRunner_DataParallel
 from yoke.lr_schedulers import CosineWithWarmupScheduler
+from yoke.helpers import cli
 
 
 #############################################
@@ -30,233 +31,18 @@ descr_str = (
 parser = argparse.ArgumentParser(
     prog="Initial LodeRunner Training", description=descr_str, fromfile_prefix_chars="@"
 )
+parser = cli.add_default_args(parser=parser)
+parser = cli.add_filepath_args(parser=parser)
+parser = cli.add_computing_args(parser=parser)
+parser = cli.add_model_args(parser=parser)
+parser = cli.add_training_args(parser=parser)
+parser = cli.add_cosine_lr_scheduler_args(parser=parser)
 
-#############################################
-# Data Parallelism
-#############################################
-parser.add_argument(
-    '--Ngpus',
-    action="store",
-    type=int,
-    default=1,
-    help='Number of GPUs per node.'
-)
-
-parser.add_argument(
-    '--Knodes',
-    action="store",
-    type=int,
-    default=1,
-    help='Number of nodes.'
-)
-
-#############################################
-# Learning Problem
-#############################################
-parser.add_argument(
-    "--studyIDX",
-    action="store",
-    type=int,
-    default=1,
-    help="Study ID number to match hyperparameters",
-)
-
-#############################################
-# File Paths
-#############################################
-parser.add_argument(
-    "--FILELIST_DIR",
-    action="store",
-    type=str,
-    default=os.path.join(os.path.dirname(__file__), "../../filelists/"),
-    help="Directory where filelists are located.",
-)
-
-parser.add_argument(
-    "--LSC_NPZ_DIR",
-    action="store",
-    type=str,
-    default=os.path.join(os.path.dirname(__file__), "../../../data_examples/lsc240420/"),
-    help="Directory in which LSC *.npz files live.",
-)
-
-parser.add_argument(
-    "--train_filelist",
-    action="store",
-    type=str,
-    default="lsc240420_prefixes_train_80pct.txt",
-    help="Path to list of files to train on.",
-)
-
-parser.add_argument(
-    "--validation_filelist",
-    action="store",
-    type=str,
-    default="lsc240420_prefixes_validation_10pct.txt",
-    help="Path to list of files to validate on.",
-)
-
-parser.add_argument(
-    "--test_filelist",
-    action="store",
-    type=str,
-    default="lsc240420_prefixes_test_10pct.txt",
-    help="Path to list of files to test on.",
-)
-
-#############################################
-# Model Parameters
-#############################################
-parser.add_argument(
-    "--block_structure",
-    action="store",
-    type=int,
-    nargs="+",
-    default=[1, 1, 3, 1],
-    help="List of number of SW-MSA layers in each SWIN block.",
-)
-
-parser.add_argument(
-    "--embed_dim",
-    action="store",
-    type=int,
-    default=128,
-    help="Initial embedding dimension for SWIN-Unet.",
-)
-
-#############################################
-# Training Parameters
-#############################################
-#---------------------
-# Learning Rate Params
-#---------------------
-parser.add_argument(
-    "--anchor_lr",
-    action="store",
-    type=float,
-    default=1e-4,
-    help="Learning rate at the peak of cosine scheduler.",
-)
-
-parser.add_argument(
-    "--num_cycles",
-    action="store",
-    type=float,
-    default=0.5,
-    help="Learning rate at the peak of cosine scheduler.",
-)
-
-parser.add_argument(
-    "--min_fraction",
-    action="store",
-    type=float,
-    default=0.5,
-    help="Fraction of anchor-LR at cosine trough.",
-)
-
-parser.add_argument(
-    "--terminal_steps",
-    action="store",
-    type=int,
-    default=1000,
-    help="Number of steps for cosine to go through specified cycles.",
-)
-
-parser.add_argument(
-    "--warmup_steps",
-    action="store",
-    type=int,
-    default=500,
-    help="Number of steps for scheduler to reach anchor-LR."
-)
-
-#---------------------
-#---------------------
-
-parser.add_argument(
-    "--batch_size", action="store", type=int, default=64, help="Batch size"
-)
-
-parser.add_argument(
-    "--num_workers",
-    action="store",
-    type=int,
-    default=4,
-    help=("Number of processes simultaneously loading batches of data. "
-          "NOTE: If set too big workers will swamp memory!!")
-)
-
-#############################################
-# Epoch Parameters
-#############################################
-parser.add_argument(
-    "--total_epochs", action="store", type=int, default=10, help="Total training epochs"
-)
-
-parser.add_argument(
-    "--cycle_epochs",
-    action="store",
-    type=int,
-    default=5,
-    help=(
-        "Number of epochs between saving the model and re-queueing "
-        "training process; must be able to be completed in the "
-        "set wall time"
-    ),
-)
-
-parser.add_argument(
-    "--train_batches",
-    action="store",
-    type=int,
-    default=250,
-    help="Number of batches to train on in a given epoch",
-)
-
-parser.add_argument(
-    "--val_batches",
-    action="store",
-    type=int,
-    default=25,
-    help="Number of batches to validate on in a given epoch",
-)
-
-parser.add_argument(
-    "--TRAIN_PER_VAL",
-    action="store",
-    type=int,
-    default=10,
-    help="Number of training epochs between each validation epoch",
-)
-
-parser.add_argument(
-    "--trn_rcrd_filename",
-    action="store",
-    type=str,
-    default="./default_training.csv",
-    help="Filename for text file of training loss and metrics on each batch",
-)
-
-parser.add_argument(
-    "--val_rcrd_filename",
-    action="store",
-    type=str,
-    default="./default_validation.csv",
-    help="Filename for text file of validation loss and metrics on each batch",
-)
-
-parser.add_argument(
-    "--continuation",
-    action="store_true",
-    help="Indicates if training is being continued or restarted",
-)
-
-parser.add_argument(
-    "--checkpoint",
-    action="store",
-    type=str,
-    default="None",
-    help="Path to checkpoint to continue training from",
+# Change some default filepaths.
+parser.set_defaults(
+    train_filelist="lsc240420_prefixes_train_80pct.txt",
+    validation_filelist="lsc240420_prefixes_validation_10pct.txt",
+    test_filelist="lsc240420_prefixes_test_10pct.txt",
 )
 
 
@@ -266,7 +52,7 @@ if __name__ == "__main__":
     #############################################
     # Process Inputs
     #############################################
-    #device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     args = parser.parse_args()
 
     # Study ID
@@ -284,7 +70,7 @@ if __name__ == "__main__":
     # Model Parameters
     embed_dim = args.embed_dim
     block_structure = tuple(args.block_structure)
-    
+
     # Training Parameters
     anchor_lr = args.anchor_lr
     num_cycles = args.num_cycles
@@ -315,15 +101,10 @@ if __name__ == "__main__":
 
     # print("SLURM detected:", env.detect())
     # print("Job name:", env.job_name())
-    
+
     # Setup fabric
-    torch.set_float32_matmul_precision('medium')  # or `high`
-    fabric = Fabric(
-        accelerator="gpu",
-        devices=Ngpus,
-        num_nodes=Knodes,
-        strategy="ddp"
-    )
+    torch.set_float32_matmul_precision("medium")  # or `high`
+    fabric = Fabric(accelerator="gpu", devices=Ngpus, num_nodes=Knodes, strategy="ddp")
 
     fabric.launch()
 
@@ -347,14 +128,16 @@ if __name__ == "__main__":
     # Initialize Model
     #############################################
     model = LodeRunner(
-        default_vars=['density_case',
-                      'density_cushion',
-                      'density_maincharge',
-                      'density_outside_air',
-                      'density_striker',
-                      'density_throw',
-                      'Uvelocity',
-                      'Wvelocity'],
+        default_vars=[
+            "density_case",
+            "density_cushion",
+            "density_maincharge",
+            "density_outside_air",
+            "density_striker",
+            "density_throw",
+            "Uvelocity",
+            "Wvelocity",
+        ],
         image_size=(1120, 400),
         patch_size=(10, 5),  # Since using half-image, halve patch size.
         embed_dim=embed_dim,
@@ -374,7 +157,9 @@ if __name__ == "__main__":
         ],
     )
 
-    fabric.print("Lode Runner parameters:", tr.count_torch_params(model, trainable=True))
+    fabric.print(
+        "Lode Runner parameters:", tr.count_torch_params(model, trainable=True)
+    )
     # Wait to move model to GPU until after the checkpoint load. Then
     # explicitly move model and optimizer state to GPU.
 
@@ -430,7 +215,7 @@ if __name__ == "__main__":
     # Setup Fabric
     #############################################
     model, optimizer = fabric.setup(model, optimizer)
-    
+
     #############################################
     # Initialize Data
     #############################################
@@ -465,15 +250,11 @@ if __name__ == "__main__":
         batch_size,
         train_batches,
         num_workers=num_workers,
-        prefetch_factor=2
+        prefetch_factor=2,
     )
     train_dataloader = fabric.setup_dataloaders(train_dataloader)
     val_dataloader = tr.make_dataloader(
-        val_dataset,
-        batch_size,
-        val_batches,
-        num_workers=num_workers,
-        prefetch_factor=2
+        val_dataset, batch_size, val_batches, num_workers=num_workers, prefetch_factor=2
     )
     val_dataloader = fabric.setup_dataloaders(val_dataloader)
     fabric.print("DataLoaders initialized...")
@@ -500,7 +281,7 @@ if __name__ == "__main__":
             epochIDX=epochIDX,
             train_per_val=train_per_val,
             train_rcrd_filename=trn_rcrd_filename,
-            val_rcrd_filename=val_rcrd_filename
+            val_rcrd_filename=val_rcrd_filename,
         )
 
         if TIME_EPOCH:
