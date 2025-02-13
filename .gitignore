@@ -3,3 +3,5 @@
 ._DS*
 _.*
 __pycache__
+.vscode/launch.json
+.vscode/settings.json
