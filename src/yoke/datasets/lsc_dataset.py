@@ -625,8 +625,8 @@ class LSC_rho2rho_temporal_DataSet(Dataset):
         self.rng = np.random.default_rng()
 
     def __len__(self) -> int:
-        """Return number of samples in dataset."""
-        return self.Nsamples
+        """Return effectively infinite number of samples in dataset."""
+        return int(1e12)
 
     def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Return a tuple of a batch's input and output data."""
@@ -644,10 +644,12 @@ class LSC_rho2rho_temporal_DataSet(Dataset):
             attempt = 0
             while attempt < self.max_file_checks:
                 # Files have name format
-                # *lsc240420_id01001_pvi_idx00000.npz*. Choose random starting
-                # index 0-96 so the end index will be less than or equal to 99.
-                startIDX = self.rng.integers(0, 97)
-                endIDX = self.rng.integers(1, self.max_timeIDX_offset + 1) + startIDX
+                # *lsc240420_id01001_pvi_idx00000.npz*.
+                #
+                # Choose random starting index 0-(100-max_timeIDX_offset) so
+                # the end index will be less than or equal to 99.
+                startIDX = self.rng.integers(0, 100 - self.max_timeIDX_offset)
+                endIDX = self.rng.integers(0, self.max_timeIDX_offset + 1) + startIDX
 
                 # Construct file names
                 start_file = file_prefix + f"_pvi_idx{startIDX:05d}.npz"

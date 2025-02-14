@@ -193,10 +193,13 @@ def main(args, rank, world_size, local_rank, device):
         last_epoch = train_batches * (starting_epoch - 1)
 
     # Scale the anchor LR by global batchsize
-    lr_scale = np.sqrt(float(Ngpus) * float(Knodes) * float(batch_size))
-    # 16 was original LR study global batch size
-    ddp_anchor_lr = anchor_lr * lr_scale / 16.0
 
+    # # For lr-study 1
+    # lr_scale = np.sqrt(float(Ngpus) * float(Knodes) * float(batch_size))
+    # # 16 was original LR study global batch size
+    # ddp_anchor_lr = anchor_lr * lr_scale / 16.0
+    # For lr-study 2
+    ddp_anchor_lr = anchor_lr
     LRsched = CosineWithWarmupScheduler(
         optimizer,
         anchor_lr=ddp_anchor_lr,
@@ -268,6 +271,8 @@ def main(args, rank, world_size, local_rank, device):
         tr.train_DDP_loderunner_epoch(
             training_data=train_dataloader,
             validation_data=val_dataloader,
+            num_train_batches=train_batches,
+            num_val_batches=val_batches,
             model=model,
             optimizer=optimizer,
             loss_fn=loss_fn,

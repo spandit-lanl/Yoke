@@ -12,6 +12,7 @@
 
 #SBATCH --job-name=ddp_s<studyIDX>_e0001
 #SBATCH --account=w25_artimis_gh
+#SBATCH --reservation=DAT-258601
 #SBATCH --partition=gpu
 #SBATCH --nodes=<KNODES>
 #SBATCH --ntasks-per-node=<NGPUS>
