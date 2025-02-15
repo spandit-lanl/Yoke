@@ -626,7 +626,7 @@ class LSC_rho2rho_temporal_DataSet(Dataset):
 
     def __len__(self) -> int:
         """Return effectively infinite number of samples in dataset."""
-        return int(1e12)
+        return int(8e4)
 
     def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Return a tuple of a batch's input and output data."""

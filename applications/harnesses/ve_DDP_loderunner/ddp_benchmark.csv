@@ -4,11 +4,14 @@ studyIDX,YOKE_TORCH_ENV,KNODES,NGPUS,EMBED_DIM,B0,B1,B2,B3,NUM_WORKERS,BATCH_SIZ
 # 3,torch_ve_gpu_241107,2,4,512,1,1,11,2,2,4,100,100,1.0e-4,0.5,0.7,1000,500,train_LodeRunner_ddp.py
 # 4,torch_ve_gpu_241107,2,4,512,1,1,11,2,2,5,100,100,1.0e-4,0.5,0.7,1000,500,train_LodeRunner_ddp.py
 # # Fail with per-GPU batchsize > 5
-# 5,torch_ve_gpu_241107,2,4,512,1,1,11,2,2,6,100,100,1.0e-4,0.5,0.7,1000,500,train_LodeRunner_ddp.py
+# 5,torch_ve_gpu_241107,2,4,512,1,1,11,2,2,4,100,100,1.0e-4,0.5,0.7,1000,500,train_LodeRunner_ddp.py
 # 6,torch_ve_gpu_241107,3,4,512,1,1,11,2,2,4,100,100,1.0e-4,0.5,0.7,1000,500,train_LodeRunner_ddp.py
 # 7,torch_ve_gpu_241107,4,4,512,1,1,11,2,2,4,100,100,1.0e-4,0.5,0.7,1000,500,train_LodeRunner_ddp.py
 # Fail with KNODES > 4
-8,torch_ve_gpu_241107,5,4,512,1,1,11,2,2,4,100,100,1.0e-4,0.5,0.7,1000,500,train_LodeRunner_ddp.py
-# Production timing run: 5 mins per epoch here.
-# 9,torch_ve_gpu_241107,4,4,512,1,1,11,2,2,5,100,100,1.0e-4,0.5,0.7,1000,500,train_LodeRunner_ddp.py
+# 8,torch_ve_gpu_241107,5,4,512,1,1,11,2,2,4,100,100,1.0e-4,0.5,0.7,1000,500,train_LodeRunner_ddp.py
+# Production timing run: ___ mins per epoch here.
+9,torch_ve_gpu_241107,1,4,512,1,1,11,2,2,5,100,100,1.0e-4,0.5,0.7,1000,500,train_LodeRunner_ddp.py
+10,torch_ve_gpu_241107,2,4,512,1,1,11,2,2,5,100,100,1.0e-4,0.5,0.7,1000,500,train_LodeRunner_ddp.py
+11,torch_ve_gpu_241107,3,4,512,1,1,11,2,2,5,100,100,1.0e-4,0.5,0.7,1000,500,train_LodeRunner_ddp.py
+12,torch_ve_gpu_241107,4,4,512,1,1,11,2,2,5,100,100,1.0e-4,0.5,0.7,1000,500,train_LodeRunner_ddp.py
 
