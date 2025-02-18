@@ -1,11 +1,11 @@
 --studyIDX
 <studyIDX>
 --FILELIST_DIR
-<LIST_DIR>
+/data2/gitlab_yoke/applications/filelists/
 --LSC_DESIGN_DIR
-<DESIGN_DIR>
+/data2/
 --LSC_NPZ_DIR
-<NPZ_DIR>
+/data2/lsc240420/
 --design_file
 design_lsc240420_MASTER.csv
 --train_filelist

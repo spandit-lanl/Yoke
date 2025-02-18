@@ -24,7 +24,7 @@ sinfo  -o "%P %.24G %N"
 srun /usr/bin/echo $CUDA_AVAILABLE_DEVICES
 
 # Load correct conda environment
-source <YOKE_CONDA_BASE>/bin/activate <YOKE_TORCH_ENV>
+source /data/anaconda3/bin/activate <YOKE_TORCH_ENV>
 
 # Strange numpy-related MKL threading issue
 export MKL_SERVICE_FORCE_INTEL=TRUE
@@ -33,17 +33,17 @@ export MKL_SERVICE_FORCE_INTEL=TRUE
 export date00=`date`
 
 # Start GPU monitoring
-nvidia-smi --loop 5 --query-gpu=timestamp,gpu_bus_id,memory.used,memory.free,memory.total --format=csv > nvidia_smi_epoch<epochIDX>.out &
-nvpid=$!
+# nvidia-smi --loop 5 --query-gpu=timestamp,gpu_bus_id,memory.used,memory.free,memory.total --format=csv > nvidia_smi_epoch<epochIDX>.out &
+# nvpid=$!
 
 # Assumes running from inside harnesses directory
 # Start the Code
 python <train_script> @<INPUTFILE> &
-pypid=$!
+# pypid=$!
 
 # # Kill GPU monitoring after python process finishes
-wait $pypid
-kill $nvpid
+# wait $pypid
+# kill $nvpid
 
 # Get end time and print to stdout
 export date01=`date`

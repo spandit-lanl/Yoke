@@ -59,7 +59,6 @@ if __name__ == "__main__":
     design_file = os.path.abspath(args.LSC_DESIGN_DIR + args.design_file)
     train_filelist = args.FILELIST_DIR + args.train_filelist
     validation_filelist = args.FILELIST_DIR + args.validation_filelist
-    test_filelist = args.FILELIST_DIR + args.test_filelist
 
     # Model Parameters
     featureList = args.featureList
@@ -203,7 +202,6 @@ if __name__ == "__main__":
     val_dataset = LSC_cntr2rho_DataSet(
         args.LSC_NPZ_DIR, validation_filelist, design_file
     )
-    test_dataset = LSC_cntr2rho_DataSet(args.LSC_NPZ_DIR, test_filelist, design_file)
 
     print("Datasets initialized.")
 
