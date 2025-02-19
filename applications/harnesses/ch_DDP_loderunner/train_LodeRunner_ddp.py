@@ -193,14 +193,14 @@ def main(args, rank, world_size, local_rank, device):
         last_epoch = train_batches * (starting_epoch - 1)
 
     # Scale the anchor LR by global batchsize
-
+    #
     # # For multi-node
-    # lr_scale = np.sqrt(float(Ngpus) * float(Knodes) * float(batch_size))
-    # original_batchsize = 40.0  # 1 node, 4 gpus, 10 samples/gpu
-    # ddp_anchor_lr = anchor_lr * lr_scale / original_batchsize
+    lr_scale = np.sqrt(float(Ngpus) * float(Knodes) * float(batch_size))
+    original_batchsize = 40.0  # 1 node, 4 gpus, 10 samples/gpu
+    ddp_anchor_lr = anchor_lr * lr_scale / original_batchsize
     #
     # For single node
-    ddp_anchor_lr = anchor_lr
+    # ddp_anchor_lr = anchor_lr
     
     LRsched = CosineWithWarmupScheduler(
         optimizer,
