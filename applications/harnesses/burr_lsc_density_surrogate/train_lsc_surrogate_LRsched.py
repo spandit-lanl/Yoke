@@ -37,7 +37,6 @@ parser = argparse.ArgumentParser(
 )
 parser = cli.add_default_args(parser=parser)
 parser = cli.add_filepath_args(parser=parser)
-parser = cli.add_computing_args(parser=parser)
 parser = cli.add_model_args(parser=parser)
 parser = cli.add_training_args(parser=parser)
 parser = cli.add_step_lr_scheduler_args(parser=parser)
@@ -70,7 +69,7 @@ if __name__ == "__main__":
     LRdecay = args.LRdecay
     batch_size = args.batch_size
     # Leave one CPU out of the worker queue. Not sure if this is necessary.
-    num_workers = int(os.environ["SLURM_JOB_CPUS_PER_NODE"])  # - 1
+    num_workers = 2  # int(os.environ["SLURM_JOB_CPUS_PER_NODE"])  # - 1
     train_per_val = args.TRAIN_PER_VAL
 
     # Epoch Parameters
@@ -152,9 +151,6 @@ if __name__ == "__main__":
     #############################################
     # Move model and optimizer state to GPU
     #############################################
-    if args.multigpu:
-        model = nn.DataParallel(model)
-
     model.to(device)
 
     for state in optimizer.state.values():
@@ -175,25 +171,22 @@ if __name__ == "__main__":
     #############################################
     # Script and compile model on device
     #############################################
-    if args.multigpu:
-        compiled_model = model  # jit compilation disabled in multi-gpu scenarios.
-    else:
-        scripted_model = torch.jit.script(model)
+    scripted_model = torch.jit.script(model)
 
-        # Model compilation has some interesting parameters to play with.
-        #
-        # NOTE: Compiled model is not able to be loaded from checkpoint for some
-        # reason.
-        compiled_model = torch.compile(
-            scripted_model,
-            fullgraph=True,  # If TRUE, throw error if
-            # whole graph is not
-            # compileable.
-            mode="reduce-overhead",
-        )  # Other compile
-        # modes that may
-        # provide better
-        # performance
+    # Model compilation has some interesting parameters to play with.
+    #
+    # NOTE: Compiled model is not able to be loaded from checkpoint for some
+    # reason.
+    compiled_model = torch.compile(
+        scripted_model,
+        fullgraph=True,  # If TRUE, throw error if
+        # whole graph is not
+        # compileable.
+        mode="reduce-overhead",
+    )  # Other compile
+    # modes that may
+    # provide better
+    # performance
 
     #############################################
     # Initialize Data
