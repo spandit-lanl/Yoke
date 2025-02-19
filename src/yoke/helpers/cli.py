@@ -347,3 +347,34 @@ def add_cosine_lr_scheduler_args(
     )
 
     return parser
+
+
+def add_scheduled_sampling_args(
+    parser: argparse.ArgumentParser,
+) -> argparse.ArgumentParser:
+    """
+    Add scheduled sampling arguments to parser for harnesses in yoke.applications.harnesses
+    """
+    parser.add_argument(
+        "--scheduled_prob",
+        action="store",
+        type=float,
+        default=1.0,  # Initial probability of using ground truth
+        help="Initial probability of using ground truth for scheduled sampling.",
+    )
+    parser.add_argument(
+        "--decay_rate",
+        action="store",
+        type=float,
+        default=1.0,  # Decay rate for scheduled_prob
+        help="Schedule probability multiplier after each epoch.",
+    )
+    parser.add_argument(
+        "--minimum_schedule_prob",
+        action="store",
+        type=float,
+        default=0.0,  # Initial probability of using ground truth
+        help="Minimum scheduled-sampling probability.",
+    )
+
+    return parser
