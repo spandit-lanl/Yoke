@@ -434,7 +434,8 @@ def train_array_datastep(data: tuple, model, optimizer, loss_fn, device: torch.d
     # prior to initalizing optimizer.
     pred = model(inpt)
     loss = loss_fn(pred, truth)
-    per_sample_loss = loss.mean(dim=[1, 2])  # Shape: (batch_size,)
+
+    per_sample_loss = loss.mean(dim=[1, 2, 3])  # Shape: (batch_size,)
     
     # Perform backpropagation and update the weights
     # optimizer.zero_grad()
@@ -1293,7 +1294,7 @@ def train_array_csv_epoch(
             truth, pred, train_losses = train_array_datastep(
                 traindata, model, optimizer, loss_fn, device
             )
-
+            
             # Save batch records to the training record file
             batch_records = np.column_stack([
                 np.full(len(train_losses), epochIDX),
