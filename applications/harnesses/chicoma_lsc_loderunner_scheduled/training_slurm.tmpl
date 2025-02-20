@@ -12,14 +12,14 @@
 # `gpu40only`. 
 
 #SBATCH --job-name=loderunner_chfe_study<studyIDX>
-#SBATCH --account=w25_artimis_g
+#SBATCH --account=y25_artimis_g
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=64
 #SBATCH --partition=gpu
 #SBATCH --constraint=gpu40
 #SBATCH --time=16:00:00
-#SBATCH --output=study<studyIDX>_epoch<epochIDX>.out
-#SBATCH --error=study<studyIDX>_epoch<epochIDX>.err
+#SBATCH --output=study<studyIDX>_epoch0001.out
+#SBATCH --error=study<studyIDX>_epoch0001.err
 #SBATCH -vvv
 
 
@@ -40,12 +40,11 @@ export MKL_SERVICE_FORCE_INTEL=TRUE
 export date00=`date`
 
 # # Start GPU monitoring
-# nvidia-smi --loop 5 --query-gpu=timestamp,gpu_bus_id,memory.used,memory.free,memory.total --format=csv > nvidia_smi_epoch<epochIDX>.out &
+# nvidia-smi --loop 5 --query-gpu=timestamp,gpu_bus_id,memory.used,memory.free,memory.total --format=csv > nvidia_smi_epoch0001.out &
 # nvpid=$!
 
-# Assumes running from inside harnesses directory
 # Start the Code
-python <train_script> @<INPUTFILE>
+python <train_script> @study<studyIDX>_START.input
 #pypid=$!
 
 # Kill GPU monitoring after python process finishes

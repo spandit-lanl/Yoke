@@ -12,7 +12,7 @@
 # `gpu40only`. 
 
 #SBATCH --job-name=loderunner_chfe_study<studyIDX>
-#SBATCH --account=w25_artimis_g
+#SBATCH --account=y25_artimis_g
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=64
 #SBATCH --partition=gpu

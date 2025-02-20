@@ -17,7 +17,7 @@ import torch
 import torch.nn as nn
 
 from yoke.models.vit.swin.bomberman import LodeRunner
-from yoke.datasets.lsc_dataset import LSC_rho2rho_temporal_DataSet
+from yoke.datasets.lsc_dataset import LSC_rho2rho_sequential_DataSet
 import yoke.torch_training_utils as tr
 from yoke.parallel_utils import LodeRunner_DataParallel
 from yoke.helpers import cli
@@ -52,21 +52,32 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     args = parser.parse_args()
 
+    #############
+    num_gpus = torch.cuda.device_count()
+    print(f"Number of GPUs available: {num_gpus}")
+    #############
     # Study ID
     studyIDX = args.studyIDX
 
     # Data Paths
-    train_filelist = args.FILELIST_DIR + args.train_filelist
-    validation_filelist = args.FILELIST_DIR + args.validation_filelist
-    test_filelist = args.FILELIST_DIR + args.test_filelist
+    train_filelist = os.path.join(args.FILELIST_DIR, args.train_filelist)
+    validation_filelist = os.path.join(args.FILELIST_DIR, args.validation_filelist)
+    test_filelist = os.path.join(args.FILELIST_DIR, args.test_filelist)
 
     # Model Parameters
+    embed_dim = args.embed_dim
+    block_structure = tuple(args.block_structure)
 
     # Training Parameters
     initial_learningrate = args.init_learnrate
     LRepoch_per_step = args.LRepoch_per_step
     LRdecay = args.LRdecay
     batch_size = args.batch_size
+
+    # Scheduled Sampling Parameters
+    scheduled_prob = args.scheduled_prob
+    decay_rate = args.decay_rate
+    minimum_schedule_prob = args.minimum_schedule_prob
 
     # Number of workers controls how batches of data are prefetched and,
     # possibly, pre-loaded onto GPUs. If the number of workers is large they
@@ -86,21 +97,21 @@ if __name__ == "__main__":
     START = not CONTINUATION
     checkpoint = args.checkpoint
 
-    #############################################
-    # Check Devices
-    #############################################
-    print("\n")
-    print("Slurm & Device Information")
-    print("=========================================")
-    print("Slurm Job ID:", os.environ["SLURM_JOB_ID"])
-    print("Pytorch Cuda Available:", torch.cuda.is_available())
-    print("GPU ID:", os.environ["SLURM_JOB_GPUS"])
-    print("Number of System CPUs:", os.cpu_count())
-    print("Number of CPUs per GPU:", os.environ["SLURM_JOB_CPUS_PER_NODE"])
+    # #############################################
+    # # Check Devices
+    # #############################################
+    # print("\n")
+    # print("Slurm & Device Information")
+    # print("=========================================")
+    # print("Slurm Job ID:", os.environ["SLURM_JOB_ID"])
+    # print("Pytorch Cuda Available:", torch.cuda.is_available())
+    # print("GPU ID:", os.environ["SLURM_JOB_GPUS"])
+    # print("Number of System CPUs:", os.cpu_count())
+    # print("Number of CPUs per GPU:", os.environ["SLURM_JOB_CPUS_PER_NODE"])
 
-    print("\n")
-    print("Model Training Information")
-    print("=========================================")
+    # print("\n")
+    # print("Model Training Information")
+    # print("=========================================")
 
     #############################################
     # Initialize Model
@@ -118,10 +129,10 @@ if __name__ == "__main__":
         ],
         image_size=(1120, 800),
         patch_size=(10, 10),
-        embed_dim=128,
+        embed_dim=embed_dim,
         emb_factor=2,
         num_heads=8,
-        block_structure=(1, 1, 3, 1),  #  This should vary as in the SWIN models.
+        block_structure=block_structure,
         window_sizes=[
             (8, 8),
             (8, 8),
@@ -193,23 +204,31 @@ if __name__ == "__main__":
     #############################################
     # Initialize Data
     #############################################
-    train_dataset = LSC_rho2rho_temporal_DataSet(
-        args.LSC_NPZ_DIR,
+    train_dataset = LSC_rho2rho_sequential_DataSet(
+        LSC_NPZ_DIR=args.LSC_NPZ_DIR,
         file_prefix_list=train_filelist,
-        max_timeIDX_offset=2,  # This could be a variable.
+        max_timeIDX_offset=1,
         max_file_checks=10,
+        seq_len=3,  # Sequence length
+        half_image=True,
     )
-    val_dataset = LSC_rho2rho_temporal_DataSet(
-        args.LSC_NPZ_DIR,
+
+    val_dataset = LSC_rho2rho_sequential_DataSet(
+        LSC_NPZ_DIR=args.LSC_NPZ_DIR,
         file_prefix_list=validation_filelist,
-        max_timeIDX_offset=2,  # This could be a variable.
+        max_timeIDX_offset=1,
         max_file_checks=10,
+        seq_len=3,  # Sequence length
+        half_image=True,
     )
-    test_dataset = LSC_rho2rho_temporal_DataSet(
-        args.LSC_NPZ_DIR,
+
+    test_dataset = LSC_rho2rho_sequential_DataSet(
+        LSC_NPZ_DIR=args.LSC_NPZ_DIR,
         file_prefix_list=test_filelist,
-        max_timeIDX_offset=2,  # This could be a variable.
+        max_timeIDX_offset=1,
         max_file_checks=10,
+        seq_len=3,  # Sequence length
+        half_image=True,
     )
 
     print("Datasets initialized...")
@@ -243,8 +262,10 @@ if __name__ == "__main__":
         # Time each epoch and print to stdout
         startTime = time.time()
 
-        # Train an Epoch
-        tr.train_simple_loderunner_epoch(
+        torch.cuda.empty_cache()
+
+        # Train an epoch with scheduled sampling
+        tr.train_scheduled_loderunner_epoch(
             training_data=train_dataloader,
             validation_data=val_dataloader,
             model=model,
@@ -255,7 +276,7 @@ if __name__ == "__main__":
             train_rcrd_filename=trn_rcrd_filename,
             val_rcrd_filename=val_rcrd_filename,
             device=device,
-            verbose=False,
+            scheduled_prob=scheduled_prob,
         )
 
         # Increment LR scheduler
@@ -265,8 +286,14 @@ if __name__ == "__main__":
         epoch_time = (endTime - startTime) / 60
 
         # Print Summary Results
-        print("Completed epoch " + str(epochIDX) + "...", flush=True)
-        print("Epoch time (minutes):", epoch_time, flush=True)
+        print(
+            f"Completed epoch {epochIDX} with scheduled_prob {scheduled_prob:.4f}...",
+            flush=True,
+        )
+        print(f"Epoch time (minutes): {epoch_time:.2f}", flush=True)
+
+        # Decay the scheduled probability
+        scheduled_prob = max(scheduled_prob * decay_rate, minimum_schedule_prob)
 
         # Clear GPU memory after each epoch
         torch.cuda.empty_cache()
