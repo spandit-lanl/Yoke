@@ -60,9 +60,9 @@ if __name__ == "__main__":
     studyIDX = args.studyIDX
 
     # Data Paths
-    train_filelist = args.FILELIST_DIR + args.train_filelist
-    validation_filelist = args.FILELIST_DIR + args.validation_filelist
-    test_filelist = args.FILELIST_DIR + args.test_filelist
+    train_filelist = os.path.join(args.FILELIST_DIR, args.train_filelist)
+    validation_filelist = os.path.join(args.FILELIST_DIR, args.validation_filelist)
+    test_filelist = os.path.join(args.FILELIST_DIR, args.test_filelist)
 
     # Model Parameters
     embed_dim = args.embed_dim
@@ -127,8 +127,8 @@ if __name__ == "__main__":
             "Uvelocity",
             "Wvelocity",
         ],
-        image_size=(1120, 800),
-        patch_size=(10, 10),
+        image_size=(1120, 400),
+        patch_size=(10, 5),
         embed_dim=embed_dim,
         emb_factor=2,
         num_heads=8,
@@ -207,7 +207,6 @@ if __name__ == "__main__":
     train_dataset = LSC_rho2rho_sequential_DataSet(
         LSC_NPZ_DIR=args.LSC_NPZ_DIR,
         file_prefix_list=train_filelist,
-        max_timeIDX_offset=1,
         max_file_checks=10,
         seq_len=3,  # Sequence length
         half_image=True,
@@ -216,7 +215,6 @@ if __name__ == "__main__":
     val_dataset = LSC_rho2rho_sequential_DataSet(
         LSC_NPZ_DIR=args.LSC_NPZ_DIR,
         file_prefix_list=validation_filelist,
-        max_timeIDX_offset=1,
         max_file_checks=10,
         seq_len=3,  # Sequence length
         half_image=True,
@@ -225,7 +223,6 @@ if __name__ == "__main__":
     test_dataset = LSC_rho2rho_sequential_DataSet(
         LSC_NPZ_DIR=args.LSC_NPZ_DIR,
         file_prefix_list=test_filelist,
-        max_timeIDX_offset=1,
         max_file_checks=10,
         seq_len=3,  # Sequence length
         half_image=True,

@@ -207,7 +207,6 @@ if __name__ == "__main__":
     train_dataset = LSC_rho2rho_sequential_DataSet(
         LSC_NPZ_DIR=args.LSC_NPZ_DIR,
         file_prefix_list=train_filelist,
-        max_timeIDX_offset=1,
         max_file_checks=10,
         seq_len=3,  # Sequence length
         half_image=True,
@@ -216,7 +215,6 @@ if __name__ == "__main__":
     val_dataset = LSC_rho2rho_sequential_DataSet(
         LSC_NPZ_DIR=args.LSC_NPZ_DIR,
         file_prefix_list=validation_filelist,
-        max_timeIDX_offset=1,
         max_file_checks=10,
         seq_len=3,  # Sequence length
         half_image=True,
@@ -225,7 +223,6 @@ if __name__ == "__main__":
     test_dataset = LSC_rho2rho_sequential_DataSet(
         LSC_NPZ_DIR=args.LSC_NPZ_DIR,
         file_prefix_list=test_filelist,
-        max_timeIDX_offset=1,
         max_file_checks=10,
         seq_len=3,  # Sequence length
         half_image=True,

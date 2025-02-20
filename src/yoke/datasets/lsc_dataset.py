@@ -61,7 +61,9 @@ def LSCcsv2bspline_pts(design_file: str, key: str) -> np.ndarray:
                                    the Layered Shaped Charge
 
     """
-    design_df = pd.read_csv(design_file, sep=",", header=0, index_col=0, engine="python")
+    design_df = pd.read_csv(
+        design_file, sep=",", header=0, index_col=0, engine="python"
+    )
 
     # removed spaces from headers
     for col in design_df.columns:
@@ -628,7 +630,9 @@ class LSC_rho2rho_temporal_DataSet(Dataset):
         """Return number of samples in dataset."""
         return self.Nsamples
 
-    def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def __getitem__(
+        self, index: int
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Return a tuple of a batch's input and output data."""
         # Rotate index if necessary
         index = index % self.Nsamples
@@ -697,7 +701,8 @@ class LSC_rho2rho_temporal_DataSet(Dataset):
             end_npz = np.load(self.LSC_NPZ_DIR + end_file)
         except Exception as e:
             print(
-                f"Error loading end file: {self.LSC_NPZ_DIR + end_file}", file=sys.stderr
+                f"Error loading end file: {self.LSC_NPZ_DIR + end_file}",
+                file=sys.stderr,
             )
             start_npz.close()
             raise e
@@ -738,8 +743,6 @@ class LSC_rho2rho_sequential_DataSet(Dataset):
         LSC_NPZ_DIR (str): Location of LSC NPZ files.
         file_prefix_list (str): Text file listing unique prefixes corresponding
                                 to unique simulations.
-        max_timeIDX_offset (int): Maximum timesteps-ahead to attempt prediction for.
-                                  The sequence will span this many timesteps.
         max_file_checks (int): Maximum number of attempts to find valid file sequences.
         seq_len (int): Number of consecutive frames to return. This includes the
                        starting frame.
@@ -751,7 +754,6 @@ class LSC_rho2rho_sequential_DataSet(Dataset):
         self,
         LSC_NPZ_DIR: str,
         file_prefix_list: str,
-        max_timeIDX_offset: int,
         max_file_checks: int,
         seq_len: int,
         half_image: bool = True,
@@ -763,7 +765,6 @@ class LSC_rho2rho_sequential_DataSet(Dataset):
             raise FileNotFoundError(f"Directory not found: {LSC_NPZ_DIR}")
 
         self.LSC_NPZ_DIR = LSC_NPZ_DIR
-        self.max_timeIDX_offset = max_timeIDX_offset
         self.max_file_checks = max_file_checks
         self.seq_len = seq_len
         self.half_image = half_image
@@ -795,7 +796,9 @@ class LSC_rho2rho_sequential_DataSet(Dataset):
         """Return the number of samples in the dataset."""
         return self.Nsamples
 
-    def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def __getitem__(
+        self, index: int
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Return a sequence of consecutive frames."""
         # Rotate index if necessary
         index = index % self.Nsamples
