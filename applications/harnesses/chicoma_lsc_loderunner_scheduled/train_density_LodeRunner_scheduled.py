@@ -97,21 +97,21 @@ if __name__ == "__main__":
     START = not CONTINUATION
     checkpoint = args.checkpoint
 
-    # #############################################
-    # # Check Devices
-    # #############################################
-    # print("\n")
-    # print("Slurm & Device Information")
-    # print("=========================================")
-    # print("Slurm Job ID:", os.environ["SLURM_JOB_ID"])
-    # print("Pytorch Cuda Available:", torch.cuda.is_available())
-    # print("GPU ID:", os.environ["SLURM_JOB_GPUS"])
-    # print("Number of System CPUs:", os.cpu_count())
-    # print("Number of CPUs per GPU:", os.environ["SLURM_JOB_CPUS_PER_NODE"])
+    #############################################
+    # Check Devices
+    #############################################
+    print("\n")
+    print("Slurm & Device Information")
+    print("=========================================")
+    print("Slurm Job ID:", os.environ["SLURM_JOB_ID"])
+    print("Pytorch Cuda Available:", torch.cuda.is_available())
+    print("GPU ID:", os.environ["SLURM_JOB_GPUS"])
+    print("Number of System CPUs:", os.cpu_count())
+    print("Number of CPUs per GPU:", os.environ["SLURM_JOB_CPUS_PER_NODE"])
 
-    # print("\n")
-    # print("Model Training Information")
-    # print("=========================================")
+    print("\n")
+    print("Model Training Information")
+    print("=========================================")
 
     #############################################
     # Initialize Model
@@ -127,8 +127,8 @@ if __name__ == "__main__":
             "Uvelocity",
             "Wvelocity",
         ],
-        image_size=(1120, 800),
-        patch_size=(10, 10),
+        image_size=(1120, 400),
+        patch_size=(10, 5),
         embed_dim=embed_dim,
         emb_factor=2,
         num_heads=8,
