@@ -2,6 +2,13 @@ studyIDX,YOKE_TORCH_ENV,KNODES,NGPUS,EMBED_DIM,B0,B1,B2,B3,NUM_WORKERS,BATCH_SIZ
 # This study tunes learning rate for single node DDP
 # Single node, big size
 # Single epoch with validation should be ~30 mins
+# Debug queue settings:
+# --total_epochs
+# 5
+# --cycle_epochs
+# 5
+# --TRAIN_PER_VAL
+# 5
 # 1,torch_ch_gpu_241112,1,4,128,1,1,9,1,2,10,1000,500,0.1e-4,0.5,0.7,1000,500,train_LodeRunner_ddp.py
 # 2,torch_ch_gpu_241112,1,4,128,1,1,9,1,2,10,1000,500,0.2e-4,0.5,0.7,1000,500,train_LodeRunner_ddp.py
 # 3,torch_ch_gpu_241112,1,4,128,1,1,9,1,2,10,1000,500,0.3e-4,0.5,0.7,1000,500,train_LodeRunner_ddp.py
