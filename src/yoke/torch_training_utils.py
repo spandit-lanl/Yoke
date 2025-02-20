@@ -522,12 +522,8 @@ def train_loderunner_datastep(
 
 
 def train_scheduled_loderunner_datastep(
-        data: tuple,
-        model,
-        optimizer,
-        loss_fn,
-        device: torch.device,
-        scheduled_prob: float):
+    data: tuple, model, optimizer, loss_fn, device: torch.device, scheduled_prob: float
+):
     """
     A training step for the LodeRunner architecture with scheduled sampling
     using a decayed scheduled_prob.
@@ -542,7 +538,7 @@ def train_scheduled_loderunner_datastep(
 
     Returns:
         tuple: (end_img, pred_seq, per_sample_loss, updated_scheduled_prob)
-    
+
     """
     # Set model to train
     model.train()
@@ -558,12 +554,14 @@ def train_scheduled_loderunner_datastep(
     # Input and output variable indices
     in_vars = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7]).to(device, non_blocking=True)
     out_vars = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7]).to(device, non_blocking=True)
-    
+
     # Storage for predictions at each timestep
     pred_seq = []
 
     # Unbind and iterate over slices in sequence-length dimension
-    for k, k_img in enumerate(torch.unbind(img_seq, dim=1)):
+    # NOTE: we exclude img_seq[:, :-1] since we don't have the next
+    #   timestep to compare to.
+    for k, k_img in enumerate(torch.unbind(img_seq[:, :-1], dim=1)):
         if k == 0:
             # Forward pass for the initial step
             pred_img = model(k_img, in_vars, out_vars, Dt)
@@ -573,17 +571,17 @@ def train_scheduled_loderunner_datastep(
                 current_input = k_img
             else:
                 current_input = pred_img
-                
+
             pred_img = model(current_input, in_vars, out_vars, Dt)
 
         # Store the prediction
         pred_seq.append(pred_img)
 
     # Combine predictions into a tensor of shape [B, SeqLength, C, H, W]
-    pred_seq = torch.stack(pred_seq, dim=0)
+    pred_seq = torch.stack(pred_seq, dim=1)
 
     # Compute loss
-    loss = loss_fn(pred_seq, img_seq[:, 1:, :, :, :])
+    loss = loss_fn(pred_seq, img_seq[:, 1:])
     per_sample_loss = loss.mean(dim=[1, 2, 3, 4])  # Shape: (batch_size,)
 
     # Perform backpropagation and update the weights
@@ -598,7 +596,7 @@ def train_scheduled_loderunner_datastep(
     # Clear GPU memory after each deallocation
     torch.cuda.empty_cache()
 
-    return img_seq[:, 1:, :, :, :], pred_seq, per_sample_loss
+    return img_seq[:, 1:], pred_seq, per_sample_loss
 
 
 def train_DDP_loderunner_datastep(
@@ -915,7 +913,9 @@ def eval_scheduled_loderunner_datastep(
     pred_seq = []
 
     # Unbind and iterate over slices in sequence-length dimension
-    for k, k_img in enumerate(torch.unbind(img_seq, dim=1)):
+    # NOTE: we exclude img_seq[:, :-1] since we don't have the next
+    #   timestep to compare to.
+    for k, k_img in enumerate(torch.unbind(img_seq[:, :-1], dim=1)):
         if k == 0:
             # Forward pass for the initial step
             pred_img = model(k_img, in_vars, out_vars, Dt)
@@ -935,7 +935,7 @@ def eval_scheduled_loderunner_datastep(
     pred_seq = torch.stack(pred_seq, dim=0)
 
     # Compute loss
-    loss = loss_fn(pred_seq, img_seq[:, 1:, :, :, :])
+    loss = loss_fn(pred_seq, img_seq[:, 1:])
     per_sample_loss = loss.mean(dim=[1, 2, 3, 4])  # Shape: (batch_size,)
 
     # Delete created tensors to free memory
@@ -945,7 +945,7 @@ def eval_scheduled_loderunner_datastep(
     # Clear GPU memory after each deallocation
     torch.cuda.empty_cache()
 
-    return img_seq[:, 1:, :, :, :], pred_seq, per_sample_loss
+    return img_seq[:, 1:], pred_seq, per_sample_loss
 
 
 def eval_DDP_loderunner_datastep(
