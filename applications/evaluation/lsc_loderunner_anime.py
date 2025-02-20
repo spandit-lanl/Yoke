@@ -51,7 +51,11 @@ descr_str = (
     "Create animation of single hydro-field for LodeRunner on lsc240420 "
     "simulation IDX."
 )
-parser = argparse.ArgumentParser(prog="Animation of LodeRunner", description=descr_str)
+parser = argparse.ArgumentParser(
+    prog="Animation of LodeRunner",
+    description=descr_str,
+    fromfile_prefix_chars="@",
+)
 
 parser.add_argument(
     "--checkpoint",
@@ -223,47 +227,69 @@ if __name__ == "__main__":
         Rcoord = singlePVIarray(npzfile=npzfile, FIELD="Rcoord")
         Zcoord = singlePVIarray(npzfile=npzfile, FIELD="Zcoord")
 
-        if k == 0:
-            input_img_list = []
-            for hfield in default_vars:
-                tmp_img = singlePVIarray(npzfile=npzfile, FIELD=hfield)
+        # Step prediction
+        input_img_list = []
+        for hfield in default_vars:
+            tmp_img = singlePVIarray(npzfile=npzfile, FIELD=hfield)
 
-                # Remember to replace all NaNs with 0.0
-                tmp_img = np.nan_to_num(tmp_img, nan=0.0)
-                input_img_list.append(tmp_img)
+            # Remember to replace all NaNs with 0.0
+            tmp_img = np.nan_to_num(tmp_img, nan=0.0)
+            input_img_list.append(tmp_img)
 
-            # Concatenate images channel first.
-            input_img = torch.tensor(np.stack(input_img_list, axis=0)).to(torch.float32)
+        # Concatenate images channel first.
+        input_img = torch.tensor(np.stack(input_img_list, axis=0)).to(torch.float32)
 
-            # Sum for true average density
-            true_rho = input_img.detach().numpy()
-            true_rho = true_rho[0:6, :, :].sum(0)
+        # Sum for true average density
+        true_rho = input_img.detach().numpy()
+        true_rho = true_rho[0:6, :, :].sum(0)
 
-            # Make a prediction
-            pred_img = model(torch.unsqueeze(input_img, 0), in_vars, out_vars, Dt)
-            pred_rho = np.squeeze(pred_img.detach().numpy())
-            pred_rho = pred_rho[0:6, :, :].sum(0)
+        # Make a prediction
+        pred_img = model(torch.unsqueeze(input_img, 0), in_vars, out_vars, Dt)
+        pred_rho = np.squeeze(pred_img.detach().numpy())
+        pred_rho = pred_rho[0:6, :, :].sum(0)
 
-        else:
-            # Get ground-truth average density
-            true_img_list = []
-            for hfield in default_vars:
-                tmp_img = singlePVIarray(npzfile=npzfile, FIELD=hfield)
+        # Chained prediction
+        # if k == 0:
+        #     input_img_list = []
+        #     for hfield in default_vars:
+        #         tmp_img = singlePVIarray(npzfile=npzfile, FIELD=hfield)
 
-                # Remember to replace all NaNs with 0.0
-                tmp_img = np.nan_to_num(tmp_img, nan=0.0)
-                true_img_list.append(tmp_img)
+        #         # Remember to replace all NaNs with 0.0
+        #         tmp_img = np.nan_to_num(tmp_img, nan=0.0)
+        #         input_img_list.append(tmp_img)
 
-            # Concatenate images channel and sum
-            true_img = np.stack(true_img_list, axis=0)
+        #     # Concatenate images channel first.
+        #     input_img = torch.tensor(np.stack(input_img_list, axis=0)).to(torch.float32)
 
-            # Sum for true average density
-            true_rho = true_img[0:6, :, :].sum(0)
+        #     # Sum for true average density
+        #     true_rho = input_img.detach().numpy()
+        #     true_rho = true_rho[0:6, :, :].sum(0)
 
-            # Evaluate LodeRunner from last prediction
-            pred_img = model(pred_img, in_vars, out_vars, Dt)
-            pred_rho = np.squeeze(pred_img.detach().numpy())
-            pred_rho = pred_rho[0:6, :, :].sum(0)
+        #     # Make a prediction
+        #     pred_img = model(torch.unsqueeze(input_img, 0), in_vars, out_vars, Dt)
+        #     pred_rho = np.squeeze(pred_img.detach().numpy())
+        #     pred_rho = pred_rho[0:6, :, :].sum(0)
+
+        # else:
+        #     # Get ground-truth average density
+        #     true_img_list = []
+        #     for hfield in default_vars:
+        #         tmp_img = singlePVIarray(npzfile=npzfile, FIELD=hfield)
+
+        #         # Remember to replace all NaNs with 0.0
+        #         tmp_img = np.nan_to_num(tmp_img, nan=0.0)
+        #         true_img_list.append(tmp_img)
+
+        #     # Concatenate images channel and sum
+        #     true_img = np.stack(true_img_list, axis=0)
+
+        #     # Sum for true average density
+        #     true_rho = true_img[0:6, :, :].sum(0)
+
+        #     # Evaluate LodeRunner from last prediction
+        #     pred_img = model(pred_img, in_vars, out_vars, Dt)
+        #     pred_rho = np.squeeze(pred_img.detach().numpy())
+        #     pred_rho = pred_rho[0:6, :, :].sum(0)
 
         # Plot Truth/Prediction/Discrepancy panel.
         fig1, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(16, 6))

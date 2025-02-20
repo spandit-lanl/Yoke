@@ -1,0 +1,9 @@
+--indir
+/lustre/vescratch1/exempt/artimis/mpmm/lsc240420/
+--outdir
+./
+--pviIDX
+100
+--field
+av_density
+--save

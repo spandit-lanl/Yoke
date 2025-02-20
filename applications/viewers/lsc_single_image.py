@@ -36,7 +36,11 @@ plt.rcParams["figure.figsize"] = (6, 6)
 ###################################################################
 # Define command line argument parser
 descr_str = "Read in single NPZ file and plot field."
-parser = argparse.ArgumentParser(prog="Plot field from NPZ", description=descr_str)
+parser = argparse.ArgumentParser(
+    prog="Plot field from NPZ",
+    description=descr_str,
+    fromfile_prefix_chars="@",
+)
 
 # Example: lsc_nonconvex_pvi_idx00115.npz
 # indir

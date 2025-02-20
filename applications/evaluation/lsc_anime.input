@@ -1,0 +1,8 @@
+--checkpoint
+./study018_modelState_epoch0100.hdf5
+--indir
+/lustre/vescratch1/exempt/artimis/mpmm/lsc240420/
+--outdir
+./
+--runID
+809
