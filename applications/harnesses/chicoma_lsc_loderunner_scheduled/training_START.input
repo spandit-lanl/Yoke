@@ -18,7 +18,7 @@ lsc240420_prefixes_test_10pct.txt
 <LR_DECAY_RATE>
 --scheduled_prob
 <SCHEDULED_PROB>
---decay_rate 
+--decay_rate
 <DECAY_RATE>
 --minimum_schedule_prob
 <MINIMUM_SCHEDULE_PROB>
