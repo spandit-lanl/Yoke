@@ -932,7 +932,7 @@ def eval_scheduled_loderunner_datastep(
         pred_seq.append(pred_img)
 
     # Combine predictions into a tensor of shape [B, SeqLength, C, H, W]
-    pred_seq = torch.stack(pred_seq, dim=0)
+    pred_seq = torch.stack(pred_seq, dim=1)
 
     # Compute loss
     loss = loss_fn(pred_seq, img_seq[:, 1:])
