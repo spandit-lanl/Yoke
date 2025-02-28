@@ -214,6 +214,7 @@ def make_distributed_dataloader(
         dataset,
         batch_size=batch_size,
         sampler=sampler,
+        drop_last=True,  # Ensures uniform batch size
         num_workers=num_workers,
         pin_memory=True,
         prefetch_factor=2
@@ -434,13 +435,15 @@ def train_array_datastep(data: tuple, model, optimizer, loss_fn, device: torch.d
     pred = model(inpt)
     loss = loss_fn(pred, truth)
 
+    per_sample_loss = loss.mean(dim=[1, 2, 3])  # Shape: (batch_size,)
+    
     # Perform backpropagation and update the weights
     # optimizer.zero_grad()
     optimizer.zero_grad(set_to_none=True)  # Possible speed-up
     loss.mean().backward()
     optimizer.step()
 
-    return truth, pred, loss
+    return truth, pred, per_sample_loss
 
 
 def train_loderunner_datastep(
@@ -797,8 +800,9 @@ def eval_array_datastep(data: tuple, model, loss_fn, device: torch.device):
     # Perform a forward pass
     pred = model(inpt)
     loss = loss_fn(pred, truth)
-
-    return truth, pred, loss
+    per_sample_loss = loss.mean(dim=[1, 2, 3])  # Shape: (batch_size,)
+    
+    return truth, pred, per_sample_loss
 
 
 def eval_loderunner_datastep(
@@ -1287,20 +1291,17 @@ def train_array_csv_epoch(
     with open(train_rcrd_filename, "a") as train_rcrd_file:
         for traindata in training_data:
             trainbatch_ID += 1
-            truth, pred, train_loss = train_array_datastep(
+            truth, pred, train_losses = train_array_datastep(
                 traindata, model, optimizer, loss_fn, device
             )
-
-            template = "{}, {}, {}"
-            for i in range(train_batchsize):
-                print(
-                    template.format(
-                        epochIDX,
-                        trainbatch_ID,
-                        train_loss.cpu().detach().numpy().flatten()[i],
-                    ),
-                    file=train_rcrd_file,
-                )
+            
+            # Save batch records to the training record file
+            batch_records = np.column_stack([
+                np.full(len(train_losses), epochIDX),
+                np.full(len(train_losses), trainbatch_ID),
+                train_losses.detach().cpu().numpy().flatten()
+            ])
+            np.savetxt(train_rcrd_file, batch_records, fmt="%d, %d, %.8f")
 
     # Evaluate on all validation samples
     if epochIDX % train_per_val == 0:
@@ -1310,20 +1311,17 @@ def train_array_csv_epoch(
             with torch.no_grad():
                 for valdata in validation_data:
                     valbatch_ID += 1
-                    truth, pred, val_loss = eval_array_datastep(
+                    truth, pred, val_losses = eval_array_datastep(
                         valdata, model, loss_fn, device
                     )
 
-                    template = "{}, {}, {}"
-                    for i in range(val_batchsize):
-                        print(
-                            template.format(
-                                epochIDX,
-                                valbatch_ID,
-                                val_loss.cpu().detach().numpy().flatten()[i],
-                            ),
-                            file=val_rcrd_file,
-                        )
+                    # Save validation batch records
+                    batch_records = np.column_stack([
+                        np.full(len(val_losses), epochIDX),
+                        np.full(len(val_losses), valbatch_ID),
+                        val_losses.detach().cpu().numpy().flatten()
+                    ])
+                    np.savetxt(val_rcrd_file, batch_records, fmt="%d, %d, %.8f")
 
     return
 
@@ -1664,6 +1662,8 @@ def train_LRsched_loderunner_epoch(
 def train_DDP_loderunner_epoch(
     training_data,
     validation_data,
+    num_train_batches,
+    num_val_batches,
     model,
     optimizer,
     loss_fn,
@@ -1683,6 +1683,8 @@ def train_DDP_loderunner_epoch(
     Args:
         training_data (torch.dataloader): dataloader containing the training samples
         validation_data (torch.dataloader): dataloader containing the validation samples
+        num_train_batches (int): Number of batches in training epoch
+        num_val_batches (int): Number of batches in validation epoch
         model (loaded pytorch model): model to train
         optimizer (torch.optim): optimizer for training set
         loss_fn (torch.nn Loss Function): loss function for training set
@@ -1705,8 +1707,10 @@ def train_DDP_loderunner_epoch(
     model.train()
     train_rcrd_filename = train_rcrd_filename.replace("<epochIDX>", f"{epochIDX:04d}")
     with open(train_rcrd_filename, "a") if rank == 0 else nullcontext() as train_rcrd_file:
-        for traindata in training_data:
-            trainbatch_ID += 1
+        for trainbatch_ID, traindata in enumerate(training_data):
+            # Stop when number of training batches is reached
+            if trainbatch_ID >= num_train_batches:
+                break
 
             # Perform a single training step
             truth, pred, train_losses = train_DDP_loderunner_datastep(
@@ -1736,8 +1740,10 @@ def train_DDP_loderunner_epoch(
         model.eval()
         with open(val_rcrd_filename, "a") if rank == 0 else nullcontext() as val_rcrd_file:
             with torch.no_grad():
-                for valdata in validation_data:
-                    valbatch_ID += 1
+                for valbatch_ID, valdata in enumerate(validation_data):
+                    # Stop when number of training batches is reached
+                    if valbatch_ID >= num_val_batches:
+                        break
 
                     end_img, pred_img, val_losses = eval_DDP_loderunner_datastep(
                         valdata, model, loss_fn, device, rank, world_size,

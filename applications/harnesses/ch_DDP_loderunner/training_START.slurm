@@ -11,14 +11,17 @@
 # partition. There are optional other constraints.
 
 #SBATCH --job-name=ddp_s<studyIDX>_e0001
-#SBATCH --account=w25_artimis_gh
-#SBATCH --reservation=DAT-258601
+#SBATCH --account=w25_artimis_g
 #SBATCH --partition=gpu
+#SBATCH --time=16:00:00
+#DEBUG  #SBATCH --time=2:00:00
+#DEBUG  #SBATCH --qos=debug
+#DEBUG  #SBATCH --reservation=gpu_debug
+#DEBUG  #SBATCH --partition=gpu_debug
 #SBATCH --nodes=<KNODES>
 #SBATCH --ntasks-per-node=<NGPUS>
 #SBATCH --gpus-per-node=<NGPUS>
-#SBATCH --cpus-per-task=70
-#SBATCH --time=16:00:00
+#SBATCH --cpus-per-task=16
 #SBATCH --output=study<studyIDX>_epoch0001.out
 #SBATCH --error=study<studyIDX>_epoch0001.err
 #SBATCH -vvv
@@ -32,6 +35,7 @@ export MASTER_ADDR MASTER_PORT
 # Check available GPUs
 sinfo  -o "%P %.24G %N"
 srun /usr/bin/echo $CUDA_AVAILABLE_DEVICES
+nvidia-smi
 
 # Specify NCCL communication
 export NCCL_SOCKET_IFNAME=hsn0  # Check possible interfaces with `ip link show`
@@ -41,8 +45,7 @@ export NCCL_SOCKET_IFNAME=hsn0  # Check possible interfaces with `ip link show`
 # export NCCL_DEBUG_SUBSYS=INIT
 
 # Load correct conda environment
-#module load cudatoolkit
-module load python/3.10-anaconda-2023.03
+module load python/3.11-anaconda-2023.07
 source activate
 conda activate <YOKE_TORCH_ENV>
 

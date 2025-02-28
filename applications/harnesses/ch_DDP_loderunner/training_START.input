@@ -1,9 +1,9 @@
 --studyIDX
 <studyIDX>
 --FILELIST_DIR
-/usr/projects/artimis/mpmm/hickmank/venado/ve_yoke/applications/filelists/
+/usr/projects/artimis/mpmm/hickmank/chicoma/ch_yoke/applications/filelists/
 --LSC_NPZ_DIR
-/lustre/vescratch1/exempt/artimis/mpmm/lsc240420/
+/lustre/scratch4/exempt/artimis/lsc240420/
 --train_filelist
 lsc240420_prefixes_train_80pct.txt
 --validation_filelist
@@ -42,13 +42,10 @@ lsc240420_prefixes_test_10pct.txt
 --total_epochs
 120
 --cycle_epochs
-12
+40
 --train_batches
 <NTRN_BATCH>
 --val_batches
 <NVAL_BATCH>
 --TRAIN_PER_VAL
-6
---continuation
---checkpoint
-<CHECKPOINT>
+10
