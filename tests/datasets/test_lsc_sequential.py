@@ -70,7 +70,6 @@ def dataset(prefix_list_file: Path, tmp_path: Path) -> LSC_rho2rho_sequential_Da
     return LSC_rho2rho_sequential_DataSet(
         LSC_NPZ_DIR=str(real_lsc_dir),
         file_prefix_list=str(prefix_list_file),
-        max_timeIDX_offset=10,
         max_file_checks=2,
         seq_len=3,
         half_image=True,
@@ -84,7 +83,6 @@ def test_init(prefix_list_file: Path, tmp_path: Path) -> None:
         _ = LSC_rho2rho_sequential_DataSet(
             LSC_NPZ_DIR="non_existent_path",
             file_prefix_list=str(prefix_list_file),
-            max_timeIDX_offset=10,
             max_file_checks=2,
             seq_len=3,
             half_image=True,
@@ -98,7 +96,6 @@ def test_init(prefix_list_file: Path, tmp_path: Path) -> None:
     dataset_obj = LSC_rho2rho_sequential_DataSet(
         LSC_NPZ_DIR=str(real_lsc_dir),
         file_prefix_list=str(prefix_list_file),
-        max_timeIDX_offset=10,
         max_file_checks=2,
         seq_len=3,
         half_image=False,
@@ -207,7 +204,6 @@ def test_getitem_half_image_false(
     ds = LSC_rho2rho_sequential_DataSet(
         LSC_NPZ_DIR=str(real_lsc_dir),
         file_prefix_list=str(prefix_list_file),
-        max_timeIDX_offset=10,
         max_file_checks=2,
         seq_len=2,
         half_image=False,
