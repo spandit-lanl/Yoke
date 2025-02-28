@@ -92,7 +92,7 @@ def test_r2r_temporal_dataset_init(
 
 def test_r2r_temporal_len(r2r_temporal_dataset: LSC_rho2rho_temporal_DataSet) -> None:
     """Test that the dataset length is correctly returned."""
-    assert len(r2r_temporal_dataset) == 3
+    assert len(r2r_temporal_dataset) == int(8e5)
 
 
 @patch("yoke.datasets.lsc_dataset.LSCread_npz_NaN", side_effect=mock_LSCread_npz_NaN)
