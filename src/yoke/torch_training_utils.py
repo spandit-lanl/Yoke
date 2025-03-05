@@ -436,7 +436,7 @@ def train_array_datastep(data: tuple, model, optimizer, loss_fn, device: torch.d
     loss = loss_fn(pred, truth)
 
     per_sample_loss = loss.mean(dim=[1, 2, 3])  # Shape: (batch_size,)
-    
+
     # Perform backpropagation and update the weights
     # optimizer.zero_grad()
     optimizer.zero_grad(set_to_none=True)  # Possible speed-up
@@ -801,7 +801,7 @@ def eval_array_datastep(data: tuple, model, loss_fn, device: torch.device):
     pred = model(inpt)
     loss = loss_fn(pred, truth)
     per_sample_loss = loss.mean(dim=[1, 2, 3])  # Shape: (batch_size,)
-    
+
     return truth, pred, per_sample_loss
 
 
@@ -896,7 +896,7 @@ def eval_scheduled_loderunner_datastep(
 
     Returns:
         tuple: (end_img, pred_seq, per_sample_loss, updated_scheduled_prob)
-    
+
     """
     # Set model to evaluation
     model.eval()
@@ -912,7 +912,7 @@ def eval_scheduled_loderunner_datastep(
     # Input and output variable indices
     in_vars = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7]).to(device, non_blocking=True)
     out_vars = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7]).to(device, non_blocking=True)
-    
+
     # Storage for predictions at each timestep
     pred_seq = []
 
@@ -929,7 +929,7 @@ def eval_scheduled_loderunner_datastep(
                 current_input = k_img
             else:
                 current_input = pred_img
-                
+
             pred_img = model(current_input, in_vars, out_vars, Dt)
 
         # Store the prediction
@@ -1294,7 +1294,7 @@ def train_array_csv_epoch(
             truth, pred, train_losses = train_array_datastep(
                 traindata, model, optimizer, loss_fn, device
             )
-            
+
             # Save batch records to the training record file
             batch_records = np.column_stack([
                 np.full(len(train_losses), epochIDX),
@@ -1470,7 +1470,7 @@ def train_scheduled_loderunner_epoch(
         val_rcrd_filename (str): Name of CSV file to save validation sample stats to.
         device (torch.device): device index to select.
         scheduled_prob (float): Initial probability of using ground truth as input.
-    
+
     """
     # Initialize variables for tracking batches
     trainbatch_ID = 0
@@ -1537,7 +1537,7 @@ def train_scheduled_loderunner_epoch(
     # Return the updated scheduled probability
     return scheduled_prob
 
-                    
+
 def train_LRsched_loderunner_epoch(
     channel_map: list,
     training_data,
