@@ -1,3 +1,0 @@
-nc231213_Sn_id0500_pvi_idx00105.npz
-nc231213_Sn_id0500_pvi_idx00107.npz
-nc231213_Sn_id0500_pvi_idx00106.npz

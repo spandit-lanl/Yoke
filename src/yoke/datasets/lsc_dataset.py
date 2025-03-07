@@ -171,6 +171,20 @@ class LSCnorm_cntr2rho_DataSet(Dataset):
         geometry parameters and the density field. The time values are also
         normalized to [0, 1] at regular intervals of 0.25 us.
 
+        This class relies on a normalization file created by the script
+        `applications/normalization/generate_lsc_normalization.py`
+
+        The normalization file is an NPZ created by the call:
+
+        np.savez('./lsc240420_norm.npz',
+                 image_avg=image_avg,
+                 image_min=image_min,
+                 image_max=image_max,
+                 Bspline_avg=Bspline_avg,
+                 Bspline_min=Bspline_min,
+                 Bspline_max=Bspline_max,
+                 **avg_time_dict)
+
         Args:
             LSC_NPZ_DIR (str): Location of LSC NPZ files. A YOKE env variable.
             filelist (str): Text file listing file names to read
@@ -184,16 +198,6 @@ class LSCnorm_cntr2rho_DataSet(Dataset):
         self.filelist = filelist
         self.design_file = design_file
         self.normalization_file = normalization_file
-
-        # Open normalization file
-        # np.savez('./lsc240420_norm.npz',
-        #  image_avg=image_avg,
-        #  image_min=image_min,
-        #  image_max=image_max,
-        #  Bspline_avg=Bspline_avg,
-        #  Bspline_min=Bspline_min,
-        #  Bspline_max=Bspline_max,
-        #  **avg_time_dict)
 
         norm_npz = np.load(self.normalization_file)
         time_keys = [k for k in norm_npz.keys()]
