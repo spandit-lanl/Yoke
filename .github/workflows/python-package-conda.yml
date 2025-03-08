@@ -20,16 +20,11 @@ jobs:
       uses: actions/setup-python@v3
       with:
         python-version: '3.9'
-    - name: Add conda to system path
+    - name: Install flit
       run: |
-        # $CONDA is an environment variable pointing to the root of the miniconda directory
-        echo $CONDA/bin >> $GITHUB_PATH
-    - name: Install dependencies
-      run: |
-        conda env create -n yoke_test_env python=3.9
-        conda activate yoke_test_env
-        export PYTHONUSERBASE=$CONDA_PREFIX
-        flit install --user --symlink --deps=all
+        python -m pip install flit
+    - name: Build yoke
+      run: flit build
     - name: Test with pytest
       run: |
         pytest -v --junitxml=report.xml --cov=yoke -Werror
