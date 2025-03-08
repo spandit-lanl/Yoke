@@ -21,10 +21,9 @@ jobs:
       with:
         python-version: '3.9'
     - name: Install flit
-      run: |
-        python -m pip install flit
+      run: pip install flit
     - name: Build yoke
-      run: flit build
+      run: flit install --deps=all
     - name: Test with pytest
       run: |
         pytest -v --junitxml=report.xml --cov=yoke -Werror
