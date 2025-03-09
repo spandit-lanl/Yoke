@@ -26,7 +26,11 @@ jobs:
       run: flit install --deps=all
     - name: Test with pytest
       run: |
-        pytest -v --junitxml=report.xml --cov=yoke -Werror
+        pytest -v --cov-report=xml --cov=yoke -Werror
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        files: coverage.xml
     - name: Lint Yoke
       run: |
         ruff check
