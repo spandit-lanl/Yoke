@@ -1,6 +1,7 @@
 YOKE: Yielding Optimal Knowledge Enhancement
 ============================================
 
+[![Coverage Status](https://coveralls.io/repos/github/lanl/Yoke/badge.svg?branch=main)](https://coveralls.io/github/lanl/Yoke?branch=main)
 
 [![pipeline status](https://gitlab.lanl.gov/multiphysmultimatapps/yoke/badges/main/pipeline.svg)](https://gitlab.lanl.gov/multiphysmultimatapps/yoke/-/commits/main) 
  [![coverage report](https://gitlab.lanl.gov/multiphysmultimatapps/yoke/badges/main/coverage.svg)](https://gitlab.lanl.gov/multiphysmultimatapps/yoke/-/commits/main) 
