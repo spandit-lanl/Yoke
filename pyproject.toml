@@ -27,7 +27,6 @@ dependencies = [
     "torchaudio",
     "pytest-cov",
     "coveralls",
-    "coverage-lcov",
     "scikit-image",
     "matplotlib",
     "h5py",

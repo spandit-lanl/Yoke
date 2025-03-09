@@ -26,12 +26,7 @@ jobs:
       run: flit install --deps=all
     - name: Test with pytest
       run: |
-        pytest -v --cov-report=xml --cov=yoke -Werror
-    - name: Convert coverage.xml to lcov.info
-      run: |
-        mkdir -p coverage
-        coverage-lcov --help
-        coverage-lcov coverage.xml > coverage/lcov.info
+        pytest -v --cov-report=lcov:./coverage/lcov.info --cov=yoke -Werror
     - name: Upload coverage to Coveralls
       uses: coverallsapp/github-action@v1
     - name: Lint Yoke
