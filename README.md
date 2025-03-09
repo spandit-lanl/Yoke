@@ -2,7 +2,7 @@ YOKE: Yielding Optimal Knowledge Enhancement
 ============================================
 
 [![pipeline status](https://github.com/lanl/Yoke/actions/workflows/yoke_install_test_lint.yml/badge.svg)](https://github.com/lanl/Yoke/actions) 
-[![coverage report](https://codecov.io/gh/lanl/Yoke/branch/main/graph/badge.svg)](https://codecov.io/gh/lanl/Yoke)
+[![coverage report](https://github.com/lanl/Yoke/actions/workflows/codecov.yml/badge.svg)](https://github.com/lanl/Yoke/actions)
 [![Latest Release](https://img.shields.io/github/v/release/lanl/Yoke)](https://github.com/lanl/Yoke/releases)
 
 ![Get YOKEd!](./YOKE_DALLE_512x512.png)
