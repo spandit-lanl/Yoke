@@ -30,7 +30,7 @@ jobs:
     - name: Convert coverage.xml to lcov.info
       run: |
         mkdir -p coverage
-	coverage-lcov -o coverage/lcov.info coverage.xml
+        coverage-lcov -o coverage/lcov.info coverage.xml
     - name: Upload coverage to Coveralls
       uses: coverallsapp/github-action@v1
     - name: Lint Yoke
