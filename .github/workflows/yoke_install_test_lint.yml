@@ -29,6 +29,7 @@ jobs:
         pytest -v --cov-report=xml --cov=yoke -Werror
     - name: Upload coverage to Coveralls
       uses: coverallsapp/github-action@v1
+      file: coverage.xml
     - name: Lint Yoke
       run: |
         ruff check
