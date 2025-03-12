@@ -274,6 +274,7 @@ if __name__ == "__main__":
             validation_data=val_dataloader,
             model=model,
             optimizer=optimizer,
+            LRsched=LRsched,
             loss_fn=loss_fn,
             epochIDX=epochIDX,
             train_per_val=train_per_val,
@@ -282,9 +283,6 @@ if __name__ == "__main__":
             device=device,
             scheduled_prob=scheduled_prob,
         )
-
-        # Increment LR scheduler
-        LRsched.step()
 
         endTime = time.time()
         epoch_time = (endTime - startTime) / 60
