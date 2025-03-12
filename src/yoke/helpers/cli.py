@@ -378,3 +378,19 @@ def add_scheduled_sampling_args(
     )
 
     return parser
+
+def add_ch_subsampling_args(
+    parser: argparse.ArgumentParser,
+) -> argparse.ArgumentParser:
+    """
+    Add channel subsampling arguments to parser for harnesses in yoke.applications.harnesses
+    """
+    parser.add_argument(
+        "--channel_map_size",
+        action="store",
+        type=int,
+        default=3,
+        help="Channel subsampling map size",
+    )
+
+    return parser
