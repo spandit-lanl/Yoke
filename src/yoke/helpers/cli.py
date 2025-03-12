@@ -189,6 +189,13 @@ def add_training_args(parser: argparse.ArgumentParser) -> argparse.ArgumentParse
         "--batch_size", action="store", type=int, default=64, help="Batch size"
     )
     parser.add_argument(
+        "--seq_len",
+        action="store",
+        type=int,
+        default=3,
+        help="Length of predicted sequence.",
+    )
+    parser.add_argument(
         "--total_epochs",
         action="store",
         type=int,
