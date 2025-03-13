@@ -153,8 +153,8 @@ if __name__ == "__main__":
 
     model = LodeRunner(
         default_vars=hydro_fields,
-        image_size=(1120, 800),
-        patch_size=(10, 10),
+        image_size=(1120, 400),
+        patch_size=(10, 5),
         embed_dim=embed_dim,
         emb_factor=2,
         num_heads=8,
@@ -275,7 +275,7 @@ if __name__ == "__main__":
             file_prefix_list=train_filelist,
             max_timeIDX_offset=2,  # This could be a variable.
             max_file_checks=10,
-            half_image=False,
+            half_image=True,
             hydro_fields=hydro_fields[channel_map],
         )
         val_dataset = LSC_rho2rho_temporal_DataSet(
@@ -283,7 +283,7 @@ if __name__ == "__main__":
             file_prefix_list=validation_filelist,
             max_timeIDX_offset=2,  # This could be a variable.
             max_file_checks=10,
-            half_image=False,
+            half_image=True,
             hydro_fields=hydro_fields[channel_map],
         )
         test_dataset = LSC_rho2rho_temporal_DataSet(
@@ -291,7 +291,7 @@ if __name__ == "__main__":
             file_prefix_list=test_filelist,
             max_timeIDX_offset=2,  # This could be a variable.
             max_file_checks=10,
-            half_image=False,
+            half_image=True,
             hydro_fields=hydro_fields[channel_map],
         )
 
