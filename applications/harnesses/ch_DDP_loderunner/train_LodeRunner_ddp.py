@@ -167,9 +167,9 @@ def main(args, rank, world_size, local_rank, device):
     #############################################
     # Wait to move model to GPU until after the checkpoint load. Then
     # explicitly move model and optimizer state to GPU.
-    if CONTINUATION and rank == 0:
+    if CONTINUATION:
         # At this point the model is not DDP-wrapped so we do not pass `model.module`
-        starting_epoch = tr.load_model_and_optimizer_hdf5(
+        starting_epoch = tr.load_model_and_optimizer(
             model,
             optimizer,
             checkpoint,
@@ -289,7 +289,7 @@ def main(args, rank, world_size, local_rank, device):
         )
 
         if TIME_EPOCH:
-            # Synchronize before starting the timer
+            # Synchronize before stopping the timer
             torch.cuda.synchronize(device)  # Ensure GPUs on each node sync
             dist.barrier()  # Ensure that all nodes sync
             # Time each epoch and print to stdout
@@ -302,29 +302,22 @@ def main(args, rank, world_size, local_rank, device):
             print(f"Completed epoch {epochIDX}...", flush=True)
             print(f"Epoch time (minutes): {epoch_time:.2f}", flush=True)
 
-    # Save model (only rank 0)
+    # Save model and optimizer state in hdf5
+    chkpt_name_str = "study{0:03d}_modelState_epoch{1:04d}.pth"
+    new_chkpt_path = os.path.join("./", chkpt_name_str.format(studyIDX, epochIDX))
+
+    tr.save_model_and_optimizer(
+        model, optimizer, epochIDX, new_chkpt_path,
+    )
+
     if rank == 0:
-        model.to("cpu")
-
-        for state in optimizer.state.values():
-            for k, v in state.items():
-                if isinstance(v, torch.Tensor):
-                    state[k] = v.to("cpu")
-
-        # Save model and optimizer state in hdf5
-        h5_name_str = "study{0:03d}_modelState_epoch{1:04d}.hdf5"
-        new_h5_path = os.path.join("./", h5_name_str.format(studyIDX, epochIDX))
-        tr.save_model_and_optimizer_hdf5(
-            model.module, optimizer, epochIDX, new_h5_path, compiled=False
-        )
-
         #############################################
         # Continue if Necessary
         #############################################
         FINISHED_TRAINING = epochIDX + 1 > total_epochs
         if not FINISHED_TRAINING:
             new_slurm_file = tr.continuation_setup(
-                new_h5_path, studyIDX, last_epoch=epochIDX
+                new_chkpt_path, studyIDX, last_epoch=epochIDX
             )
             os.system(f"sbatch {new_slurm_file}")
 
