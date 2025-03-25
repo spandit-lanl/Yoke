@@ -20,6 +20,8 @@ parser = argparse.ArgumentParser(
 parser = cli.add_default_args(parser)
 args = parser.parse_args()
 
+print(f"CSV File: {args.csv}")
+
 training_input_tmpl = "./training_input.tmpl"
 training_slurm_tmpl = "./training_slurm.tmpl"
 training_START_input = "./training_START.input"

@@ -16,7 +16,6 @@ from torch.utils.data import DataLoader, RandomSampler
 from torch.utils.data.distributed import DistributedSampler
 import torch.distributed as dist
 
-
 def count_torch_params(model, trainable=True):
     """Count parameters in a pytorch model.
 
@@ -479,6 +478,7 @@ def train_loderunner_datastep(
     start_img = start_img.to(device, non_blocking=True)
     Dt = Dt.to(torch.float32).to(device, non_blocking=True)
     end_img = end_img.to(device, non_blocking=True)
+    print("SP: YOKE:  481")
 
     # For our first LodeRunner training on the lsc240420 dataset the input and
     # output prediction variables are fixed.
@@ -835,6 +835,7 @@ def eval_loderunner_datastep(
     Dt = Dt.to(device, non_blocking=True)
 
     end_img = end_img.to(device, non_blocking=True)
+    print("SP: YOKE:  839")
 
     # For our first LodeRunner training on the lsc240420 dataset the input and
     # output prediction variables are fixed.
@@ -1366,6 +1367,8 @@ def train_simple_loderunner_epoch(
     val_batchsize = validation_data.batch_size
 
     train_rcrd_filename = train_rcrd_filename.replace("<epochIDX>", f"{epochIDX:04d}")
+
+    print("SP: YOKE:  1372")
     # Train on all training samples
     with open(train_rcrd_filename, "a") as train_rcrd_file:
         for traindata in training_data:
@@ -1587,6 +1590,7 @@ def train_LRsched_loderunner_epoch(
     val_batchsize = validation_data.batch_size
 
     train_rcrd_filename = train_rcrd_filename.replace("<epochIDX>", f"{epochIDX:04d}")
+    print("SP: YOKE:  1594")
     # Train on all training samples
     with open(train_rcrd_filename, "a") as train_rcrd_file:
         for traindata in training_data:

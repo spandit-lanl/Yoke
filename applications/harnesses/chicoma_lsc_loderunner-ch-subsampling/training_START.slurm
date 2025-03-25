@@ -45,7 +45,7 @@ export date00=`date`
 # nvpid=$!
 
 # Start the Code
-python <train_script> @study<studyIDX>_START.input
+PYTHONPATH=/usr/projects/artimis/mpmm/spandit/chicoma/ch_yoke/src:$PYTHONPATH python <train_script> @study<studyIDX>_START.input
 #pypid=$!
 
 # Kill GPU monitoring after python process finishes
