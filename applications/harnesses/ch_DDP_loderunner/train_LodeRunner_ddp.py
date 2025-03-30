@@ -122,11 +122,16 @@ def main(args, rank, world_size, local_rank, device):
     START = not CONTINUATION
     checkpoint = args.checkpoint
 
+    # Dictionary of available models.
+    available_models = {
+        "LodeRunner": LodeRunner
+    }
+    
     #############################################
-    # Initialize Model
+    # Model Arguments for Dynamic Reconstruction
     #############################################
-    model = LodeRunner(
-        default_vars=[
+    model_args = {
+        "default_vars": [
             "density_case",
             "density_cushion",
             "density_maincharge",
@@ -136,18 +141,21 @@ def main(args, rank, world_size, local_rank, device):
             "Uvelocity",
             "Wvelocity",
         ],
-        image_size=(1120, 400),
-        patch_size=(10, 5),
-        embed_dim=embed_dim,
-        emb_factor=2,
-        num_heads=8,
-        block_structure=block_structure,
-        window_sizes=[(8, 8), (8, 8), (4, 4), (2, 2)],
-        patch_merge_scales=[(2, 2), (2, 2), (2, 2)],
-    )
+        "image_size": (1120, 400),
+        "patch_size": (10, 5),
+        "embed_dim": embed_dim,
+        "emb_factor": 2,
+        "num_heads": 8,
+        "block_structure": block_structure,
+        "window_sizes": [(8, 8), (8, 8), (4, 4), (2, 2)],
+        "patch_merge_scales": [(2, 2), (2, 2), (2, 2)],
+    }
 
+    #############################################
+    # Initialize Optimizer
+    #############################################
     optimizer = torch.optim.AdamW(
-        model.parameters(),
+        [],
         lr=1e-6,
         betas=(0.9, 0.999),
         eps=1e-08,
@@ -160,28 +168,34 @@ def main(args, rank, world_size, local_rank, device):
     # Use `reduction='none'` so loss on each sample in batch can be recorded.
     loss_fn = nn.MSELoss(reduction="none")
 
-    print("Model initialized.")
-
     #############################################
     # Load Model for Continuation (Rank 0 only)
     #############################################
     # Wait to move model to GPU until after the checkpoint load. Then
     # explicitly move model and optimizer state to GPU.
     if CONTINUATION:
-        # At this point the model is not DDP-wrapped so we do not pass `model.module`
-        starting_epoch = tr.load_model_and_optimizer(
-            model,
-            optimizer,
+        model, starting_epoch = tr.load_model_and_optimizer(
             checkpoint,
+            optimizer,
+            available_models,
+            device=device,
         )
         print("Model state loaded for continuation.")
     else:
+        model = LodeRunner(**model_args)
+        optimizer = torch.optim.AdamW(
+            model.parameters(),
+            lr=1e-6,
+            betas=(0.9, 0.999),
+            eps=1e-08,
+            weight_decay=0.01
+            )
+        model.to(device)
         starting_epoch = 0
 
     #############################################
     # Move Model to DistributedDataParallel
     #############################################
-    model.to(device)
     model = DDP(model, device_ids=[local_rank], output_device=local_rank)
 
     #############################################
@@ -307,7 +321,12 @@ def main(args, rank, world_size, local_rank, device):
     new_chkpt_path = os.path.join("./", chkpt_name_str.format(studyIDX, epochIDX))
 
     tr.save_model_and_optimizer(
-        model, optimizer, epochIDX, new_chkpt_path,
+        model, 
+        optimizer, 
+        epochIDX,
+        new_chkpt_path, 
+        model_class=LodeRunner,
+        model_args=model_args
     )
 
     if rank == 0:

@@ -193,12 +193,24 @@ def load_model_and_optimizer_hdf5(model, optimizer, filepath):
 ###############################################
 # Save and Load relying on torch checkpointing.
 ###############################################
-def save_model_and_optimizer(model, optimizer, epoch, filepath):
-    """Saves model & optimizer state using torch.save.
-     
-    Working for both DDP and non-DDP training. Model's saved in this way should not be
-    considered *deployable*.
+def save_model_and_optimizer(
+        model, 
+        optimizer, 
+        epoch, 
+        filepath, 
+        model_class, 
+        model_args
+        ):
+    """Class-aware torch checkpointing.
 
+    Saves model & optimizer state along with model-class information using torch.save.
+     
+    Works for both DDP and non-DDP training. Model's saved in this way should not be
+    considered *deployable*. For deployment the model should be converted to ONNX 
+    format.
+    
+    - Stores the model's class name and initialization args.
+    - Works for both DDP and non-DDP training.
     - If model is wrapped in DDP (`model.module` exists), saves 
       `model.module.state_dict()`.
     - If model is NOT using DDP, saves `model.state_dict()`.
@@ -210,10 +222,13 @@ def save_model_and_optimizer(model, optimizer, epoch, filepath):
         optimizer (torch.optim): Torch optimizer instance
         epoch (int): Epoch index being checkpointed.
         filepath (str): Checkpoint filename.
+        model_class (torch.nn.Module class): Class of model being checkpointed.
+        model_args (dict): Dictionary of model parameters.
 
     """
 
-    is_ddp = isinstance(model, torch.nn.parallel.DistributedDataParallel)
+    is_ddp = isinstance(model, nn.parallel.DistributedDataParallel)
+    
     # Get rank if in DDP, else assume single process
     if dist.is_initialized():
         save_rank = dist.get_rank()
@@ -235,6 +250,8 @@ def save_model_and_optimizer(model, optimizer, epoch, filepath):
 
         checkpoint = {
             'epoch': epoch,
+            'model_class': model_class.__name__,  # Store model class as a string
+            'model_args': model_args,  # Store model init arguments
             'model_state_dict': model_cpu.state_dict(),
             'optimizer_state_dict': optimizer_cpu
         }
@@ -247,34 +264,36 @@ def save_model_and_optimizer(model, optimizer, epoch, filepath):
         dist.barrier()
 
 
-def load_model_and_optimizer(model, optimizer, filepath):
-    """Loads model & optimizer state using torch.load. 
+def load_model_and_optimizer(filepath, optimizer, available_models, device="cuda"):
+    """Dynamically load model & optimizer state from checkpoint.
     
-    Working for both DDP and non-DDP training.
+    NOTE: This function only works while loading checkpoints created by 
+    `save_model_and_optimizer`
 
+    - Working for both DDP and non-DDP training.
     - Loads the checkpoint only on rank 0 when in DDP.
     - If using DDP, broadcasts the checkpoint to all other ranks.
     - Handles models both inside and outside of `DistributedDataParallel`.
 
     Args:
-        model (torch.nn.Module): Torch nn.Module instance or DDP version thereof.
+        filepath (str): Checkpoint filename.
         optimizer (torch.optim): Torch optimizer instance
-        filepath (str): Checkpoint filename.       
+        available_models (dict): Dictionary mapping class names to class references.
+        device (torch.device): String or device specifier.
 
     """
 
-    checkpoint = None
-    is_ddp = isinstance(model, torch.nn.parallel.DistributedDataParallel)
     # Get rank if in DDP, else assume single process
     if dist.is_initialized():
         load_rank = dist.get_rank()
     else:
         load_rank = 0
 
-    # Load only on rank 0 in DDP, or always in single-GPU mode
+    checkpoint = None
+
     if load_rank == 0:
-        checkpoint = torch.load(filepath, map_location="cpu")
-        print(f"[Rank {load_rank}] Loaded checkpoint from epoch {checkpoint['epoch']}")
+        checkpoint = torch.load(filepath, map_location='cpu')
+        print(f'[Rank {load_rank}] Loaded checkpoint from epoch {checkpoint['epoch']}')
 
     # If in DDP, broadcast checkpoint to all ranks
     if dist.is_initialized():
@@ -282,15 +301,31 @@ def load_model_and_optimizer(model, optimizer, filepath):
         dist.broadcast_object_list(checkpoint_list, src=0)
         checkpoint = checkpoint_list[0]  # Unpack checkpoint on all ranks
 
-    # Load state into model and optimizer
+    # Retrieve model class and arguments
+    model_class_name = checkpoint['model_class']
+    model_args = checkpoint['model_args']
+
+    # Ensure model class exists
+    if model_class_name not in available_models:
+        raise ValueError((f"Unknown model class: {model_class_name}. "
+                           "Add it to `available_models`."))
+
+    # Dynamically create the model
+    model_class = available_models[model_class_name]
+    model = model_class(**model_args)  # Instantiate model dynamically
+
+    # Load state
     model.load_state_dict(checkpoint['model_state_dict'])
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+
+    # Move model to GPU if necessary
+    model.to(device)
 
     # Synchronize all processes in DDP
     if dist.is_initialized():
         dist.barrier()
 
-    return checkpoint['epoch']
+    return model, checkpoint['epoch']
 
 
 ####################################
