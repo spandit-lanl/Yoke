@@ -151,15 +151,17 @@ def main(args, rank, world_size, local_rank, device):
         "patch_merge_scales": [(2, 2), (2, 2), (2, 2)],
     }
 
+    model = LodeRunner(**model_args)
+
     #############################################
     # Initialize Optimizer
     #############################################
     optimizer = torch.optim.AdamW(
-        [],
+        model.parameters(),
         lr=1e-6,
         betas=(0.9, 0.999),
         eps=1e-08,
-        weight_decay=0.01,
+        weight_decay=0.01
     )
 
     #############################################
@@ -182,14 +184,6 @@ def main(args, rank, world_size, local_rank, device):
         )
         print("Model state loaded for continuation.")
     else:
-        model = LodeRunner(**model_args)
-        optimizer = torch.optim.AdamW(
-            model.parameters(),
-            lr=1e-6,
-            betas=(0.9, 0.999),
-            eps=1e-08,
-            weight_decay=0.01
-            )
         model.to(device)
         starting_epoch = 0
 

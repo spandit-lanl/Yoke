@@ -292,7 +292,7 @@ def load_model_and_optimizer(filepath, optimizer, available_models, device="cuda
     checkpoint = None
 
     if load_rank == 0:
-        checkpoint = torch.load(filepath, map_location='cpu')
+        checkpoint = torch.load(filepath, map_location='cpu', weights_only=False)
         epochIDX = checkpoint['epoch']
         print(f'[Rank {load_rank}] Loaded checkpoint from epoch {epochIDX}')
 
