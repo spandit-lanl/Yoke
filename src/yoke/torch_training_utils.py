@@ -293,7 +293,8 @@ def load_model_and_optimizer(filepath, optimizer, available_models, device="cuda
 
     if load_rank == 0:
         checkpoint = torch.load(filepath, map_location='cpu')
-        print(f'[Rank {load_rank}] Loaded checkpoint from epoch {checkpoint['epoch']}')
+        epochIDX = checkpoint['epoch']
+        print(f'[Rank {load_rank}] Loaded checkpoint from epoch {epochIDX}')
 
     # If in DDP, broadcast checkpoint to all ranks
     if dist.is_initialized():
