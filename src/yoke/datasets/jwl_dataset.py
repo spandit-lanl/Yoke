@@ -14,11 +14,21 @@ def compute_CJ(
 ) -> (float, float, float):
     """Return CJ state including edet from JWL parameters.
 
-    Args: A,B,C in units of pressure
-        G, R1, R2 are unitless
-        v0 is in units of specific volume
-    Returns: Dj = [velocity=sqrt(energy)], pj [pressure], vj/v0 [unitless],
-             edet [specific energy=pressure x specific volume]
+    Args:
+        A (float): units of pressure
+        B (float): units of pressure
+        C (float): units of pressure 
+        G (float): unitless
+        R1 (float): unitless
+        R2 (float): unitless
+        v0 (float): units of specific volume
+    
+    Returns:
+        Dj (float): velocity
+        pj (float): pressure]
+        vj/v0 (float): unitless
+        edet (float): specific energy=pressure * specific volume
+    
     """
     # ideal gas cp/cv constant descibing large expansion behavior
     k = G + 1
