@@ -66,13 +66,21 @@ def compute_e_release(
 ) -> float:
     """Return the detonation energy released at expansion vs=v/v0.
 
-    Args: A,B,C in units of pressure
-        G, R1, R2 are unitless
-        v0 is in units of specific volume
-        edet is the total detonation energy available
-             in units of specific energy=pressure x specific volume
-        vs=v/v0 is the number of initial volumes of expansion
-    Returns: detonation energy released in units of specific energy
+    Args:
+        A (float): units of pressure
+        B (float): units of pressure
+        C (float): units of pressure 
+        G (float): unitless
+        R1 (float): unitless
+        R2 (float): unitless
+        v0 (float): units of specific volume
+        edet (float): The total detonation energy available in units of specific
+                      energy=pressure * specific-volume
+        vs (float): Equals v/v0, the number of initial volumes of expansion
+    
+    Returns:
+        det_energy (float): detonation energy released in units of specific energy
+    
     """
 
     def Int(vs: float) -> float:

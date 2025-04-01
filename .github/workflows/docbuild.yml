@@ -17,6 +17,7 @@ jobs:
           flit install --user --symlink
       - name: Sphinx build
         run: |
+          mkdir docs/source/_static
           sphinx-apidoc -o docs/source src/yoke
           sphinx-build -b html docs/source _build
       - name: Deploy to GitHub Pages
