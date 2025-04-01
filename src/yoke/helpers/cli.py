@@ -286,6 +286,11 @@ def add_training_args(parser: argparse.ArgumentParser) -> argparse.ArgumentParse
         help="Path to checkpoint to continue training from",
     )
     parser.add_argument(
+        "--only_load_backbone",
+        action="store_true",
+        help="Only attempt to load model backbone from checkpoint.",
+    )
+    parser.add_argument(
         "--freeze_backbone",
         action="store_true",
         help="Freeze model backbone while training.",
@@ -310,7 +315,29 @@ def add_training_args(parser: argparse.ArgumentParser) -> argparse.ArgumentParse
             "NOTE: If set too big preload will swamp memory!!"
         ),
     )
-
+    parser.add_argument(
+        "--image_size",
+        action="store",
+        type=int,
+        nargs="+",
+        default=(1120, 400),
+        help="Size of loaded images before rescaling.",
+    )
+    parser.add_argument(
+        "--scale_factor",
+        action="store",
+        type=float,
+        default=1.0,
+        help="Scale factor for downsampled image training.",
+    )
+    parser.add_argument(
+        "--scaled_image_size",
+        action="store",
+        type=int,
+        nargs="+",
+        default=(1120, 400),
+        help="Rescaled image will be padded or cropped to this size.",
+    )
     return parser
 
 
