@@ -1,8 +1,4 @@
-"""Probabilistic CNN modules for RL policy networks.
-
-"""
-
-from collections import OrderedDict
+"""Probabilistic CNN modules for RL policy networks."""
 
 import torch
 import torch.nn as nn
@@ -31,7 +27,7 @@ class gaussian_policyCNN(nn.Module):
         img_size (tuple[int, int, int]): (C, H, W) dimensions of H1 and H2.
         input_vector_size (int): Size of input vector
         output_dim (int): Dimension of Guassian mean.
-        min_variance (float): Minimum variance in diagonal covariance entries.        
+        min_variance (float): Minimum variance in diagonal covariance entries.
         features (int): Number of output channels/features for each convolutional layer.
         depth (int): Number of convolutional layers in each image processing branch.
         kernel (int): Size of symmetric convolutional kernels
@@ -191,7 +187,9 @@ class gaussian_policyCNN(nn.Module):
         )
         self._init_cov_mlp(self.cov_mlp, self.output_dim, self.min_variance)
 
-    def _init_cov_mlp(self, mlp: nn.Module, output_dim: int, min_var: float = 1e-6):
+    def _init_cov_mlp(
+        self, mlp: nn.Module, output_dim: int, min_var: float = 1e-6
+    ) -> None:
         """Initialize covariance layer to output identity.
 
         Initializes the final layer of the MLP such that the predicted Cholesky
@@ -203,13 +201,12 @@ class gaussian_policyCNN(nn.Module):
             min_var (float): Minimum variance on covariance diagonal
 
         """
-
-        num_cov_elements = output_dim * (output_dim + 1) // 2
         tril_indices = torch.tril_indices(output_dim, output_dim)
 
         # Find the last linear layer (which has no activation)
         last_layer = mlp.LayerList[-1][0]  # Should be the "linear" layer
-        assert isinstance(last_layer, nn.Linear), "Expected final MLP layer to be nn.Linear"
+        err_msg = "Expected final MLP layer to be nn.Linear"
+        assert isinstance(last_layer, nn.Linear), err_msg
 
         with torch.no_grad():
             # Start with all zeros
@@ -255,7 +252,7 @@ class gaussian_policyCNN(nn.Module):
 
         # Concatenate outputs and send on to mean and covariance prediction.
         cat = torch.cat((y_out, h1_out, h2_out), dim=1)
-        
+
         # Predict the mean.
         mean = self.mean_mlp(cat)
 
@@ -264,18 +261,13 @@ class gaussian_policyCNN(nn.Module):
 
         # Use Cholesky decomposition to ensure positive definite covariance.
         triIDXs = torch.tril_indices(self.output_dim, self.output_dim)
-        L = torch.zeros(
-            y.size(0),
-            self.output_dim,
-            self.output_dim,
-            device=y.device
-        )
+        L = torch.zeros(y.size(0), self.output_dim, self.output_dim, device=y.device)
         L[:, triIDXs[0], triIDXs[1]] = L_params
 
         # Ensure positive diagonal with softplus(z) = log(1+exp(z))
         diagIDXs = torch.arange(self.output_dim)
         L[:, diagIDXs, diagIDXs] = nn.functional.softplus(L[:, diagIDXs, diagIDXs])
-        
+
         # Ensure a minimum variance
         L[:, diagIDXs, diagIDXs] += self.min_variance
 
@@ -317,7 +309,7 @@ if __name__ == "__main__":
         act_layer=nn.GELU,
         norm_layer=nn.LayerNorm,
     )
-    
+
     policy_model.eval()
     policy_distribution = policy_model(y, H1, H2)
     print("Initial mean:", policy_distribution.mean)
