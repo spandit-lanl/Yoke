@@ -15,7 +15,7 @@ from einops import rearrange
 
 
 class PatchMerge(nn.Module):
-    """Merge patches and increase embedding dimension.
+    r"""Merge patches and increase embedding dimension.
 
     This layer is passed a tensor of shape :math:`(B, L, C)`, i.e., batches of
     :math:`L` tokens, each of embedding size :math:`C`. The embedding size must
@@ -41,7 +41,7 @@ class PatchMerge(nn.Module):
 
     .. math::
 
-        (B, H' \\cdot W', \\text{embedding factor} \\cdot C)   
+        (B, H' \\cdot W', \\text{embedding factor} \\cdot C)
 
     Args:
         emb_size (int): Incoming embedding dimension
@@ -132,7 +132,7 @@ class PatchMerge(nn.Module):
 
 
 class PatchExpand(nn.Module):
-    """Expand patches and decrease embedding dimension.
+    r"""Expand patches and decrease embedding dimension.
 
     This layer receives a tensor of shape :math:`(B, L, C)`, representing
     batches of :math:`L` tokens, each with embedding dimension :math:`C`.

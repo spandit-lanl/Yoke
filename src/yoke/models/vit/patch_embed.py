@@ -154,7 +154,7 @@ class ParallelVarPatchEmbed(nn.Module):
 
 
 class SwinEmbedding(nn.Module):
-    """SWIN patch embedding.
+    r"""SWIN patch embedding.
 
     This SWIN embedding layer takes a *channels-first* image, applies linear
     patch embeddings, and rearranges the resulting embedded patches into
