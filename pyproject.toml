@@ -37,7 +37,8 @@ dependencies = [
     "einops",
     "lightning",
     "sphinx",
-    "coverage"
+    "coverage",
+    "furo"
     ]
 requires-python = ">=3.9"
 readme = "README.md"
