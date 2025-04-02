@@ -22,6 +22,7 @@ extensions = [
     'sphinx.ext.napoleon',  # Optional: for Google style docstrings
     'sphinx.ext.viewcode',  # Optional: to add links to source code
     'sphinx.ext.coverage',  # Optional: for GitHub Pages deployment
+    'sphinx.ext.mathjax',   # Render math in docstrings.
 ]
 
 templates_path = ['_templates']
@@ -33,4 +34,4 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 html_theme = 'alabaster'
-html_static_path = ['_static']
+#html_static_path = ['_static']
