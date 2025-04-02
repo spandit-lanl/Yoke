@@ -20,28 +20,28 @@ class PatchMerge(nn.Module):
     This layer is passed a tensor of shape :math:`(B, L, C)`, i.e., batches of
     :math:`L` tokens, each of embedding size :math:`C`. The embedding size must
     match the token embedding dimension from the previous layer. It is assumed
-    :math:`L = H \\times W` with :math:`H` divisible by :math:`s_1` and :math:`W`
+    :math:`L = H \times W` with :math:`H` divisible by :math:`s_1` and :math:`W`
     divisible by :math:`s_2`.
 
     The tokens are reshaped into groups of shape:
 
     .. math::
 
-        (H', s_1, W', s_2) \\text{ with } H' = H / s_1 \\text{ and } W' = W / s_2
+        (H', s_1, W', s_2) \text{ with } H' = H / s_1 \text{ and } W' = W / s_2
 
     Then, the input is remapped:
 
     .. math::
 
-        B \\times (H' \\cdot s_1 \\cdot W' \\cdot s_2) \\times C
-        \\rightarrow
-        B \\times (H' \\cdot W') \\times (s_1 \\cdot s_2 \\cdot C)
+        B \times (H' \cdot s_1 \cdot W' \cdot s_2) \times C
+        \rightarrow
+        B \times (H' \cdot W') \times (s_1 \cdot s_2 \cdot C)
 
     Finally, a linear embedding is applied to produce a tensor of shape:
 
     .. math::
 
-        (B, H' \\cdot W', \\text{embedding factor} \\cdot C)
+        (B, H' \cdot W', \text{embedding factor} \cdot C)
 
     Args:
         emb_size (int): Incoming embedding dimension
@@ -138,18 +138,18 @@ class PatchExpand(nn.Module):
     batches of :math:`L` tokens, each with embedding dimension :math:`C`.
     The embedding size :math:`C` must match the output of the previous layer.
 
-    It is assumed that :math:`L = H \\times W`, where :math:`(H, W)` define
+    It is assumed that :math:`L = H \times W`, where :math:`(H, W)` define
     the patch grid from the previous layer.
 
     The expansion process proceeds as follows:
 
     .. math::
 
-        (B, H \\cdot W, C)
-        \\xrightarrow{\\text{linear}}
-        (B, H \\cdot W, n \\cdot C)
-        \\xrightarrow{\\text{rearrange}}
-        (B, H \\cdot s_1 \\cdot W \\cdot s_2, \\frac{n \\cdot C}{s_1 \\cdot s_2})
+        (B, H \cdot W, C)
+        \xrightarrow{\text{linear}}
+        (B, H \cdot W, n \cdot C)
+        \xrightarrow{\text{rearrange}}
+        (B, H \cdot s_1 \cdot W \cdot s_2, \frac{n \cdot C}{s_1 \cdot s_2})
 
     First, the embedding dimension is expanded linearly by a factor of
     :math:`n`. Then, the embedding is rearranged by distributing the added
@@ -157,7 +157,7 @@ class PatchExpand(nn.Module):
     per-token dimension accordingly.
 
     .. note::
-        :math:`n \\cdot C` must be divisible by :math:`s_1 \\cdot s_2`
+        :math:`n \cdot C` must be divisible by :math:`s_1 \cdot s_2`
 
     Args:
         emb_size (int): Incoming embedding dimension
@@ -247,11 +247,15 @@ class PatchExpand(nn.Module):
 
 
 class Unpatchify(nn.Module):
-    """Expansion from patches to variables and images.
+    r"""Expansion from patches to variables and images.
 
     This layer performs the remap:
 
-    (B, H*W,  V*p_h*p_w) ->[rearrange] (B, V, H*p_h, W*p_w)
+    .. math::
+
+        (B, H \cdot W, V \cdot p_h \cdot p_w)
+        \xrightarrow{\text{rearrange}}
+        (B, V, H \cdot p_h, W \cdot p_w)
 
     Args:
         total_num_vars (int): Total number of variables to be output.

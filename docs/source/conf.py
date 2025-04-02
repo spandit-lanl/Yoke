@@ -25,13 +25,30 @@ extensions = [
     'sphinx.ext.mathjax',   # Render math in docstrings.
 ]
 
+# Napolean settings
+napoleon_google_docstring = True
+napoleon_numpy_docstring = False
+napoleon_use_param = True
+napoleon_use_rtype = True
+
+# Other settings
 templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
-
-
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = 'agogo'
+html_theme = 'furo'
+html_title = "Get Yoked!"
+#html_logo = "path/to/logo.png"
 #html_static_path = ['_static']
+
+html_theme_options = {
+    "sidebar_hide_name": False,  # optional
+    "navigation_with_keys": True,  # keyboard nav
+}
+
+html_sidebars = {
+    "**": ["sidebar/brand.html", "sidebar/navigation.html"],  # remove toc.html
+}
+

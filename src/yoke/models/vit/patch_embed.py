@@ -167,15 +167,15 @@ class SwinEmbedding(nn.Module):
 
     .. math::
 
-        H' = \\frac{H}{p_h}, \\quad W' = \\frac{W}{p_w}
+        H' = \frac{H}{p_h}, \quad W' = \frac{W}{p_w}
 
     The resulting tensor is then rearranged into a sequence of
-    :math:`H' \\times W'` tokens, each of dimension :math:`E`, resulting in a
+    :math:`H' \times W'` tokens, each of dimension :math:`E`, resulting in a
     final tensor of shape:
 
     .. math::
 
-        (B, H' \\cdot W', E)
+        (B, H' \cdot W', E)
 
     .. note::
         The values of :math:`H` and :math:`W` (i.e., `img_size`) must be
