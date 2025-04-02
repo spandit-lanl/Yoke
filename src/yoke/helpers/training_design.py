@@ -23,16 +23,38 @@ def validate_patch_and_window(
 ) -> np.array:
     """Validate LodeRunner design parameters with respect to image size.
 
-    Validate compatibility of `patch_size` and `window_sizes` with respect to
-    `image_size` for the LodeRunner architecture.
+    Ensures compatibility between :code:`patch_size` and :code:`window_sizes` in
+    relation to the overall :code:`image_size` for the LodeRunner architecture.
+
+    Specifically, this function verifies that:
+
+    - The input image dimensions are divisible by the patch size
+    - Each SWIN encoder/decoder stage's window size is compatible with the spatial
+      resolution
+    - Patch merging scales align correctly across stages
+
+    .. note::
+        All dimensions (image size, patch size, window size, and merge scale) must
+        be chosen such that intermediate feature maps maintain integer dimensions
+        after each stage.
 
     Args:
-    image_size (Iterable[int, int]): Height and width, in pixels, of input image.
-    patch_size (Iterable[int, int]): Height and width pixel dimensions of patch in
-                                     initial embedding.
-    window_sizes (list(4*(int, int))): Window sizes within each SWIN encoder/decoder.
-    patch_merge_scales (list(3*(int, int))): Height and width scales used in
-                                             each patch-merge layer.
+        image_size (Iterable[int, int]): Height and width (in pixels) of the input
+            image, typically expressed as :math:`(H, W)`.
+
+        patch_size (Iterable[int, int]): Patch height and width used in the initial
+            embedding, expressed as :math:`(p_h, p_w)`. Must divide :math:`H` and
+            :math:`W` evenly.
+
+        window_sizes (List[Tuple[int, int]]): A list of four window sizes (height,
+            width), one for each SWIN encoder/decoder stage. Each tuple should
+            represent :math:`(w_h, w_w)` and be compatible with the feature map
+            resolution at that stage.
+
+        patch_merge_scales (List[Tuple[int, int]]): A list of three scaling factors
+            used in patch merging, one per merge layer. Each tuple defines height
+            and width downscaling, i.e., :math:`(s_h, s_w)`.
+
     """
     # Walk through LodeRunner stages and verify size compatibility.
     valid = np.zeros((len(window_sizes), 2, 2), dtype=bool)  # [stage, action, dimension]
