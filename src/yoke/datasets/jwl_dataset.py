@@ -17,18 +17,18 @@ def compute_CJ(
     Args:
         A (float): units of pressure
         B (float): units of pressure
-        C (float): units of pressure 
+        C (float): units of pressure
         G (float): unitless
         R1 (float): unitless
         R2 (float): unitless
         v0 (float): units of specific volume
-    
+
     Returns:
         Dj (float): velocity
-        pj (float): pressure]
-        vj/v0 (float): unitless
+        pj (float): pressure
+        vsj (float): unitless
         edet (float): specific energy=pressure * specific volume
-    
+
     """
     # ideal gas cp/cv constant descibing large expansion behavior
     k = G + 1
@@ -79,7 +79,7 @@ def compute_e_release(
     Args:
         A (float): units of pressure
         B (float): units of pressure
-        C (float): units of pressure 
+        C (float): units of pressure
         G (float): unitless
         R1 (float): unitless
         R2 (float): unitless
@@ -87,10 +87,10 @@ def compute_e_release(
         edet (float): The total detonation energy available in units of specific
                       energy=pressure * specific-volume
         vs (float): Equals v/v0, the number of initial volumes of expansion
-    
+
     Returns:
         det_energy (float): detonation energy released in units of specific energy
-    
+
     """
 
     def Int(vs: float) -> float:
