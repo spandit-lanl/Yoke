@@ -25,7 +25,6 @@ parser = argparse.ArgumentParser(
 parser = cli.add_default_args(parser=parser)
 parser = cli.add_filepath_args(parser=parser)
 parser = cli.add_computing_args(parser=parser)
-parser = cli.add_model_args(parser=parser)
 parser = cli.add_training_args(parser=parser)
 
 
@@ -82,10 +81,6 @@ def main(args, rank, world_size, local_rank, device):
     design_file = os.path.abspath(args.LSC_DESIGN_DIR + args.design_file)
     train_filelist = args.FILELIST_DIR + args.train_filelist
     validation_filelist = args.FILELIST_DIR + args.validation_filelist
-
-    # Model Parameters
-    embed_dim = args.embed_dim
-    block_structure = tuple(args.block_structure)
 
     # Number of workers controls how batches of data are prefetched and,
     # possibly, pre-loaded onto GPUs. If the number of workers is large they

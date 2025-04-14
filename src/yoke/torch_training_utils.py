@@ -2177,7 +2177,7 @@ def train_lsc_policy_epoch(
                 break
 
             # Perform a single training step
-            truth, pred, train_losses = train_lsc_policy_datastep(
+            x_true, pred_mean, train_losses = train_lsc_policy_datastep(
                 traindata, model, optimizer, loss_fn, device, rank, world_size
             )
 
