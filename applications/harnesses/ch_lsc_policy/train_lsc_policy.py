@@ -73,10 +73,6 @@ def main(args, rank, world_size, local_rank, device):
     # Study ID
     studyIDX = args.studyIDX
 
-    # Resources
-    Ngpus = args.Ngpus
-    Knodes = args.Knodes
-
     # Data Paths
     design_file = os.path.abspath(args.LSC_DESIGN_DIR + args.design_file)
     train_filelist = args.FILELIST_DIR + args.train_filelist
@@ -97,14 +93,13 @@ def main(args, rank, world_size, local_rank, device):
     trn_rcrd_filename = args.trn_rcrd_filename
     val_rcrd_filename = args.val_rcrd_filename
     CONTINUATION = args.continuation
-    START = not CONTINUATION
     checkpoint = args.checkpoint
 
     # Dictionary of available models.
     available_models = {
         "GaussianPolicy": gaussian_policyCNN
     }
-    
+
     #############################################
     # Model Arguments for Dynamic Reconstruction
     #############################################
@@ -125,13 +120,13 @@ def main(args, rank, world_size, local_rank, device):
 
     model = gaussian_policyCNN(**model_args)
 
-        
+
     #############################################
     # Freeze covariance parameters
     #############################################
     for param in model.cov_mlp.parameters():
         param.requires_grad = False
-        
+
     #############################################
     # Initialize Optimizer
     #############################################
@@ -165,7 +160,7 @@ def main(args, rank, world_size, local_rank, device):
         # Freeze parameters of loaded model
         for param in model.cov_mlp.parameters():
             param.requires_grad = False
-            
+
         print("Model state loaded for continuation.")
     else:
         model.to(device)
