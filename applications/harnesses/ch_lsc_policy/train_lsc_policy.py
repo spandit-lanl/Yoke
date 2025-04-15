@@ -25,7 +25,6 @@ parser = argparse.ArgumentParser(
 )
 parser = cli.add_default_args(parser=parser)
 parser = cli.add_filepath_args(parser=parser)
-parser = cli.add_computing_args(parser=parser)
 parser = cli.add_training_args(parser=parser)
 
 
