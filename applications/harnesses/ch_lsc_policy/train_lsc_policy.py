@@ -1,7 +1,8 @@
+"""Train a Gaussian Policy network using DDP."""
+
 import os
 import time
 import argparse
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.distributed as dist
@@ -28,7 +29,8 @@ parser = cli.add_computing_args(parser=parser)
 parser = cli.add_training_args(parser=parser)
 
 
-def setup_distributed():
+def setup_distributed() -> tuple[int, int, int, torch.device]:
+    """Sets up distributed training using PyTorch DDP."""
     # ----- 1) Basic setup & environment variables -----
     # Rely on Slurm variables: SLURM_PROCID, SLURM_NTASKS, SLURM_LOCALID, etc.
     rank = int(os.environ["SLURM_PROCID"])  # global rank
@@ -61,12 +63,20 @@ def setup_distributed():
     return rank, world_size, local_rank, device
 
 
-def cleanup_distributed():
+def cleanup_distributed() -> None:
+    """Cleans up distributed training using PyTorch DDP."""
     # ----- 8) Clean up (optional) -----
     dist.destroy_process_group()
 
 
-def main(args, rank, world_size, local_rank, device):
+def main(
+        args: argparse.Namespace,
+        rank: int,
+        world_size: int,
+        local_rank: int,
+        device: torch.device
+        ) -> None:
+    """Main function for training a Gaussian Policy network using DDP."""
     #############################################
     # Process Inputs
     #############################################
@@ -263,11 +273,11 @@ def main(args, rank, world_size, local_rank, device):
     new_chkpt_path = os.path.join("./", chkpt_name_str.format(studyIDX, epochIDX))
 
     tr.save_model_and_optimizer(
-        model, 
-        optimizer, 
+        model,
+        optimizer,
         epochIDX,
-        new_chkpt_path, 
-        model_class=LodeRunner,
+        new_chkpt_path,
+        model_class=gaussian_policyCNN,
         model_args=model_args
     )
 
