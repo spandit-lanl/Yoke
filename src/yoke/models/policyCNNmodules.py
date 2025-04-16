@@ -319,8 +319,8 @@ if __name__ == "__main__":
         "img_embed_dim": 32,
         "vector_embed_dim": 32,
         "size_reduce_threshold": (16, 16),
-        "vector_feature_list": [16, 32, 32, 16],
-        "output_feature_list": [16, 32, 32, 16]
+        "vector_feature_list": [16, 32, 64, 16],
+        "output_feature_list": [16, 32, 64, 16]
     }
 
     model_args_small = {
