@@ -314,7 +314,7 @@ if __name__ == "__main__":
         "output_dim": output_dim,
         "min_variance": 1e-6,
         "features": 12,
-        "depth": 12,
+        "depth": 15,
         "kernel": 3,
         "img_embed_dim": 32,
         "vector_embed_dim": 32,
