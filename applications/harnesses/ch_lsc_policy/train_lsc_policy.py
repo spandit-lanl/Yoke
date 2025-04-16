@@ -118,17 +118,16 @@ def main(
         "output_dim": 28,
         "min_variance": 1e-6,
         "features": 12,
-        "depth": 12,
+        "depth": 15,
         "kernel": 3,
         "img_embed_dim": 32,
         "vector_embed_dim": 32,
-        "size_reduce_threshold": (8, 8),
-        "vector_feature_list": [32, 32, 64, 64],
-        "output_feature_list": [64, 128, 128, 64]
+        "size_reduce_threshold": (16, 16),
+        "vector_feature_list": [16, 64, 64, 16],
+        "output_feature_list": [16, 64, 64, 16]
     }
 
     model = gaussian_policyCNN(**model_args)
-
 
     #############################################
     # Freeze covariance parameters
