@@ -293,22 +293,37 @@ if __name__ == "__main__":
     H1 = torch.rand(batch_size, 1, img_h, img_w)
     H2 = torch.rand(batch_size, 1, img_h, img_w)
 
-    policy_model = gaussian_policyCNN(
-        img_size=(1, img_h, img_w),
-        input_vector_size=input_vector_size,
-        output_dim=output_dim,
-        min_variance=1e-6,
-        features=4,
-        depth=6,
-        kernel=3,
-        img_embed_dim=16,
-        vector_embed_dim=16,
-        size_reduce_threshold=(24, 24),
-        vector_feature_list=[8, 16, 16, 8],
-        output_feature_list=[8, 16, 16, 8],
-        act_layer=nn.GELU,
-        norm_layer=nn.LayerNorm,
-    )
+    model_args_large = {
+        "img_size": (1, img_h, img_w),
+        "input_vector_size": input_vector_size,
+        "output_dim": output_dim,
+        "min_variance": 1e-6,
+        "features": 12,
+        "depth": 12,
+        "kernel": 3,
+        "img_embed_dim": 32,
+        "vector_embed_dim": 32,
+        "size_reduce_threshold": (8, 8),
+        "vector_feature_list": [32, 32, 64, 64],
+        "output_feature_list": [64, 128, 128, 64]
+    }
+
+    model_args_small = {
+        "img_size": (1, img_h, img_w),
+        "input_vector_size": input_vector_size,
+        "output_dim": output_dim,
+        "min_variance": 1e-6,
+        "features": 4,
+        "depth": 6,
+        "kernel": 3,
+        "img_embed_dim": 16,
+        "vector_embed_dim": 16,
+        "size_reduce_threshold": (24, 24),
+        "vector_feature_list": [8, 16, 16, 8],
+        "output_feature_list": [8, 16, 16, 8]
+    }
+
+    policy_model = gaussian_policyCNN(**model_args_small)
 
     policy_model.eval()
     policy_distribution = policy_model(y, H1, H2)
