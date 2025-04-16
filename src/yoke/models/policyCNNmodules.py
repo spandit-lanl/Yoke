@@ -320,7 +320,7 @@ if __name__ == "__main__":
         "vector_embed_dim": 32,
         "size_reduce_threshold": (16, 16),
         "vector_feature_list": [16, 32, 32, 16],
-        "output_feature_list": [8, 16, 16, 8]
+        "output_feature_list": [16, 32, 32, 16]
     }
 
     model_args_small = {
@@ -341,11 +341,11 @@ if __name__ == "__main__":
     policy_model = gaussian_policyCNN(**model_args_medium)
 
     policy_model.eval()
-    policy_distribution = policy_model(y, H1, H2)
-    print("Initial mean:", policy_distribution.mean)
-    print("Initial covariance:", policy_distribution.covariance_matrix)
-    print("Initial mean shape:", policy_distribution.mean.shape)
-    print("Initial covariance shape:", policy_distribution.covariance_matrix.shape)
+    # policy_distribution = policy_model(y, H1, H2)
+    # print("Initial mean:", policy_distribution.mean)
+    # print("Initial covariance:", policy_distribution.covariance_matrix)
+    # print("Initial mean shape:", policy_distribution.mean.shape)
+    # print("Initial covariance shape:", policy_distribution.covariance_matrix.shape)
     print(
         "Number of trainable parameters in value network:",
         count_torch_params(policy_model, trainable=True),
