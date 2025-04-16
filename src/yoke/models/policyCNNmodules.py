@@ -301,11 +301,11 @@ if __name__ == "__main__":
         "features": 12,
         "depth": 12,
         "kernel": 3,
-        "img_embed_dim": 32,
-        "vector_embed_dim": 32,
-        "size_reduce_threshold": (8, 8),
-        "vector_feature_list": [32, 32, 64, 64],
-        "output_feature_list": [64, 128, 128, 64]
+        "img_embed_dim": 16,
+        "vector_embed_dim": 16,
+        "size_reduce_threshold": (16, 16),
+        "vector_feature_list": [8, 16, 16, 8],
+        "output_feature_list": [8, 16, 16, 8]
     }
 
     model_args_small = {
@@ -323,7 +323,7 @@ if __name__ == "__main__":
         "output_feature_list": [8, 16, 16, 8]
     }
 
-    policy_model = gaussian_policyCNN(**model_args_small)
+    policy_model = gaussian_policyCNN(**model_args_large)
 
     policy_model.eval()
     policy_distribution = policy_model(y, H1, H2)
