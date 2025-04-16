@@ -301,8 +301,8 @@ if __name__ == "__main__":
         "features": 12,
         "depth": 12,
         "kernel": 3,
-        "img_embed_dim": 16,
-        "vector_embed_dim": 16,
+        "img_embed_dim": 32,
+        "vector_embed_dim": 32,
         "size_reduce_threshold": (16, 16),
         "vector_feature_list": [8, 16, 16, 8],
         "output_feature_list": [8, 16, 16, 8]
