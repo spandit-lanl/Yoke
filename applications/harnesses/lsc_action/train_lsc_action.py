@@ -65,7 +65,7 @@ parser = cli.add_filepath_args(parser=parser)
 parser = cli.add_computing_args(parser=parser)
 parser = cli.add_model_args(parser=parser)
 parser = cli.add_training_args(parser=parser)
-parser = cli.add_step_lr_scheduler_args(parser=parser)
+# parser = cli.add_step_lr_scheduler_args(parser=parser)  # SH
 parser = cli.add_cosine_lr_scheduler_args(parser=parser)
 
 # Change some default filepaths.
