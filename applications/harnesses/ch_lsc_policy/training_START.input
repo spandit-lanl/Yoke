@@ -8,6 +8,10 @@
 lsc240420_idx00100_train_80pct.txt
 --validation_filelist
 lsc240420_idx00100_val_10pct.txt
+--LSC_DESIGN_DIR
+/lustre/scratch4/exempt/artimis/
+--design_file
+design_lsc240420_MASTER.csv
 --trn_rcrd_filename
 ./training_study<studyIDX>_epoch<epochIDX>.csv
 --val_rcrd_filename
