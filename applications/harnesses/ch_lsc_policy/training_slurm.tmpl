@@ -52,6 +52,9 @@ conda activate <YOKE_TORCH_ENV>
 # Set number of threads per GPU
 export OMP_NUM_THREADS=10
 
+# MKL problems
+export MKL_SERVICE_FORCE_INTEL=1
+
 # Get start time
 export date00=`date`
 
