@@ -186,12 +186,14 @@ def main(
         args.LSC_NPZ_DIR,
         filelist=train_filelist,
         design_file=design_file,
+        half_image=False,
         field_list=["density_throw"]
     )
     val_dataset = LSC_hfield_policy_DataSet(
         args.LSC_NPZ_DIR,
         filelist=validation_filelist,
         design_file=design_file,
+        half_image=False,
         field_list=["density_throw"]
     )
 
@@ -213,82 +215,108 @@ def main(
         world_size=world_size,
     )
 
-    #############################################
-    # Training Loop (Modified for DDP)
-    #############################################
-    # Train Model
-    print("Training Model . . .")
-    starting_epoch += 1
-    ending_epoch = min(starting_epoch + cycle_epochs, total_epochs + 1)
+    # Test single model evaluation
+    for trainbatch_ID, data_samp in enumerate(train_dataloader):
+        # Stop when number of training batches is reached
+        if trainbatch_ID >= 2:
+            break
 
-    TIME_EPOCH = True
-    for epochIDX in range(starting_epoch, ending_epoch):
-        train_sampler = train_dataloader.sampler
-        train_sampler.set_epoch(epochIDX)
+        # Set model to evaluation mode
+        model.eval()
 
-        # For timing epochs
-        if TIME_EPOCH:
-            # Synchronize before starting the timer
-            dist.barrier()  # Ensure that all nodes sync
-            torch.cuda.synchronize(device)  # Ensure GPUs on each node sync
-            # Time each epoch and print to stdout
-            startTime = time.time()
+        # Extract data
+        state_y, stateH, targetH, x_true = data_samp
+        print("train_lsc_policy.py: state_y.shape=", state_y.shape)
+        print("train_lsc_policy.py: stateH.shape=", stateH.shape)
+        print("train_lsc_policy.py: targetH.shape=", targetH.shape)
+        state_y = state_y.to(device, non_blocking=True)
+        stateH = stateH.to(device, non_blocking=True)
+        targetH = targetH.to(device, non_blocking=True)
+        x_true = x_true.to(device, non_blocking=True)
 
-        # Train and Validate
-        tr.train_lsc_policy_epoch(
-            training_data=train_dataloader,
-            validation_data=val_dataloader,
-            num_train_batches=train_batches,
-            num_val_batches=val_batches,
-            model=model,
-            optimizer=optimizer,
-            loss_fn=loss_fn,
-            epochIDX=epochIDX,
-            train_per_val=train_per_val,
-            train_rcrd_filename=trn_rcrd_filename,
-            val_rcrd_filename=val_rcrd_filename,
-            device=device,
-            rank=rank,
-            world_size=world_size,
-        )
+        # Forward pass
+        with torch.no_grad():
+            pred_distribution = model(state_y, stateH, targetH)
+        
+        pred_mean = pred_distribution.mean
+        print(f"Model mean prediction: {pred_mean}")
+    
+    # #############################################
+    # # Training Loop (Modified for DDP)
+    # #############################################
+    # # Train Model
+    # print("Training Model . . .")
+    # starting_epoch += 1
+    # ending_epoch = min(starting_epoch + cycle_epochs, total_epochs + 1)
 
-        if TIME_EPOCH:
-            # Synchronize before stopping the timer
-            torch.cuda.synchronize(device)  # Ensure GPUs on each node sync
-            dist.barrier()  # Ensure that all nodes sync
-            # Time each epoch and print to stdout
-            endTime = time.time()
+    # TIME_EPOCH = True
+    # for epochIDX in range(starting_epoch, ending_epoch):
+    #     train_sampler = train_dataloader.sampler
+    #     train_sampler.set_epoch(epochIDX)
 
-        epoch_time = (endTime - startTime) / 60
+    #     # For timing epochs
+    #     if TIME_EPOCH:
+    #         # Synchronize before starting the timer
+    #         dist.barrier()  # Ensure that all nodes sync
+    #         torch.cuda.synchronize(device)  # Ensure GPUs on each node sync
+    #         # Time each epoch and print to stdout
+    #         startTime = time.time()
 
-        # Print Summary Results
-        if rank == 0:
-            print(f"Completed epoch {epochIDX}...", flush=True)
-            print(f"Epoch time (minutes): {epoch_time:.2f}", flush=True)
+    #     # Train and Validate
+    #     tr.train_lsc_policy_epoch(
+    #         training_data=train_dataloader,
+    #         validation_data=val_dataloader,
+    #         num_train_batches=train_batches,
+    #         num_val_batches=val_batches,
+    #         model=model,
+    #         optimizer=optimizer,
+    #         loss_fn=loss_fn,
+    #         epochIDX=epochIDX,
+    #         train_per_val=train_per_val,
+    #         train_rcrd_filename=trn_rcrd_filename,
+    #         val_rcrd_filename=val_rcrd_filename,
+    #         device=device,
+    #         rank=rank,
+    #         world_size=world_size,
+    #     )
 
-    # Save model and optimizer state in hdf5
-    chkpt_name_str = "study{0:03d}_modelState_epoch{1:04d}.pth"
-    new_chkpt_path = os.path.join("./", chkpt_name_str.format(studyIDX, epochIDX))
+    #     if TIME_EPOCH:
+    #         # Synchronize before stopping the timer
+    #         torch.cuda.synchronize(device)  # Ensure GPUs on each node sync
+    #         dist.barrier()  # Ensure that all nodes sync
+    #         # Time each epoch and print to stdout
+    #         endTime = time.time()
 
-    tr.save_model_and_optimizer(
-        model,
-        optimizer,
-        epochIDX,
-        new_chkpt_path,
-        model_class=gaussian_policyCNN,
-        model_args=model_args
-    )
+    #     epoch_time = (endTime - startTime) / 60
 
-    if rank == 0:
-        #############################################
-        # Continue if Necessary
-        #############################################
-        FINISHED_TRAINING = epochIDX + 1 > total_epochs
-        if not FINISHED_TRAINING:
-            new_slurm_file = tr.continuation_setup(
-                new_chkpt_path, studyIDX, last_epoch=epochIDX
-            )
-            os.system(f"sbatch {new_slurm_file}")
+    #     # Print Summary Results
+    #     if rank == 0:
+    #         print(f"Completed epoch {epochIDX}...", flush=True)
+    #         print(f"Epoch time (minutes): {epoch_time:.2f}", flush=True)
+
+    # # Save model and optimizer state in hdf5
+    # chkpt_name_str = "study{0:03d}_modelState_epoch{1:04d}.pth"
+    # new_chkpt_path = os.path.join("./", chkpt_name_str.format(studyIDX, epochIDX))
+
+    # tr.save_model_and_optimizer(
+    #     model,
+    #     optimizer,
+    #     epochIDX,
+    #     new_chkpt_path,
+    #     model_class=gaussian_policyCNN,
+    #     model_args=model_args
+    # )
+
+    # if rank == 0:
+    #     #############################################
+    #     # Continue if Necessary
+    #     #############################################
+    #     FINISHED_TRAINING = epochIDX + 1 > total_epochs
+    #     if not FINISHED_TRAINING:
+    #         new_slurm_file = tr.continuation_setup(
+    #             new_chkpt_path, studyIDX, last_epoch=epochIDX
+    #         )
+    #         os.system(f"sbatch {new_slurm_file}")
 
 
 if __name__ == "__main__":

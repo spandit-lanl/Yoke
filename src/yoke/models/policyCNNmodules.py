@@ -236,6 +236,9 @@ class gaussian_policyCNN(nn.Module):
         h1_out = self.interpH1(h1)
         h1_out = self.reduceH1(h1_out)
         h1_out = torch.flatten(h1_out, start_dim=1)
+        print("gaussian_policyCNN: torch.flatten, h1_out:", h1_out.shape)
+        print("gaussian_policyCNN:, expected lin_embed_h1 input:",
+              self.finalH_h1 * self.finalW_h1 * self.features)
         h1_out = self.lin_embed_h1(h1_out)
         h1_out = self.h1_embed_act(h1_out)
 
@@ -341,11 +344,11 @@ if __name__ == "__main__":
     policy_model = gaussian_policyCNN(**model_args_medium)
 
     policy_model.eval()
-    # policy_distribution = policy_model(y, H1, H2)
-    # print("Initial mean:", policy_distribution.mean)
-    # print("Initial covariance:", policy_distribution.covariance_matrix)
-    # print("Initial mean shape:", policy_distribution.mean.shape)
-    # print("Initial covariance shape:", policy_distribution.covariance_matrix.shape)
+    policy_distribution = policy_model(y, H1, H2)
+    print("Initial mean:", policy_distribution.mean)
+    print("Initial covariance:", policy_distribution.covariance_matrix)
+    print("Initial mean shape:", policy_distribution.mean.shape)
+    print("Initial covariance shape:", policy_distribution.covariance_matrix.shape)
     print(
         "Number of trainable parameters in value network:",
         count_torch_params(policy_model, trainable=True),
