@@ -51,8 +51,7 @@ def volfrac_density(tmp_img: np.ndarray, npz_filename: str, hfield: str) -> np.n
     suffix = extract_after_density(hfield)
     if not suffix:
         print(
-            f"\n [load_npz_dataset.py] Could not extract"
-            f"suffix from hfield: '{hfield}'"
+            f"\n [load_npz_dataset.py] Could not extractsuffix from hfield: '{hfield}'"
         )
         return tmp_img
     vofm_hfield = "vofm_" + suffix
@@ -103,9 +102,9 @@ def combine_by_number_and_label(
         combined_array: Array of shape (n_unique, x, z).
         unique_labels: Corresponding hydrofield labels for unique channels.
     """
-    assert (
-        len(number_list) == array.shape[0] == len(label_list)
-    ), "Mismatched input lengths."
+    assert len(number_list) == array.shape[0] == len(label_list), (
+        "Mismatched input lengths."
+    )
 
     number_to_index = {}
     for idx, num in enumerate(number_list):
