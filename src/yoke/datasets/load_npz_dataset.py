@@ -26,18 +26,71 @@ import numpy as np
 import pandas as pd
 import torch
 from torch.utils.data import Dataset
-from typing import List, Tuple
 
 NoneStr = typing.Union[None, str]
 
-def combine_by_number_and_label(
-    number_list: List[int],
-    array: np.ndarray,
-    label_list: List[str]
-) -> Tuple[np.ndarray, np.ndarray, List[str]]:
+
+def import_img_from_npz(npz_filename: str, hfield: str) -> np.ndarray:
+    """Imports image data from npz file."""
+    tmp_img = read_npz_nan(npz_filename, hfield)
+    # If hfield = Rcoord or Zcoord, then meshgrid:
+    tmp_img = meshgrid_position(tmp_img, npz_filename, hfield)
+    # If hfield = density_..., then multiply by volume fraction:
+    tmp_img = volfrac_density(tmp_img, npz_filename, hfield)
+    return tmp_img
+
+
+def volfrac_density(tmp_img: np.ndarray, npz_filename: str, hfield: str) -> np.ndarray:
+    """Reweigh densities by volume fraction.
+
+    If `hfield` has the prefix 'density_', multiply `tmp_img` by the corresponding
+    volume fraction field from the .npz file.
     """
-    Combine entries in a 3D array (n_list, x, z) based on repeated values in
-    number_list and label_list. The combination fills 0s in one array with
+    if not has_density_prefix(hfield):
+        return tmp_img
+    suffix = extract_after_density(hfield)
+    if not suffix:
+        print(
+            f"\n [load_npz_dataset.py] Could not extract"
+            f"suffix from hfield: '{hfield}'"
+        )
+        return tmp_img
+    vofm_hfield = "vofm_" + suffix
+    vofm = read_npz_nan(npz_filename, vofm_hfield)
+    return tmp_img * vofm
+
+
+def meshgrid_position(tmp_img: np.ndarray, npz_filename: str, hfield: str) -> np.ndarray:
+    """If hfield = position, then meshgrid the arrays."""
+    if hfield == "Rcoord":
+        tmp_zcoord = read_npz_nan(npz_filename, "Zcoord")
+        tmp_img, _ = np.meshgrid(tmp_img, tmp_zcoord)
+    elif hfield == "Zcoord":
+        tmp_rcoord = read_npz_nan(npz_filename, "Rcoord")
+        _, tmp_img = np.meshgrid(tmp_rcoord, tmp_img)
+    return tmp_img
+
+
+def extract_after_density(s: str) -> None:
+    """Get the name of the material."""
+    prefix = "density_"
+    if s.startswith(prefix):
+        return s[len(prefix) :]
+    return None
+
+
+def has_density_prefix(s: str) -> None:
+    """Returns True if string begins with 'density'."""
+    return s.startswith("density_")
+
+
+def combine_by_number_and_label(
+    number_list: list[int], array: np.ndarray, label_list: list[str]
+) -> tuple[np.ndarray, np.ndarray, list[str]]:
+    """Combine entries in a 3D array (n_list, x, z).
+
+    Entries are combined based on repeated values in number_list and
+    label_list. The combination fills 0s in one array with
     non-0s from another. If both are non-zero, values are summed.
 
     Args:
@@ -50,8 +103,9 @@ def combine_by_number_and_label(
         combined_array: Array of shape (n_unique, x, z).
         unique_labels: Corresponding hydrofield labels for unique channels.
     """
-
-    assert len(number_list) == array.shape[0] == len(label_list), "Mismatched input lengths."
+    assert (
+        len(number_list) == array.shape[0] == len(label_list)
+    ), "Mismatched input lengths."
 
     number_to_index = {}
     for idx, num in enumerate(number_list):
@@ -80,6 +134,7 @@ def combine_by_number_and_label(
 
     return np.array(unique_numbers), np.array(combined_arrays), unique_labels
 
+
 def read_npz_nan(npz: np.lib.npyio.NpzFile, field: str) -> np.ndarray:
     """Extract a specific field from a .npz file and replace NaNs with 0.
 
@@ -93,6 +148,7 @@ def read_npz_nan(npz: np.lib.npyio.NpzFile, field: str) -> np.ndarray:
     """
     return np.nan_to_num(npz[field], nan=0.0)
 
+
 class LabeledData:
     """A class to process datasets by relating input data to correct labels.
 
@@ -100,11 +156,11 @@ class LabeledData:
     """
 
     def __init__(
-            self,
-            npz_filepath: str,
-            csv_filepath: str,
-            kinematic_variables: str = "velocity",
-            thermodynamic_variables: str = "density"
+        self,
+        npz_filepath: str,
+        csv_filepath: str,
+        kinematic_variables: str = "velocity",
+        thermodynamic_variables: str = "density",
     ) -> None:
         """Initializes the dataset processor.
 
@@ -136,7 +192,7 @@ class LabeledData:
                 "pressure_Be",
                 "density_booster",
                 "energy_booster",
-                "pressure_booster",                
+                "pressure_booster",
                 "density_Cu",
                 "energy_Cu",
                 "pressure_Cu",
@@ -176,14 +232,13 @@ class LabeledData:
             self.cylex_data_loader()
 
         else:
-            print("\n ERROR: hydro_field information unavailable"
-                  "for specified dataset. -> See load_npz_dataset.py\n"
+            print(
+                "\n ERROR: hydro_field information unavailable"
+                "for specified dataset. -> See load_npz_dataset.py\n"
             )
 
     def get_active_hydro_indices(self) -> list:
-        """ Returns the indices of active_hydro_field_names 
-        within hydro_field_names.
-        """
+        """Returns the indices of active_hydro_field_names within hydro_field_names."""
         return [
             self.all_hydro_field_names.index(field)
             for field in self.active_hydro_field_names
@@ -223,16 +278,19 @@ class LabeledData:
             self.active_hydro_field_names = ["Rcoord", "Zcoord"]
             self.active_npz_field_names = self.active_hydro_field_names
         elif self.kinematic_variables == "both":
-            self.active_hydro_field_names = ["Rcoord",
-                                             "Zcoord",
-                                             "Uvelocity",
-                                             "Wvelocity"]
+            self.active_hydro_field_names = [
+                "Rcoord",
+                "Zcoord",
+                "Uvelocity",
+                "Wvelocity",
+            ]
             self.active_npz_field_names = self.active_hydro_field_names
         else:
-            raise ValueError("\n ERROR: Failure to load data. "
-                             "Incorrectly specified kinematic "
-                             "variables: Choose from 'velocity'"
-                             "(default), 'position', or 'both'."
+            raise ValueError(
+                "\n ERROR: Failure to load data. "
+                "Incorrectly specified kinematic "
+                "variables: Choose from 'velocity'"
+                "(default), 'position', or 'both'."
             )
 
         # Note: wall and background materials (specific to cylex):
@@ -311,19 +369,19 @@ class LabeledData:
             )
 
         elif self.thermodynamic_variables != "density":
-            raise ValueError("\n ERROR: Failure to load data. "
-                             "Incorrectly specified thermodynamic "
-                             "variables: Choose from 'density'"
-                             "(default), 'density and pressure', "
-                             "'density and energy', or 'all'.")    
+            raise ValueError(
+                "\n ERROR: Failure to load data. "
+                "Incorrectly specified thermodynamic "
+                "variables: Choose from 'density'"
+                "(default), 'density and pressure', "
+                "'density and energy', or 'all'."
+            )
 
         self.channel_map = self.get_active_hydro_indices()
 
     def extract_letters(self, s: str) -> str:
         """Match letters at the beginning until the first digit."""
-        match = re.match(
-            r"([a-zA-Z]+)\d", s
-        )
+        match = re.match(r"([a-zA-Z]+)\d", s)
         return match.group(1) if match else None
 
     def get_study_and_key(self, npz_filepath: str) -> str:
@@ -340,52 +398,52 @@ class LabeledData:
         Returns:
             key (str): The corresponding simulation key for the NPZ file.
                        E.g., 'cx241203_id01250'
-            study (str): The name of the study/dataset. E.g., 'cx'
+            study (str): The name of the study/dataset. E.g., 'cx'.
 
         """
         self.key = npz_filepath.split("/")[-1].split("_pvi_")[0]
         self.study = self.extract_letters(self.key)
 
     def get_hydro_field_names(self) -> list[str]:
-        """ returns all possible hydro field names """
+        """Returns all possible hydro field names."""
         return self.all_hydro_field_names
 
     def get_channel_map(self) -> list[str]:
-        """ returns channel_map (a vector of active channel numbers) """
+        """Returns channel_map (a vector of active channel numbers)."""
         return self.channel_map
 
     def get_active_hydro_field_names(self) -> list[str]:
-        """ returns only the active hydro field names """
+        """Returns only the active hydro field names."""
         return self.active_hydro_field_names
 
     def get_active_npz_field_names(self) -> list[str]:
-        """ returns only the active field names in a npz file"""
+        """Returns only the active field names in a npz file."""
         return self.active_npz_field_names
+
 
 def process_channel_data(
     channel_map: list, img_list_combined: np.ndarray, active_hydro_field_names: list
-    ) -> tuple[list, np.ndarray, list]:
-    """ Processes channel data so that they are unique entries."
+) -> tuple[list, np.ndarray, list]:
+    """Processes channel data so that they are unique entries.
 
     Given a channel map, combined image lists, and active hydro field names,
     returns a channel map with unique values and the corresponding combined
     image list and active hydro field names.
 
     Args:
-    - channel_map (list): list of indices of active channels (fields).
-    - img_list_combined (array): Numpy array combining multiple image lists
+        channel_map (list): list of indices of active channels (fields).
+        img_list_combined (array): Numpy array combining multiple image lists
                                  where each image list is a list of images
                                  for all hydro fields in a simulation.
-    - active_hydro_field_names (list): list of active hydro fields.
+        active_hydro_field_names (list): list of active hydro fields.
 
     Returns:
-    - channel_map (list): Unique channels.
-    - img_list_combined (array): Combined image lists corresponding to the
+        channel_map (list): Unique channels.
+        img_list_combined (array): Combined image lists corresponding to the
                                  unique channels.
-    - active_hydro_field_names (list): list of active hydro fields corresponding
+        active_hydro_field_names (list): list of active hydro fields corresponding
                                        to the unique channels.
     """
-
     unique_channels = np.unique(channel_map)
     if len(unique_channels) < len(channel_map):
         # Assumes size(img_list_combined) = [n_images,n_hydro_fields,n_x,n_z]
@@ -566,27 +624,14 @@ class TemporalDataSet(Dataset):
         end_img_list = []
 
         for hfield in self.active_npz_field_names:
-
             # start npz
-            tmp_img = read_npz_nan(start_npz, hfield)
-            if hfield == 'Rcoord':
-                tmp_zcoord = read_npz_nan(start_npz, 'Zcoord')
-                tmp_img, _ = np.meshgrid(tmp_img, tmp_zcoord)
-            elif hfield == 'Zcoord':
-                tmp_rcoord = read_npz_nan(start_npz, 'Rcoord')
-                _, tmp_img = np.meshgrid(tmp_rcoord, tmp_img)
+            tmp_img = import_img_from_npz(start_npz, hfield)
             if not self.half_image:
                 tmp_img = np.concatenate((np.fliplr(tmp_img), tmp_img), axis=1)
             start_img_list.append(tmp_img)
 
             # end_npz
-            tmp_img = read_npz_nan(end_npz, hfield)
-            if hfield == 'Rcoord':
-                tmp_Zcoord = read_npz_nan(end_npz, 'Zcoord')
-                tmp_img, _ = np.meshgrid(tmp_img, tmp_Zcoord)
-            elif hfield == 'Zcoord':
-                tmp_Rcoord = read_npz_nan(end_npz, 'Rcoord')
-                _, tmp_img = np.meshgrid(tmp_Rcoord, tmp_img)            
+            tmp_img = import_img_from_npz(end_npz, hfield)
             if not self.half_image:
                 tmp_img = np.concatenate((np.fliplr(tmp_img), tmp_img), axis=1)
             end_img_list.append(tmp_img)
@@ -727,17 +772,9 @@ class SequentialDataSet(Dataset):
 
             field_imgs = []
             for hfield in self.active_npz_field_names:
-                tmp_img = read_npz_nan(data_npz, hfield)
-                if hfield == 'Rcoord':
-                    tmp_zcoord = read_npz_nan(data_npz, 'Zcoord')
-                    tmp_img, _ = np.meshgrid(tmp_img, tmp_zcoord)
-                elif hfield == 'Zcoord':
-                    tmp_rcoord = read_npz_nan(data_npz, 'Rcoord')
-                    _, tmp_img = np.meshgrid(tmp_rcoord, tmp_img)
-                # Reflect image if not half_image
+                tmp_img = import_img_from_npz(data_npz, hfield)
                 if not self.half_image:
                     tmp_img = np.concatenate((np.fliplr(tmp_img), tmp_img), axis=1)
-
                 field_imgs.append(tmp_img)
 
             data_npz.close()
@@ -766,4 +803,3 @@ class SequentialDataSet(Dataset):
         dt = torch.tensor(0.25, dtype=torch.float32)
 
         return img_seq, dt, self.channel_map
-    
