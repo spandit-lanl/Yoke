@@ -236,9 +236,6 @@ class gaussian_policyCNN(nn.Module):
         h1_out = self.interpH1(h1)
         h1_out = self.reduceH1(h1_out)
         h1_out = torch.flatten(h1_out, start_dim=1)
-        print("gaussian_policyCNN: torch.flatten, h1_out:", h1_out.shape)
-        print("gaussian_policyCNN:, expected lin_embed_h1 input:",
-              self.finalH_h1 * self.finalW_h1 * self.features)
         h1_out = self.lin_embed_h1(h1_out)
         h1_out = self.h1_embed_act(h1_out)
 

@@ -106,7 +106,7 @@ def main(
 
     # Dictionary of available models.
     available_models = {
-        "GaussianPolicy": gaussian_policyCNN
+        "gaussian_policyCNN": gaussian_policyCNN
     }
 
     #############################################
