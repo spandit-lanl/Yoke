@@ -139,7 +139,7 @@ def main(
     # Initialize Optimizer
     #############################################
     optimizer = torch.optim.AdamW(
-        filter(lambda p: p.requires_grad, model.parameters()),
+        model.parameters(),
         lr=1e-6,
         betas=(0.9, 0.999),
         eps=1e-08,
