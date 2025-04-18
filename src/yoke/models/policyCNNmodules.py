@@ -33,10 +33,10 @@ class gaussian_policyCNN(nn.Module):
         kernel (int): Size of symmetric convolutional kernels
         img_embed_dim (int): Number of features in MLP output from image embeddings.
         vector_embed_dim (int): Number of features in MLP output from image embeddings.
-        vector_feature_list (list[int]): Number of features in each hidden layer of
-                                         vector-MLP.
-        output_feature_list (list[int]): Number of features in each hidden layer of
-                                         final/output-MLP.
+        vector_feature_list (tuple[int, ...]): Number of features in each hidden layer
+                                               of vector-MLP.
+        output_feature_list (tuple[int, ...]): Number of features in each hidden layer
+                                               of final/output-MLP.
         act_layer(nn.Module): torch neural network layer class to use as activation
         norm_layer(nn.Module): torch neural network layer class to use as normalization
                                between MLP layers.
@@ -55,8 +55,8 @@ class gaussian_policyCNN(nn.Module):
         img_embed_dim: int = 32,
         vector_embed_dim: int = 32,
         size_reduce_threshold: tuple[int, int] = (8, 8),
-        vector_feature_list: list[int] = [32, 32, 64, 64],
-        output_feature_list: list[int] = [64, 128, 128, 64],
+        vector_feature_list: tuple[int, ...] = (32, 32, 64, 64),
+        output_feature_list: tuple[int, ...] = (64, 128, 128, 64),
         act_layer: nn.Module = nn.GELU,
         norm_layer: nn.Module = nn.LayerNorm,
     ) -> None:
