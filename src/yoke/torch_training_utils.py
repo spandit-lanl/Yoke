@@ -256,8 +256,6 @@ def save_model_and_optimizer(
             'optimizer_state_dict': optimizer_cpu
         }
 
-        print("save_model_and_optimizer, model_args:", checkpoint["model_args"])
-
         torch.save(checkpoint, filepath)
         print(f"[Rank {save_rank}] Saved checkpoint at epoch {epoch} -> {filepath}")
 
@@ -295,7 +293,6 @@ def load_model_and_optimizer(filepath, optimizer, available_models, device="cuda
 
     if load_rank == 0:
         checkpoint = torch.load(filepath, map_location='cpu', weights_only=False)
-        print("load_model_and_optimizer, rank 0:", checkpoint["model_args"])
         epochIDX = checkpoint['epoch']
         print(f'[Rank {load_rank}] Loaded checkpoint from epoch {epochIDX}')
 
@@ -304,7 +301,6 @@ def load_model_and_optimizer(filepath, optimizer, available_models, device="cuda
         checkpoint_list = [checkpoint]
         dist.broadcast_object_list(checkpoint_list, src=0)
         checkpoint = checkpoint_list[0]  # Unpack checkpoint on all ranks
-        print("load_model_and_optimizer, non-zero rank:", checkpoint["model_args"])
 
     # Retrieve model class and arguments
     model_class_name = checkpoint['model_class']
