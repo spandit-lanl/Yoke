@@ -183,7 +183,7 @@ class hybrid2vectorCNN(nn.Module):
         self.lin_embed_h1 = generalMLP(
             input_dim=self.finalH_h1 * self.finalW_h1 * self.features,
             output_dim=self.img_embed_dim,
-            hidden_feature_list=[2 * self.img_embed_dim],
+            hidden_feature_list=(2 * self.img_embed_dim,),
             act_layer=self.act_layer,
             norm_layer=self.norm_layer,
         )
@@ -220,7 +220,7 @@ class hybrid2vectorCNN(nn.Module):
         self.lin_embed_h2 = generalMLP(
             input_dim=self.finalH_h2 * self.finalW_h2 * self.features,
             output_dim=self.img_embed_dim,
-            hidden_feature_list=[2 * self.img_embed_dim],
+            hidden_feature_list=(2 * self.img_embed_dim,),
             act_layer=self.act_layer,
             norm_layer=self.norm_layer,
         )

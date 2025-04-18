@@ -37,9 +37,9 @@ class gaussian_policyCNN(nn.Module):
                                                of vector-MLP.
         output_feature_list (tuple[int, ...]): Number of features in each hidden layer
                                                of final/output-MLP.
-        act_layer(nn.Module): torch neural network layer class to use as activation
-        norm_layer(nn.Module): torch neural network layer class to use as normalization
-                               between MLP layers.
+        act_layer (nn.Module): torch neural network layer class to use as activation
+        norm_layer (nn.Module): torch neural network layer class to use as normalization
+                                between MLP layers.
 
     """
 
@@ -108,7 +108,7 @@ class gaussian_policyCNN(nn.Module):
         self.lin_embed_h1 = generalMLP(
             input_dim=self.finalH_h1 * self.finalW_h1 * self.features,
             output_dim=self.img_embed_dim,
-            hidden_feature_list=[2 * self.img_embed_dim],
+            hidden_feature_list=(2 * self.img_embed_dim,),
             act_layer=self.act_layer,
             norm_layer=self.norm_layer,
         )
@@ -145,7 +145,7 @@ class gaussian_policyCNN(nn.Module):
         self.lin_embed_h2 = generalMLP(
             input_dim=self.finalH_h2 * self.finalW_h2 * self.features,
             output_dim=self.img_embed_dim,
-            hidden_feature_list=[2 * self.img_embed_dim],
+            hidden_feature_list=(2 * self.img_embed_dim,),
             act_layer=self.act_layer,
             norm_layer=self.norm_layer,
         )
