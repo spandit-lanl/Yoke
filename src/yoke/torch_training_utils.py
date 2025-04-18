@@ -256,6 +256,8 @@ def save_model_and_optimizer(
             'optimizer_state_dict': optimizer_cpu
         }
 
+        print("save_model_and_optimizer, model_args:", checkpoint["model_args"])
+
         torch.save(checkpoint, filepath)
         print(f"[Rank {save_rank}] Saved checkpoint at epoch {epoch} -> {filepath}")
 
@@ -266,7 +268,7 @@ def save_model_and_optimizer(
 
 def load_model_and_optimizer(filepath, optimizer, available_models, device="cuda"):
     """Dynamically load model & optimizer state from checkpoint.
-    
+
     NOTE: This function only works while loading checkpoints created by 
     `save_model_and_optimizer`
 
@@ -293,6 +295,7 @@ def load_model_and_optimizer(filepath, optimizer, available_models, device="cuda
 
     if load_rank == 0:
         checkpoint = torch.load(filepath, map_location='cpu', weights_only=False)
+        print("load_model_and_optimizer, rank 0:", checkpoint["model_args"])
         epochIDX = checkpoint['epoch']
         print(f'[Rank {load_rank}] Loaded checkpoint from epoch {epochIDX}')
 
@@ -301,6 +304,7 @@ def load_model_and_optimizer(filepath, optimizer, available_models, device="cuda
         checkpoint_list = [checkpoint]
         dist.broadcast_object_list(checkpoint_list, src=0)
         checkpoint = checkpoint_list[0]  # Unpack checkpoint on all ranks
+        print("load_model_and_optimizer, non-zero rank:", checkpoint["model_args"])
 
     # Retrieve model class and arguments
     model_class_name = checkpoint['model_class']
@@ -312,8 +316,7 @@ def load_model_and_optimizer(filepath, optimizer, available_models, device="cuda
                            "Add it to `available_models`."))
 
     # Dynamically create the model
-    model_class = available_models[model_class_name]
-    model = model_class(**model_args)  # Instantiate model dynamically
+    model = available_models[model_class_name](**model_args)
 
     # Load state
     model.load_state_dict(checkpoint['model_state_dict'])
