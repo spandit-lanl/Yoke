@@ -65,7 +65,7 @@ parser = cli.add_filepath_args(parser=parser)
 parser = cli.add_computing_args(parser=parser)
 parser = cli.add_model_args(parser=parser)
 parser = cli.add_training_args(parser=parser)
-# parser = cli.add_step_lr_scheduler_args(parser=parser)  # SH
+parser = cli.add_step_lr_scheduler_args(parser=parser)  # SH
 parser = cli.add_cosine_lr_scheduler_args(parser=parser)
 
 # Change some default filepaths.
@@ -96,8 +96,8 @@ if __name__ == "__main__":
 
     # Training Parameters
     initial_learningrate = args.init_learnrate
-    LRepoch_per_step = args.LRepoch_per_step
-    LRdecay = args.LRdecay
+    # LRepoch_per_step = args.LRepoch_per_step
+    # LRdecay = args.LRdecay
     batch_size = args.batch_size
     terminal_steps = args.terminal_steps
     warmup_steps = args.warmup_steps
@@ -309,7 +309,7 @@ if __name__ == "__main__":
 
         # Increment LR scheduler
         # stepLRsched.step()
-        LRsched.step()
+        # LRsched.step()
 
         endTime = time.time()
         epoch_time = (endTime - startTime) / 60

@@ -27,7 +27,6 @@ sinfo  -o "%P %.24G %N"
 srun /usr/bin/echo $CUDA_AVAILABLE_DEVICES
 
 # Load correct conda environment
-# source <YOKE_CONDA_BASE>/bin/activate <YOKE_TORCH_ENV>
 module load python/3.10-anaconda-2023.03
 source activate
 conda activate <YOKE_TORCH_ENV>
