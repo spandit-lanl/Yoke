@@ -7,10 +7,9 @@
 # not enough resources. You may request up to 29G per-job.
 
 #SBATCH --job-name=lsc_tCNN2_study<studyIDX>
-#SBATCH --partition=gpu_debug
-#SBATCH --qos=debug
-#SBATCH --reservation=gpu_debug
+#SBATCH --qos=standard
 #SBATCH -A xd_g
+#SBATCH --partition=gpu
 #SBATCH --gres=gpu:1
 #SBATCH --ntasks-per-gpu=8
 #SBATCH --gpu-bind=closest
