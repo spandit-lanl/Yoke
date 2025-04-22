@@ -305,7 +305,7 @@ if __name__ == "__main__":
         features=12,
         img_embed_dim=32,
         vector_embed_dim=32,
-        vector_feature_list=[32, 32, 64, 64],
+        vector_feature_list=(32, 32, 64, 64),
         depth=12,
         kernel=3,
         size_reduce_threshold=(8, 8),

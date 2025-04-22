@@ -304,8 +304,8 @@ if __name__ == "__main__":
         "img_embed_dim": 32,
         "vector_embed_dim": 32,
         "size_reduce_threshold": (8, 8),
-        "vector_feature_list": [32, 32, 64, 64],
-        "output_feature_list": [64, 128, 128, 64]
+        "vector_feature_list": (32, 32, 64, 64),
+        "output_feature_list": (64, 128, 128, 64),
     }
 
     model_args_medium = {
@@ -319,8 +319,8 @@ if __name__ == "__main__":
         "img_embed_dim": 32,
         "vector_embed_dim": 32,
         "size_reduce_threshold": (16, 16),
-        "vector_feature_list": [16, 64, 64, 16],
-        "output_feature_list": [16, 64, 64, 16]
+        "vector_feature_list": (16, 64, 64, 16),
+        "output_feature_list": (16, 64, 64, 16),
     }
 
     model_args_small = {
@@ -334,8 +334,8 @@ if __name__ == "__main__":
         "img_embed_dim": 16,
         "vector_embed_dim": 16,
         "size_reduce_threshold": (24, 24),
-        "vector_feature_list": [8, 16, 16, 8],
-        "output_feature_list": [8, 16, 16, 8]
+        "vector_feature_list": (8, 16, 16, 8),
+        "output_feature_list": (8, 16, 16, 8),
     }
 
     policy_model = gaussian_policyCNN(**model_args_medium)
