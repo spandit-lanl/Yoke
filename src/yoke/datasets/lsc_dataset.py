@@ -652,6 +652,47 @@ class LSC_rho2rho_temporal_DataSet(Dataset):
         """Return effectively infinite number of samples in dataset."""
         return int(1e6)
 
+    def volfrac_density(
+            self,
+            tmp_img: np.ndarray,
+            npz_filename: str,
+            hfield: str
+            ) -> np.ndarray:
+        """Reweight densities by volume fraction.
+
+        If `hfield` has the prefix 'density_', multiply `tmp_img` by the corresponding
+        volume fraction field from the .npz file.
+
+        Args:
+            tmp_img (np.ndarray): The image to be reweighted.
+            npz_filename (str): The filename of the .npz file.
+            hfield (str): The field name to check for volume fraction.
+
+        Returns:
+            np.ndarray: The reweighted image.
+
+        """
+        prefix = "density_"
+
+        # Check if the field name starts with the prefix 'density_'
+        if hfield.startswith(prefix):
+            # Extract the suffix after 'density_'
+            suffix = hfield[len(prefix):]
+        else:
+            # If the prefix is not found, return the original image
+            return tmp_img
+
+        if not suffix:
+            print(
+                f"[load_npz_dataset.py] Could not extract suffix from hfield: {hfield}"
+            )
+            return tmp_img
+
+        vofm_hfield = "vofm_" + suffix
+        vofm = LSCread_npz_NaN(npz_filename, vofm_hfield)
+
+        return tmp_img * vofm
+
     def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Return a tuple of a batch's input and output data."""
         # Rotate index if necessary
@@ -733,11 +774,19 @@ class LSC_rho2rho_temporal_DataSet(Dataset):
         end_img_list = []
         for hfield in self.hydro_fields:
             tmp_img = LSCread_npz_NaN(start_npz, hfield)
+            # Reweight densities by volume fraction
+            tmp_img = self.volfrac_density(tmp_img, start_npz, hfield)
+
+            # Reflect image if not half_image
             if not self.half_image:
                 tmp_img = np.concatenate((np.fliplr(tmp_img), tmp_img), axis=1)
             start_img_list.append(tmp_img)
 
             tmp_img = LSCread_npz_NaN(end_npz, hfield)
+            # Reweight densities by volume fraction
+            tmp_img = self.volfrac_density(tmp_img, end_npz, hfield)
+
+            # Reflect image if not half_image
             if not self.half_image:
                 tmp_img = np.concatenate((np.fliplr(tmp_img), tmp_img), axis=1)
             end_img_list.append(tmp_img)
