@@ -114,7 +114,7 @@ parser.add_argument(
     "--input_dir",
     action="store",
     type=str,
-    default="./"),
+    default="./",
     help="Where the data files are located",
 )
 
