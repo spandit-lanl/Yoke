@@ -364,8 +364,8 @@ class LSC_hfield_reward_DataSet(Dataset):
         design_file (str): Full-path to .csv file with master design study parameters
         half_image (bool): If True then returned images are NOT reflected about axis
                            of symmetry and half-images are returned instead.
-        field_list (list[str]): List of hydro-dynamic fields to include as channels
-                                in image.
+        field_list (tuple[str, ...]): List of hydro-dynamic fields to include as channels
+                                      in image.
         reward_fn (Callable): Function taking two torch.tensor and returning a
                               scalar reward.
 
@@ -377,7 +377,7 @@ class LSC_hfield_reward_DataSet(Dataset):
         filelist: str,
         design_file: str,
         half_image: bool = True,
-        field_list: list[str] = ["density_throw"],
+        field_list: tuple[str, ...] = ("density_throw",),
         reward_fn: Callable[[torch.Tensor, torch.Tensor], torch.Tensor] = neg_mse_loss,
     ) -> None:
         """Initialization of class."""
@@ -477,8 +477,8 @@ class LSC_hfield_policy_DataSet(Dataset):
         design_file (str): Full-path to .csv file with master design study parameters
         half_image (bool): If True then returned images are NOT reflected about axis
                            of symmetry and half-images are returned instead.
-        field_list (list[str]): List of hydro-dynamic fields to include as channels
-                                in image.
+        field_list (tuple[str, ...]): List of hydro-dynamic fields to include as channels
+                                      in image.
 
     """
 
@@ -488,7 +488,7 @@ class LSC_hfield_policy_DataSet(Dataset):
         filelist: str,
         design_file: str,
         half_image: bool = True,
-        field_list: list[str] = ["density_throw"],
+        field_list: tuple[str, ...] = ("density_throw",),
     ) -> None:
         """Initialization of class."""
         # Model Arguments
