@@ -87,8 +87,10 @@ def test_lightning_model_init(lightning_model: Lightning_LodeRunner) -> None:
 
 def test_lightning_model_forward(lightning_model: Lightning_LodeRunner) -> None:
     """Test forward."""
-    x = torch.randn(2, 3, 1120, 800)  # Batch size of 2, 3 channels, image size
-    lead_times = torch.rand(2)
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    x = torch.randn(2, 3, 1120, 800).to(device)  # Batch size of 2, 3 channels, image size
+    lead_times = torch.rand(2).to(device)
 
     output = lightning_model(x, lead_times)
     assert isinstance(output, torch.Tensor)
@@ -96,9 +98,11 @@ def test_lightning_model_forward(lightning_model: Lightning_LodeRunner) -> None:
 
 def test_training_step(lightning_model: Lightning_LodeRunner) -> None:
     """Test lightning training step."""
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+
     batch = (
-        torch.randn(2, 2, 3, 1120, 800),  # img_seq
-        torch.rand(2),  # lead_times
+        torch.randn(2, 2, 3, 1120, 800).to(device),  # img_seq
+        torch.rand(2).to(device),  # lead_times
     )
 
     batch_loss = lightning_model.training_step(batch, batch_idx=0)
@@ -107,9 +111,11 @@ def test_training_step(lightning_model: Lightning_LodeRunner) -> None:
 
 def test_validation_step(lightning_model: Lightning_LodeRunner) -> None:
     """Test lightning validation step."""
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+
     batch = (
-        torch.randn(2, 2, 3, 1120, 800),  # img_seq
-        torch.rand(2),  # lead_times
+        torch.randn(2, 2, 3, 1120, 800).to(device),  # img_seq
+        torch.rand(2).to(device),  # lead_times
     )
 
     lightning_model.validation_step(batch, batch_idx=0)
