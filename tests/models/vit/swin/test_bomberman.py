@@ -67,7 +67,8 @@ def test_loderunner_forward(loderunner_model: LodeRunner) -> None:
     """Test forward method."""
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    x = torch.randn(2, 3, 1120, 800).to(device)  # Batch size of 2, 3 channels, image size
+    # Batch size of 2, 3 channels, image size
+    x = torch.randn(2, 3, 1120, 800).to(device)
     in_vars = torch.tensor([0, 1, 2]).to(device)
     out_vars = torch.tensor([0, 1]).to(device)
     lead_times = torch.rand(2).to(device)
