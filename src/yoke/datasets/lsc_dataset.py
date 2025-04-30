@@ -271,11 +271,7 @@ class LSCnorm_cntr2rho_DataSet(Dataset):
         return norm_sim_params, unbias_true_image
 
 
-def volfrac_density(
-    tmp_img: np.ndarray,
-    npz_filename: str,
-    hfield: str
-    ) -> np.ndarray:
+def volfrac_density(tmp_img: np.ndarray, npz_filename: str, hfield: str) -> np.ndarray:
     """Reweight densities by volume fraction.
 
     If `hfield` has the prefix 'density_', multiply `tmp_img` by the corresponding
@@ -295,15 +291,13 @@ def volfrac_density(
     # Check if the field name starts with the prefix 'density_'
     if hfield.startswith(prefix):
         # Extract the suffix after 'density_'
-        suffix = hfield[len(prefix):]
+        suffix = hfield[len(prefix) :]
     else:
         # If the prefix is not found, return the original image
         return tmp_img
 
     if not suffix:
-        print(
-            f"[load_npz_dataset.py] Could not extract suffix from hfield: {hfield}"
-        )
+        print(f"[load_npz_dataset.py] Could not extract suffix from hfield: {hfield}")
         return tmp_img
 
     vofm_hfield = "vofm_" + suffix
