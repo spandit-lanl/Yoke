@@ -89,7 +89,8 @@ def test_lightning_model_forward(lightning_model: Lightning_LodeRunner) -> None:
     """Test forward."""
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    x = torch.randn(2, 3, 1120, 800).to(device)  # Batch size of 2, 3 channels, image size
+      # Batch size of 2, 3 channels, image size
+    x = torch.randn(2, 3, 1120, 800).to(device)
     lead_times = torch.rand(2).to(device)
 
     output = lightning_model(x, lead_times)
