@@ -342,6 +342,7 @@ class LSC_cntr2hfield_DataSet(Dataset):
         self.LSC_NPZ_DIR = LSC_NPZ_DIR
         self.filelist = filelist
         self.design_file = design_file
+        self.half_image = half_image
         self.hydro_fields = field_list
 
         # Create filelist
