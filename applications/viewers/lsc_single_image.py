@@ -171,7 +171,7 @@ if __name__ == "__main__":
             vol_frac = singlePVIarray(npzfile=npzfile, FIELD="vofm_throw")
             vol_frac = np.concatenate((np.fliplr(vol_frac), vol_frac), axis=1)
             Hfield = vol_frac * Hfield
-            
+
         # Plot normalized radiograph and density field for diagnostics.
         fig1, ax1 = plt.subplots(1, 1, figsize=(12, 12))
         img1 = ax1.imshow(
@@ -188,8 +188,9 @@ if __name__ == "__main__":
         divider1 = make_axes_locatable(ax1)
         cax1 = divider1.append_axes("right", size="10%", pad=0.1)
         if VOLWGT:
-            fig1.colorbar(img1, cax=cax1).set_label(f"Volume weighted {FIELD}",
-                                                    fontsize=14)
+            fig1.colorbar(img1, cax=cax1).set_label(
+                f"Volume weighted {FIELD}", fontsize=14
+            )
         else:
             fig1.colorbar(img1, cax=cax1).set_label(f"{FIELD}", fontsize=14)
 
@@ -203,6 +204,6 @@ if __name__ == "__main__":
                 fig1.savefig(
                     os.path.join(outdir, f"{runID}_idx{pviIDX:05d}_{FIELD}.png"),
                     bbox_inches="tight",
-                )                
+                )
         else:
             plt.show()
