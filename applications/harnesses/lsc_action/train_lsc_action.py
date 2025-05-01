@@ -96,14 +96,8 @@ if __name__ == "__main__":
 
     # Training Parameters
     initial_learningrate = args.init_learnrate
-    # LRepoch_per_step = args.LRepoch_per_step
-    # LRdecay = args.LRdecay
     batch_size = args.batch_size
-    terminal_steps = args.terminal_steps
-    warmup_steps = args.warmup_steps
-    num_cycles = args.num_cycles
-    min_fraction = args.min_fraction
-    anchor_lr = args.anchor_lr
+
 
     # Leave one CPU out of the worker queue. Not sure if this is necessary.
     num_workers = int(os.environ["SLURM_JOB_CPUS_PER_NODE"])  # - 1
