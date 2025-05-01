@@ -637,7 +637,7 @@ class TemporalDataSet(Dataset):
 
         img_list_combined = np.array([start_img_list, end_img_list])
         channel_map, img_list_combined, active_hydro_field_names = process_channel_data(
-            channel_map, img_list_combined, self.active_hydro_field_names
+            channel_map, img_list_combined, active_hydro_field_names
         )
         start_img_list = img_list_combined[0]
         end_img_list = img_list_combined[1]
