@@ -5,27 +5,18 @@ data for testing. This avoids a lot of costly sample file storage.
 
 """
 
-import os
 import pathlib
 import pandas as pd
 import pytest
-import tempfile
 import numpy as np
 import torch
-from unittest.mock import patch, mock_open, MagicMock
+from unittest.mock import patch, MagicMock
 from yoke.datasets.load_npz_dataset import (
-    import_img_from_npz,
-    volfrac_density,
-    meshgrid_position,
-    extract_after_density,
-    has_density_prefix,
-    combine_by_number_and_label,
-    read_npz_nan,
     process_channel_data,
     LabeledData,
     TemporalDataSet,
-    SequentialDataSet
 )
+
 
 # Mock np.load to simulate loading .npz files
 class MockNpzFile:
@@ -63,7 +54,8 @@ def design_csv(tmp_path: pathlib.Path) -> str:
 
 
 def labeled_data(tmp_path: pathlib.Path) -> LabeledData:
-    """
+    """Setup an instance of the dataset.
+
     Instantiate LabeledData with a mock design CSV (Air/Al) and
     a dummy NPZ path for study 'cx240420_id00001'.
     """
@@ -86,10 +78,7 @@ def labeled_data(tmp_path: pathlib.Path) -> LabeledData:
 
 
 def test_init_sets_all_expected_attributes(tmp_path: pathlib.Path) -> None:
-    """
-    Test that LabeledData.__init__ correctly initializes metadata,
-    full hydro‐field list, active fields, and channel_map indices.
-    """
+    """Test that the dataset is initialized correctly."""
     ld = labeled_data(tmp_path)
 
     # metadata attributes
@@ -127,8 +116,9 @@ def test_init_sets_all_expected_attributes(tmp_path: pathlib.Path) -> None:
 def test_get_active_hydro_indices_matches_channel_map(
     tmp_path: pathlib.Path,
 ) -> None:
-    """
-    Test that get_active_hydro_indices() returns the same list
+    """Tests get_active_hydro_indices().
+
+    Checks whether get_active_hydro_indices() returns the same list
     as get_channel_map(), since channel_map is defined by it.
     """
     ld = labeled_data(tmp_path)
@@ -140,8 +130,9 @@ def test_get_active_hydro_indices_matches_channel_map(
 def test_cylex_data_loader_appends_pressure_fields(
     tmp_path: pathlib.Path,
 ) -> None:
-    """
-    Test that cylex_data_loader adds only pressure fields (no energy)
+    """Tess cylex_data_loader().
+
+    Checks that cylex_data_loader() adds only pressure fields (no energy)
     when thermodynamic_variables='all'.
     """
     # Prepare CSV
@@ -180,9 +171,11 @@ def test_cylex_data_loader_appends_pressure_fields(
     assert not any(name.startswith("energy_") for name in active_npz)
     assert not any(name.startswith("energy_") for name in active_hydro)
 
+
 def test_extract_letters_handles_various_strings() -> None:
-    """
-    Test that extract_letters returns the leading alphabetic segment
+    """Tests extract_letters().
+
+    Checks that extract_letters returns the leading alphabetic segment
     before the first digit, or None if no match.
     """
     ld = object.__new__(LabeledData)
@@ -193,8 +186,9 @@ def test_extract_letters_handles_various_strings() -> None:
 
 
 def test_get_study_and_key_parses_filepath() -> None:
-    """
-    Test that get_study_and_key correctly sets .study and .key
+    """Tests get_study_and_key().
+
+    Checks that get_study_and_key correctly sets .study and .key
     based on the NPZ filename.
     """
     ld = object.__new__(LabeledData)
@@ -208,9 +202,7 @@ def test_get_study_and_key_parses_filepath() -> None:
 
 
 def test_get_hydro_field_names_returns_all(tmp_path: pathlib.Path) -> None:
-    """
-    Test that get_hydro_field_names returns the full hydro field list.
-    """
+    """Test that get_hydro_field_names returns the full hydro field list."""
     ld = labeled_data(tmp_path)
     all_names = ld.get_hydro_field_names()
     assert isinstance(all_names, list)
@@ -219,18 +211,14 @@ def test_get_hydro_field_names_returns_all(tmp_path: pathlib.Path) -> None:
 
 
 def test_get_channel_map_returns_channel_map(tmp_path: pathlib.Path) -> None:
-    """
-    Test that get_channel_map returns the same list as the channel_map attr.
-    """
+    """Test that get_channel_map returns the same list as the channel_map attr."""
     ld = labeled_data(tmp_path)
     assert ld.get_channel_map() == ld.channel_map
     assert isinstance(ld.get_channel_map(), list)
 
 
 def test_get_active_hydro_field_names(tmp_path: pathlib.Path) -> None:
-    """
-    Test that get_active_hydro_field_names returns the active hydro fields.
-    """
+    """Test that get_active_hydro_field_names returns the active hydro fields."""
     ld = labeled_data(tmp_path)
     expected_active = [
         "Uvelocity",
@@ -244,9 +232,7 @@ def test_get_active_hydro_field_names(tmp_path: pathlib.Path) -> None:
 
 
 def test_get_active_npz_field_names(tmp_path: pathlib.Path) -> None:
-    """
-    Test that get_active_npz_field_names returns the active NPZ field names.
-    """
+    """Test that get_active_npz_field_names returns the active NPZ field names."""
     ld = labeled_data(tmp_path)
     expected_npz = [
         "Uvelocity",
@@ -262,8 +248,9 @@ def test_get_active_npz_field_names(tmp_path: pathlib.Path) -> None:
 def test_process_channel_data_combines_duplicates(
     tmp_path: pathlib.Path,
 ) -> None:
-    """
-    Test that process_channel_data merges duplicate channels correctly,
+    """Tests process_channel_data().
+
+    Checks that process_channel_data() merges duplicate channels correctly,
     yielding unique channel_map, combined images, and labels.
     """
     # Use LabeledData to obtain the true hydro field list
@@ -298,7 +285,8 @@ def test_process_channel_data_combines_duplicates(
 
 @pytest.fixture
 def temporal_dataset(tmp_path: pathlib.Path) -> TemporalDataSet:
-    """
+    """Set up an instance of TemporalDataSet.
+
     Build a TemporalDataSet pointing at tmp_path/mock/path, with three real
     'cx' prefixes and a matching design CSV so LabeledData populates its fields.
     """
@@ -331,9 +319,7 @@ def temporal_dataset(tmp_path: pathlib.Path) -> TemporalDataSet:
 
 
 def test_init_temporal_dataset(temporal_dataset: TemporalDataSet) -> None:
-    """
-    __init__ should set attributes based on the mock arguments.
-    """
+    """__init__ should set attributes based on the mock arguments."""
     ds = temporal_dataset
     assert ds.npz_dir.endswith("mock/path/")
     assert ds.csv_filepath.endswith("design.csv")
@@ -345,16 +331,12 @@ def test_init_temporal_dataset(temporal_dataset: TemporalDataSet) -> None:
 
 
 def test_temporal_dataset_len(temporal_dataset: TemporalDataSet) -> None:
-    """
-    __len__ should return the fixed size of 800000.
-    """
+    """__len__ should return the fixed size of 800000."""
     assert len(temporal_dataset) == 800000
 
 
 def test_file_prefix_list_loading(temporal_dataset: TemporalDataSet) -> None:
-    """
-    Test that the file_prefix_list fixture loads the three cx prefixes correctly.
-    """
+    """Test that the file_prefix_list fixture loads the three cx prefixes correctly."""
     expected = ["cx240420_id00001", "cx240420_id00002", "cx240420_id00003"]
     assert sorted(temporal_dataset.file_prefix_list) == sorted(expected)
 
@@ -363,9 +345,7 @@ def test_file_prefix_list_loading(temporal_dataset: TemporalDataSet) -> None:
 def test_temporal_dataset_getitem_max_file_checks(
     mock_is_file: MagicMock, temporal_dataset: TemporalDataSet
 ) -> None:
-    """
-    Test that max_file_checks is respected and FileNotFoundError is raised.
-    """
+    """Test that max_file_checks is respected and FileNotFoundError is raised."""
     with pytest.raises(FileNotFoundError):
         _ = temporal_dataset[0]  # type: ignore
 
@@ -377,9 +357,7 @@ def test_temporal_dataset_getitem_load_error(
     mock_is_file: MagicMock,
     temporal_dataset: TemporalDataSet,
 ) -> None:
-    """
-    Test that an OSError in numpy.load propagates out of __getitem__.
-    """
+    """Test that an OSError in numpy.load propagates out of __getitem__."""
     with pytest.raises(OSError, match="load failed"):
         _ = temporal_dataset[0]  # type: ignore
 
@@ -391,9 +369,7 @@ def test_getitem_propagates_load_error(
     mock_is_file: MagicMock,
     temporal_dataset: TemporalDataSet,
 ) -> None:
-    """
-    If numpy.load throws, __getitem__ should propagate that OSError.
-    """
+    """If numpy.load throws, __getitem__ should propagate that OSError."""
     with pytest.raises(OSError, match="load failed"):
         _ = temporal_dataset[0]  # type: ignore
 
@@ -415,24 +391,25 @@ def test_temporal_dataset_getitem_returns_expected(
     mock_isfile: MagicMock,
     temporal_dataset: TemporalDataSet,
 ) -> None:
-    """
-    __getitem__ should return:
-      - start_img, end_img: torch.Tensor of shape (n_ch,10,10)
-      - cm1, cm2 matching LabeledData.get_channel_map()
-      - dt = 0.25*(end_idx-start_idx)
+    """Tests that the __getitem__ method returns the correct data format as follows.
+
+    - start_img, end_img: torch.Tensor of shape (n_ch,10,10)
+    - cm1, cm2 matching LabeledData.get_channel_map()
+    - dt = 0.25*(end_idx-start_idx)
     """
     ds = temporal_dataset
 
     # Make exactly two NPZ files so start_idx=0, end_idx=1 wrap cheaply
     prefix = ds.file_prefix_list[0]
     start = pathlib.Path(ds.npz_dir) / f"{prefix}_pvi_idx00000.npz"
-    end   = pathlib.Path(ds.npz_dir) / f"{prefix}_pvi_idx00001.npz"
+    end = pathlib.Path(ds.npz_dir) / f"{prefix}_pvi_idx00001.npz"
     np.savez(start, dummy=np.zeros((1,)))
-    np.savez(end,   dummy=np.zeros((1,)))
+    np.savez(end, dummy=np.zeros((1,)))
 
     # Fix RNG so first integers→0, next→1
     class FakeRNG:
         cnt = 0
+
         def integers(self, low: int, high: int) -> int:
             self.cnt += 1
             return 0 if self.cnt == 1 else 1
