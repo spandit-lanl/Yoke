@@ -35,6 +35,7 @@ def swin_model() -> nn.Module:
 @pytest.fixture
 def swin_v2_model() -> nn.Module:
     """Create an instance of the SwinV2 model."""
+    device = "cuda" if torch.cuda.is_available() else "cpu"
     return SwinV2(
         input_channels=3,
         img_size=(1120, 800),
@@ -47,7 +48,7 @@ def swin_v2_model() -> nn.Module:
         patch_merge_scales=[(2, 2), (2, 2), (2, 2)],
         num_output_classes=5,
         verbose=False,
-    )
+    ).to(device)
 
 
 def test_swin_initialization(swin_model: Swin) -> None:
