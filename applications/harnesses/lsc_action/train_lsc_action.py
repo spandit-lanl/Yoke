@@ -23,7 +23,7 @@ from yoke.models.surrogateCNNmodules import tCNNsurrogate
 from yoke.datasets.lsc_dataset import LSC_cntr2hfield_DataSet  # SH
 import yoke.torch_training_utils as tr
 from yoke.helpers import cli
-from yoke.lr_schedulers import CosineWithWarmupScheduler
+# from yoke.lr_schedulers import CosineWithWarmupScheduler
 
 
 #  Smyther
@@ -65,8 +65,8 @@ parser = cli.add_filepath_args(parser=parser)
 parser = cli.add_computing_args(parser=parser)
 parser = cli.add_model_args(parser=parser)
 parser = cli.add_training_args(parser=parser)
-parser = cli.add_step_lr_scheduler_args(parser=parser)  # SH
-parser = cli.add_cosine_lr_scheduler_args(parser=parser)
+parser = cli.add_step_lr_scheduler_args(parser=parser)  # SH - kept this for init_learnrate
+# parser = cli.add_cosine_lr_scheduler_args(parser=parser)
 
 # Change some default filepaths.
 parser.set_defaults(design_file="design_lsc240420_MASTER.csv")
@@ -198,40 +198,6 @@ if __name__ == "__main__":
             if isinstance(v, torch.Tensor):
                 state[k] = v.to(device)
 
-    #############################################
-    # Setup LR scheduler
-    #############################################
-    # stepLRsched = torch.optim.lr_scheduler.StepLR(
-    #     optimizer,
-    #     step_size=LRepoch_per_step,
-    #     gamma=LRdecay,
-    #     last_epoch=starting_epoch - 1,
-    # )
-
-    # Scale the anchor LR by global batchsize
-    #  SH
-    # # For multi-node
-    # lr_scale = np.sqrt(float(Ngpus) * float(Knodes) * float(batch_size))
-    # original_batchsize = 40.0  # 1 node, 4 gpus, 10 samples/gpu
-    # ddp_anchor_lr = anchor_lr * lr_scale / original_batchsize
-    #
-    # For single node
-    # ddp_anchor_lr = anchor_lr
-
-    if starting_epoch == 0:
-        last_epoch = -1
-    else:
-        last_epoch = train_batches * (starting_epoch - 1)
-    
-    LRsched = CosineWithWarmupScheduler(
-        optimizer,
-        anchor_lr=anchor_lr,
-        terminal_steps=terminal_steps,
-        warmup_steps=warmup_steps,
-        num_cycles=num_cycles,
-        min_fraction=min_fraction,
-        last_epoch=last_epoch,
-    )
 
     #############################################
     # Script and compile model on device
@@ -307,9 +273,6 @@ if __name__ == "__main__":
             device=device,
         )
 
-        # Increment LR scheduler
-        # stepLRsched.step()
-        # LRsched.step()
 
         endTime = time.time()
         epoch_time = (endTime - startTime) / 60
