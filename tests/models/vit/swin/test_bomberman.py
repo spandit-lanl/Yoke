@@ -14,6 +14,7 @@ pytestmark = pytest.mark.filterwarnings(
     "ignore: The `srun` command is available on your system but is not used"
 )
 
+
 class MockScheduler(_LRScheduler):
     """Mock of Scheduler class."""
 
